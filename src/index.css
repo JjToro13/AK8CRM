@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos base personalizados */
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+/* Componentes personalizados */
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-success {
+    @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+  }
+  
+  .status-indicator {
+    @apply w-4 h-4 rounded-full inline-block mr-2;
+  }
+  
+  .status-gray {
+    @apply bg-status-gray;
+  }
+  
+  .status-red {
+    @apply bg-status-red;
+  }
+  
+  .status-yellow {
+    @apply bg-status-yellow;
+  }
+  
+  .status-green {
+    @apply bg-status-green;
+  }
+  
+  .status-blue {
+    @apply bg-status-blue;
+  }
+}
+
+/* Animaciones personalizadas */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Scroll horizontal sticky para tablas */
+.table-scroll-container {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+  /* Efectos de sombra para indicar scroll */
+  background: linear-gradient(90deg, white 30%, transparent),
+              linear-gradient(90deg, transparent, white 70%) 0 100%,
+              radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.2), transparent),
+              radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.2), transparent) 0 100%;
+  background-repeat: no-repeat;
+  background-color: white;
+  background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* Scrollbar personalizada para mejor UX */
+.table-scroll-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:active {
+  background: #718096;
+}
+
+/* Scroll horizontal sticky - siempre visible */
+.table-scroll-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Mejorar la experiencia de scroll en móvil */
+@media (max-width: 768px) {
+  .table-scroll-container {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  .table-scroll-container::-webkit-scrollbar {
+    height: 6px;
+  }
+}

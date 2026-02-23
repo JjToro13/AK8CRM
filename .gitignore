@@ -1,0 +1,31 @@
+# Dependencias
+node_modules
+
+# Variables de entorno (contienen credenciales sensibles)
+.env
+.env.local
+.env.production
+.env.development
+
+# Carpetas con información sensible o temporal
+documentacion
+supabase/functions
+
+# Build
+dist
+build
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Supabase
+.temp
+.supabase
