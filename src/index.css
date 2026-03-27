@@ -2,63 +2,142 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-bg: 246 243 239;
+  --color-surface: 255 255 255;
+  --color-surface2: 251 250 248;
+  --color-border: 232 226 218;
+  --color-ink: 18 24 38;
+  --color-muted: 107 114 128;
+  --color-brand: 37 99 235;
+  --color-brand-50: 239 246 255;
+  --color-brand-100: 219 234 254;
+  --color-brand-200: 191 219 254;
+  --color-brand-300: 147 197 253;
+  --color-brand-400: 96 165 250;
+  --color-brand-500: 59 130 246;
+  --color-brand-600: 37 99 235;
+  --color-brand-700: 29 78 216;
+  --color-brand-800: 30 64 175;
+  --color-brand-900: 30 58 138;
+}
+
 /* Estilos base personalizados */
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
   }
-  
+
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-bg text-ink;
   }
 }
 
 /* Componentes personalizados */
 @layer components {
+  /* Input premium */
+  .auth-input {
+    @apply w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm
+           outline-none transition shadow-[0_1px_0_rgba(255,255,255,0.7)];
+  }
+
+  .auth-input:hover {
+    @apply border-brand/20;
+  }
+
+  .auth-input:focus-visible {
+    @apply ring-4 ring-brand/15 border-brand/40;
+  }
+
+  /* Botón pill */
+  .auth-pill {
+    @apply w-full rounded-full px-5 py-3 text-sm font-semibold transition
+           text-white shadow-soft
+           bg-gradient-to-r from-brand via-brand-600 to-brand-700
+           hover:brightness-105 active:brightness-95
+           disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden;
+  }
+
+  .auth-pill:focus-visible {
+    @apply outline-none ring-4 ring-brand/20;
+  }
+  
+  .auth-pill:focus-visible::before {
+    opacity: 1;
+    animation: authShimmer 0.85s ease-out forwards;
+  }
+
+  .auth-pill::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(
+      110deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.18) 18%,
+      rgba(255, 255, 255, 0.35) 28%,
+      rgba(255, 255, 255, 0.18) 38%,
+      transparent 55%
+    );
+    transform: translateX(-120%) skewX(-18deg);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .auth-pill:hover::before {
+    opacity: 1;
+    animation: authShimmer 0.85s ease-out forwards;
+  }
+
+  .auth-pill:active::before {
+    opacity: 0.55;
+    animation-duration: 0.55s;
+  }
+
   .btn-primary {
     @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
   }
-  
+
   .btn-secondary {
     @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
   }
-  
+
   .btn-danger {
     @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
   }
-  
+
   .btn-success {
     @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
   }
-  
+
   .input-field {
     @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
   }
-  
+
   .card {
     @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
   }
-  
+
   .status-indicator {
     @apply w-4 h-4 rounded-full inline-block mr-2;
   }
-  
+
   .status-gray {
     @apply bg-status-gray;
   }
-  
+
   .status-red {
     @apply bg-status-red;
   }
-  
+
   .status-yellow {
     @apply bg-status-yellow;
   }
-  
+
   .status-green {
     @apply bg-status-green;
   }
-  
+
   .status-blue {
     @apply bg-status-blue;
   }
@@ -66,12 +145,46 @@
 
 /* Animaciones personalizadas */
 @layer utilities {
+  /* ✅ Upgrade premium: gradiente vivo (respira) */
+  .hero-animated-bg {
+    background:
+      radial-gradient(
+        1200px 800px at 20% 10%,
+        rgba(37, 99, 235, 0.22),
+        transparent 55%
+      ),
+      radial-gradient(
+        900px 700px at 80% 90%,
+        rgba(30, 58, 138, 0.28),
+        transparent 60%
+      ),
+      linear-gradient(135deg, #020617 0%, #020617 40%, #1e3a8a 120%);
+    background-size:
+      140% 140%,
+      140% 140%,
+      180% 180%;
+    background-position:
+      0% 0%,
+      100% 100%,
+      0% 50%;
+    animation: heroGradientShift 9s ease-in-out infinite;
+  }
+
+  /* Respira un poco más si quieres: (opcional) */
+  .hero-animated-bg-soft {
+    animation-duration: 12s;
+  }
+
   .animate-fade-in {
     animation: fadeIn 0.3s ease-in-out;
   }
-  
+
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-blink-glow {
+    animation: blinkGlow 1.3s ease-in-out infinite;
   }
 }
 
@@ -95,6 +208,55 @@
   }
 }
 
+@keyframes blinkGlow {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.95);
+    filter: blur(0px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0.2px);
+  }
+}
+
+@keyframes authShimmer {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translateX(120%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+@keyframes heroGradientShift {
+  0% {
+    background-position:
+      0% 0%,
+      100% 100%,
+      0% 50%;
+  }
+  50% {
+    background-position:
+      18% 12%,
+      82% 88%,
+      100% 50%;
+  }
+  100% {
+    background-position:
+      0% 0%,
+      100% 100%,
+      0% 50%;
+  }
+}
+
 /* Scroll horizontal sticky para tablas */
 .table-scroll-container {
   position: relative;
@@ -103,13 +265,19 @@
   scrollbar-width: thin;
   scrollbar-color: #cbd5e0 #f7fafc;
   /* Efectos de sombra para indicar scroll */
-  background: linear-gradient(90deg, white 30%, transparent),
-              linear-gradient(90deg, transparent, white 70%) 0 100%,
-              radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.2), transparent),
-              radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.2), transparent) 0 100%;
+  background:
+    linear-gradient(90deg, white 30%, transparent),
+    linear-gradient(90deg, transparent, white 70%) 0 100%,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.2), transparent),
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.2), transparent)
+      0 100%;
   background-repeat: no-repeat;
   background-color: white;
-  background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+  background-size:
+    40px 100%,
+    40px 100%,
+    14px 100%,
+    14px 100%;
   background-attachment: local, local, scroll, scroll;
 }
 
@@ -152,8 +320,12 @@
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
   }
-  
+
   .table-scroll-container::-webkit-scrollbar {
     height: 6px;
   }
+}
+
+[data-sileo-viewport] {
+  z-index: 200 !important;
 }

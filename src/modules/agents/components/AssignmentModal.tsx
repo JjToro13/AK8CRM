@@ -1,0 +1,567 @@
+// AssignmentModal.tsx - Modal para asignar clientes a un agente usando RPC assign_leads_atomic
+// ✅ Portal (no se bloquea por pointer-events-none del modal padre)
+// ✅ Overlay + panel premium (mismo estilo)
+// ✅ Carga SOLO campañas de la operación actual
+// ✅ ESC y click fuera cierran (si no está asignando)
+// ✅ Icono Tag alineado
+
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import { X, Users, AlertCircle, Tag } from "lucide-react";
+import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
+import { supabase, Agent, agentAssignments } from "../../../lib/supabase";
+import { useAuth } from "../../../hooks/useAuth";
+import { notify } from "../../../shared/lib/notify";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "../../../shared/components/ui/Select";
+import Input from "../../../shared/components/ui/Input";
+import {
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  modalPrimaryActionClassName,
+  modalSecondaryActionClassName,
+} from "../../../shared/components/layout/ModalLayout";
+
+interface AssignmentModalProps {
+  agent: Agent;
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  selectedOperationId?: string | null;
+}
+
+type CampaignRow = {
+  id: string;
+  prefix: string;
+  display_name: string | null;
+  created_at?: string | null;
+  operation_id?: string | null;
+};
+
+type CampaignStats = {
+  id: string;
+  prefix: string;
+  display_name: string | null;
+  total: number;
+  assigned: number;
+  available: number;
+};
+
+const overlayV = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.18 } },
+  exit: { opacity: 0, transition: { duration: 0.18 } },
+} as const;
+
+const panelV = {
+  initial: { opacity: 0, y: 16, scale: 0.985, filter: "blur(10px)" },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: { type: "spring", stiffness: 240, damping: 22 },
+  },
+  exit: {
+    opacity: 0,
+    y: 10,
+    scale: 0.99,
+    filter: "blur(10px)",
+    transition: { duration: 0.18 },
+  },
+} as const;
+
+export default function AssignmentModal({
+  agent,
+  isOpen,
+  onClose,
+  onSuccess,
+  selectedOperationId,
+}: AssignmentModalProps) {
+  const {
+    canSeeAllOperations,
+    operationId: authOperationId,
+    activeOperationId: authActiveOperationId,
+  } = useAuth();
+
+  const effectiveOperationId = useMemo(() => {
+    if (selectedOperationId) return selectedOperationId;
+    if (canSeeAllOperations) return authActiveOperationId ?? null;
+    return authOperationId ?? null;
+  }, [
+    selectedOperationId,
+    canSeeAllOperations,
+    authActiveOperationId,
+    authOperationId,
+  ]);
+
+  const [loading, setLoading] = useState(false);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  const [error, setError] = useState("");
+
+  const [count, setCount] = useState<number>(50);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [campaigns, setCampaigns] = useState<CampaignStats[]>([]);
+
+  const ALL_CAMPAIGNS_VALUE = "__ALL__";
+  const CAMPAIGN_PLACEHOLDER_VALUE = "__campaign_placeholder__";
+
+  useEffect(() => {
+    if (!isOpen) return;
+    window.dispatchEvent(
+      new CustomEvent("am:submodal", { detail: { open: true } }),
+    );
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("am:submodal", { detail: { open: false } }),
+      );
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setError("");
+    setCount(50);
+    setSelectedCampaignId(null);
+    setCampaigns([]);
+
+    void loadCampaigns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, effectiveOperationId]);
+
+  const loadCampaigns = async () => {
+    setLoadingCampaigns(true);
+    setError("");
+
+    try {
+      if (!effectiveOperationId) {
+        setCampaigns([]);
+        setError("No hay una operación seleccionada.");
+        return;
+      }
+
+      let campaignsQuery = supabase
+        .from("campaigns")
+        .select("id, prefix, display_name, created_at, operation_id")
+        .eq("operation_id", effectiveOperationId)
+        .order("prefix", { ascending: true });
+
+      const { data: campRows, error: campErr } = await campaignsQuery;
+      if (campErr) throw campErr;
+
+      let clientsQuery = supabase
+        .from("clients")
+        .select("campaign_id, assigned_to, operation_id")
+        .eq("operation_id", effectiveOperationId);
+
+      const { data: totalsRows, error: totalsErr } = await clientsQuery;
+      if (totalsErr) throw totalsErr;
+
+      const list = (campRows || []) as CampaignRow[];
+
+      const totalsMap: Record<string, { total: number; assigned: number }> = {};
+
+      for (const r of totalsRows || []) {
+        const campaignId = String((r as any).campaign_id ?? "").trim();
+        if (!campaignId) continue;
+
+        if (!totalsMap[campaignId]) totalsMap[campaignId] = { total: 0, assigned: 0 };
+
+        totalsMap[campaignId].total += 1;
+
+        const assignedTo = (r as any).assigned_to as string | null;
+        if (assignedTo) totalsMap[campaignId].assigned += 1;
+      }
+
+      const seen = new Set<string>();
+      const merged: CampaignStats[] = [];
+
+      for (const c of list) {
+        const campaignId = c.id;
+        const prefix = c.prefix;
+        seen.add(campaignId);
+
+        const stats = totalsMap[campaignId] || { total: 0, assigned: 0 };
+        const total = Number(stats.total || 0);
+        const assigned = Number(stats.assigned || 0);
+
+        merged.push({
+          id: campaignId,
+          prefix,
+          display_name: (c.display_name?.trim() ||
+            `Campaña ${prefix}`) as string,
+          total,
+          assigned,
+          available: Math.max(0, total - assigned),
+        });
+      }
+
+      for (const prefix of Object.keys(totalsMap)) {
+        if (seen.has(prefix)) continue;
+
+        const stats = totalsMap[prefix];
+        merged.push({
+          id: prefix,
+          prefix,
+          display_name: `Campaña ${prefix}`,
+          total: stats.total,
+          assigned: stats.assigned,
+          available: Math.max(0, stats.total - stats.assigned),
+        });
+      }
+
+      merged.sort((a, b) => a.prefix.localeCompare(b.prefix));
+      setCampaigns(merged);
+    } catch (e: any) {
+      console.error("[AssignmentModal] loadCampaigns error:", e);
+      setError(e?.message || "Error cargando campañas");
+      setCampaigns([]);
+    } finally {
+      setLoadingCampaigns(false);
+    }
+  };
+
+  const totalAvailableAll = useMemo(
+    () => campaigns.reduce((acc, c) => acc + (c.available || 0), 0),
+    [campaigns],
+  );
+
+  const selectedCampaign = useMemo(() => {
+    if (!selectedCampaignId) return null;
+    return campaigns.find((c) => c.id === selectedCampaignId) ?? null;
+  }, [campaigns, selectedCampaignId]);
+
+  const campaignSelectValue = selectedCampaignId ?? ALL_CAMPAIGNS_VALUE;
+
+  const maxAllowed = useMemo(() => {
+    if (selectedCampaign) return selectedCampaign.available;
+    return totalAvailableAll;
+  }, [selectedCampaign, totalAvailableAll]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (maxAllowed <= 0) {
+      setCount(0);
+      return;
+    }
+
+    setCount((prev) => Math.min(Math.max(1, prev || 1), maxAllowed));
+  }, [maxAllowed, isOpen]);
+
+  const handleAssign = async () => {
+    setError("");
+
+    if (!effectiveOperationId) {
+      setError("No hay una operación seleccionada.");
+      return;
+    }
+
+    if (maxAllowed <= 0) {
+      setError("No hay clientes disponibles para asignar.");
+      return;
+    }
+
+    const safeCount = Math.min(Math.max(1, Number(count || 0)), maxAllowed);
+    if (!safeCount || safeCount <= 0) {
+      setError("La cantidad debe ser mayor a 0.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data: currentUser } = await supabase.auth.getUser();
+      const adminId = currentUser?.user?.id;
+      if (!adminId) {
+        setError("No se pudo obtener el usuario administrador.");
+        return;
+      }
+
+      const { error: rpcErr } = await agentAssignments.assignLeadsAtomic({
+        agent_id: agent.id,
+        count: safeCount,
+        assigned_by: adminId,
+        campaign_id: selectedCampaignId ?? null,
+        campaign_prefix: selectedCampaign?.prefix ?? null,
+      });
+
+      if (rpcErr) {
+        console.error("assignLeadsAtomic error:", rpcErr);
+        setError(rpcErr.message || "Error asignando clientes.");
+        return;
+      }
+
+      notify.success(
+        "Clientes asignados",
+        `Se asignaron ${safeCount} cliente${safeCount === 1 ? "" : "s"} a ${agent.name}.`,
+      );
+      onSuccess();
+    } catch (e: any) {
+      console.error("Error asignando:", e);
+      setError(e?.message || "Error inesperado asignando clientes.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !loading) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose, loading]);
+
+  if (!isOpen) return null;
+
+  const canAssign =
+    !loading && !!effectiveOperationId && maxAllowed > 0 && (count ?? 0) > 0;
+
+  return createPortal(
+    <AnimatePresence mode="wait">
+      <motion.div
+        className="fixed inset-0 z-[120] p-4 sm:p-6 flex items-center justify-center"
+        variants={overlayV}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        onMouseDown={(e) => {
+          if (loading) return;
+          if (e.target === e.currentTarget) onClose();
+        }}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" />
+
+        <motion.div
+          className="relative w-full max-w-2xl rounded-[1.5rem] border border-border bg-surface shadow-soft2 overflow-hidden"
+          variants={panelV}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+        >
+          <div className="hidden">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-2xl bg-brand/10 flex items-center justify-center">
+                <Users className="w-5 h-5 text-brand" />
+              </div>
+
+              <div>
+                <div className="text-base sm:text-lg font-semibold text-ink">
+                  Asignar clientes
+                </div>
+                <div className="text-xs text-muted">
+                  Para:{" "}
+                  <span className="font-semibold text-ink/80">
+                    {agent.name}
+                  </span>
+                  {agent.email ? (
+                    <>
+                      {" "}
+                      • <span className="font-mono">{agent.email}</span>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => !loading && onClose()}
+              className="h-10 w-10 rounded-2xl border border-border bg-surface hover:bg-surface2 transition flex items-center justify-center text-muted hover:text-ink disabled:opacity-50"
+              aria-label="Cerrar"
+              disabled={loading}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <ModalHeader
+            icon={<Users className="w-5 h-5 text-brand" />}
+            title="Asignar clientes"
+            description={
+              <>
+                Para: <span className="font-semibold text-ink/80">{agent.name}</span>
+                {agent.email ? (
+                  <>
+                    {" "}
+                    - <span className="font-mono">{agent.email}</span>
+                  </>
+                ) : null}
+              </>
+            }
+            onClose={() => !loading && onClose()}
+            closeDisabled={loading}
+          />
+
+          <ModalBody className="space-y-5">
+            {error && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5" />
+                <span className="font-semibold">{error}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="rounded-2xl border border-border bg-surface p-5">
+                <div className="text-sm font-semibold text-ink/80">
+                  Cantidad a asignar
+                </div>
+
+                <div className="mt-3">
+                  <Input
+                    type="number"
+                    min={maxAllowed > 0 ? 1 : 0}
+                    max={maxAllowed > 0 ? maxAllowed : 0}
+                    value={count}
+                    onChange={(e) => {
+                      const v = Number(e.target.value || 0);
+                      if (!Number.isFinite(v)) return;
+
+                      if (maxAllowed <= 0) {
+                        setCount(0);
+                        return;
+                      }
+                      setCount(Math.min(Math.max(1, v), maxAllowed));
+                    }}
+                    disabled={loading || maxAllowed <= 0}
+                  />
+
+                  <p className="mt-2 text-xs text-muted">
+                    Máximo asignable ahora:{" "}
+                    <span className="font-semibold text-ink/70">
+                      {maxAllowed.toLocaleString()}
+                    </span>{" "}
+                    {selectedCampaign
+                      ? `(solo ${
+                          selectedCampaign.display_name ??
+                          `Campaña ${selectedCampaign.prefix}`
+                        })`
+                      : "(todas las campañas de la operación actual)"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-surface p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-ink/80">
+                    Campaña (opcional)
+                  </div>
+                  {loadingCampaigns ? (
+                    <span className="text-xs text-muted">Cargando…</span>
+                  ) : null}
+                </div>
+
+                <div className="mt-3 relative">
+                  <Tag className="w-4 h-4 text-muted absolute left-4 top-6 -translate-y-1/2" />
+                  <Select
+                    value={campaignSelectValue}
+                    onValueChange={(v) => {
+                      if (v === CAMPAIGN_PLACEHOLDER_VALUE) return;
+                      if (v === ALL_CAMPAIGNS_VALUE) setSelectedCampaignId(null);
+                      else setSelectedCampaignId(v);
+                    }}
+                    disabled={loading || loadingCampaigns || !effectiveOperationId}
+                  >
+                    <SelectTrigger leftIcon={<Tag className="h-4 w-4" />}>
+                      <SelectValue placeholder="Todas las campañas" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value={CAMPAIGN_PLACEHOLDER_VALUE} disabled>
+                        Todas las campañas
+                      </SelectItem>
+                      <SelectItem value={ALL_CAMPAIGNS_VALUE}>
+                        Todas las campañas
+                      </SelectItem>
+
+                      {campaigns.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {(c.display_name ?? `Campaña ${c.prefix}`) +
+                            ` · Disponibles: ${c.available}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <p className="mt-2 text-xs text-muted">
+                    Si eliges una campaña, solo se asignarán clientes de ese
+                    prefijo dentro de la operación actual.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-surface2 px-5 py-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted">Disponibles totales</span>
+                <span className="font-semibold text-ink">
+                  {totalAvailableAll.toLocaleString()}
+                </span>
+              </div>
+
+              {selectedCampaign && (
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-muted">
+                    Disponibles en{" "}
+                    <span className="font-semibold">
+                      {selectedCampaign.prefix}
+                    </span>
+                  </span>
+                  <span className="font-semibold text-ink">
+                    {selectedCampaign.available.toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </ModalBody>
+
+          <ModalFooter className="justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className={modalSecondaryActionClassName}
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAssign}
+              disabled={!canAssign}
+              className={modalPrimaryActionClassName}
+              title={
+                maxAllowed <= 0
+                  ? "No hay clientes disponibles para asignar"
+                  : "Asignar clientes"
+              }
+            >
+              {loading ? (
+                <LoadingSpinner
+                  size="sm"
+                  text="Asignando..."
+                  fullScreen={false}
+                />
+              ) : (
+                "Asignar clientes"
+              )}
+            </button>
+          </ModalFooter>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body,
+  );
+}

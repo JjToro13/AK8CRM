@@ -1,0 +1,426 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "../../../hooks/useAuth";
+import type { Call, Client } from "../../../shared/types/crm";
+import { auth } from "../../auth/services/auth.service";
+import { calls } from "../../calls/services/calls.service";
+import { clients } from "../../clients/services/clients.service";
+import { dashboard } from "../services/dashboard.service";
+import type { DashboardProps, Operation, VisibleTenant } from "../types/dashboard.types";
+
+const SELECTED_OPERATION_STORAGE_KEY = "cm_selected_operation_id";
+const SELECTED_TENANT_STORAGE_KEY = "cm_selected_tenant_id";
+
+export function useDashboard({
+  isAdmin,
+  canSeeAllOperations = false,
+  operationReady = true,
+}: DashboardProps) {
+  const {
+    activeOperationId: authActiveOperationId,
+    operationId: authOperationId,
+    signOut,
+  } = useAuth();
+
+  const syncedOperationIdRef = useRef<string | null>(null);
+  const searchRequestIdRef = useRef(0);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Client[]>([]);
+  const [recentCalls, setRecentCalls] = useState<Call[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [callsLoading, setCallsLoading] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [tenants, setTenants] = useState<VisibleTenant[]>([]);
+  const [operations, setOperations] = useState<Operation[]>([]);
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+  const [selectedOperationId, setSelectedOperationId] = useState<string | null>(
+    null,
+  );
+  const [opsLoading, setOpsLoading] = useState(false);
+  const [opsError, setOpsError] = useState("");
+
+  const selectedOperation = useMemo(
+    () =>
+      operations.find((operation) => operation.id === selectedOperationId) ??
+      null,
+    [operations, selectedOperationId],
+  );
+
+  const effectiveOperationId = canSeeAllOperations
+    ? (selectedOperationId ?? null)
+    : isAdmin
+      ? (authOperationId ?? selectedOperationId ?? null)
+      : null;
+
+  const opLocked = canSeeAllOperations && !operationReady;
+
+  const loadTenants = useCallback(async () => {
+    if (!canSeeAllOperations) {
+      setTenants([]);
+      setSelectedTenantId(null);
+      return;
+    }
+
+    const { data, error } = await dashboard.getVisibleTenants();
+
+    if (error) {
+      console.error("[tenants] error:", error);
+      return;
+    }
+
+    const nextTenants = data ?? [];
+    setTenants(nextTenants);
+
+    const savedTenantId = localStorage.getItem(SELECTED_TENANT_STORAGE_KEY);
+    const resolvedTenantId =
+      nextTenants.find((tenant) => tenant.id === savedTenantId)?.id ??
+      nextTenants[0]?.id ??
+      null;
+
+    setSelectedTenantId(resolvedTenantId);
+
+    if (resolvedTenantId) {
+      localStorage.setItem(SELECTED_TENANT_STORAGE_KEY, resolvedTenantId);
+    } else {
+      localStorage.removeItem(SELECTED_TENANT_STORAGE_KEY);
+    }
+  }, [canSeeAllOperations]);
+
+  const loadOperations = useCallback(async () => {
+    if (!canSeeAllOperations) {
+      setOperations([]);
+      setOpsError("");
+      return;
+    }
+
+    setOpsLoading(true);
+    setOpsError("");
+
+    try {
+      const { data, error } = await dashboard.getOperationsByTenant(
+        selectedTenantId,
+      );
+
+      if (error) {
+        console.error("[operations] error:", error);
+        setOpsError(error.message);
+        setOperations([]);
+        return;
+      }
+
+      setOperations(data ?? []);
+    } finally {
+      setOpsLoading(false);
+    }
+  }, [canSeeAllOperations, selectedTenantId]);
+
+  useEffect(() => {
+    void loadTenants();
+  }, [loadTenants]);
+
+  useEffect(() => {
+    void loadOperations();
+  }, [loadOperations]);
+
+  useEffect(() => {
+    if (!canSeeAllOperations) {
+      syncedOperationIdRef.current = null;
+      setSelectedTenantId(null);
+      setSelectedOperationId(authOperationId ?? authActiveOperationId ?? null);
+      return;
+    }
+
+    const saved = localStorage.getItem(SELECTED_OPERATION_STORAGE_KEY);
+    const visibleOperationIds = new Set(operations.map((operation) => operation.id));
+    const nextOperationId =
+      (saved && visibleOperationIds.has(saved) ? saved : null) ??
+      (authActiveOperationId && visibleOperationIds.has(authActiveOperationId)
+        ? authActiveOperationId
+        : null) ??
+      operations[0]?.id ??
+      null;
+
+    setSelectedOperationId(nextOperationId);
+
+    if (!nextOperationId || syncedOperationIdRef.current === nextOperationId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const syncOperation = async () => {
+      const { error } = await dashboard.setActiveOperation(nextOperationId);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (error) {
+        console.error("[init set_active_operation] error:", error);
+        setOpsError(error.message);
+        syncedOperationIdRef.current = null;
+        return;
+      }
+
+      syncedOperationIdRef.current = nextOperationId;
+      window.dispatchEvent(
+        new CustomEvent("cm:operation-changed", {
+          detail: { operationId: nextOperationId },
+        }),
+      );
+    };
+
+    void syncOperation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authActiveOperationId, authOperationId, canSeeAllOperations, operations]);
+
+  const loadRecentCalls = useCallback(async (operationId?: string | null) => {
+    const resolvedOperationId =
+      operationId ?? (isAdmin ? effectiveOperationId : null);
+
+    if (isAdmin && (!resolvedOperationId || !operationReady)) {
+      setRecentCalls([]);
+      setCallsLoading(false);
+      return;
+    }
+
+    setCallsLoading(true);
+
+    try {
+      let agentId: string | undefined;
+
+      if (!isAdmin) {
+        const currentUser = await auth.getCurrentUser();
+        agentId = currentUser?.id;
+      }
+
+      const { data, error } = await calls.getRecent({
+        agentId,
+        operationId: isAdmin ? resolvedOperationId : null,
+      });
+
+      if (error) {
+        console.error("Error cargando llamadas:", error);
+        return;
+      }
+
+      setRecentCalls(data || []);
+    } catch (error) {
+      console.error("Error cargando llamadas:", error);
+    } finally {
+      setCallsLoading(false);
+    }
+  }, [effectiveOperationId, isAdmin, operationReady]);
+
+  useEffect(() => {
+    void loadRecentCalls();
+  }, [loadRecentCalls]);
+
+  const runSearch = useCallback(
+    async (query: string) => {
+      const requestId = ++searchRequestIdRef.current;
+      const trimmedQuery = query.trim();
+
+      if (!trimmedQuery || trimmedQuery.length < 2) {
+        setSearchResults([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        let agentId: string | undefined;
+
+        if (!isAdmin) {
+          const currentUser = await auth.getCurrentUser();
+          agentId = currentUser?.id;
+        }
+
+        const { data, error } = await clients.search(trimmedQuery, {
+          agentId,
+          operationId: isAdmin ? effectiveOperationId : undefined,
+        });
+
+        if (requestId !== searchRequestIdRef.current) {
+          return;
+        }
+
+        if (error) {
+          console.error("Error buscando clientes:", error);
+          return;
+        }
+
+        setSearchResults(data || []);
+      } catch (error) {
+        if (requestId !== searchRequestIdRef.current) {
+          return;
+        }
+
+        console.error("Error buscando clientes:", error);
+      } finally {
+        if (requestId === searchRequestIdRef.current) {
+          setLoading(false);
+        }
+      }
+    },
+    [effectiveOperationId, isAdmin],
+  );
+
+  const handleSearchInput = useCallback(
+    (query: string) => {
+      setSearchQuery(query);
+      void runSearch(query);
+    },
+    [runSearch],
+  );
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+    }
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+      return;
+    }
+
+    void runSearch(searchQuery);
+  }, [effectiveOperationId, runSearch, searchQuery]);
+
+  const handleCallStarted = useCallback(() => {
+    void loadRecentCalls();
+  }, [loadRecentCalls]);
+
+  const handleEditClient = useCallback((client: Client) => {
+    setSelectedClient(client);
+    setShowEditModal(true);
+  }, []);
+
+  const handleClientSaved = useCallback(() => {
+    if (searchQuery.trim().length >= 2) {
+      void runSearch(searchQuery);
+    }
+  }, [runSearch, searchQuery]);
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Error cerrando sesion:", error);
+    }
+  }, [signOut]);
+
+  const selectOperation = useCallback(
+    async (operationId: string) => {
+      try {
+        setOpsError("");
+        searchRequestIdRef.current += 1;
+        setSelectedOperationId(operationId);
+        setSearchResults([]);
+        setLoading(searchQuery.trim().length >= 2);
+        localStorage.setItem(SELECTED_OPERATION_STORAGE_KEY, operationId);
+
+        const { error } = await dashboard.setActiveOperation(operationId);
+
+        if (error) {
+          console.error("[set_active_operation] error:", error);
+          setOpsError(error.message);
+          syncedOperationIdRef.current = null;
+          return;
+        }
+
+        syncedOperationIdRef.current = operationId;
+
+        window.dispatchEvent(
+          new CustomEvent("cm:operation-changed", {
+            detail: { operationId },
+          }),
+        );
+
+        await loadRecentCalls(operationId);
+
+        if (searchQuery.trim().length >= 2) {
+          await runSearch(searchQuery);
+        }
+      } catch (error) {
+        console.error(error);
+        setOpsError(
+          error instanceof Error ? error.message : "Error seleccionando operacion",
+        );
+      }
+    },
+    [loadRecentCalls, runSearch, searchQuery],
+  );
+
+  const selectTenant = useCallback((tenantId: string) => {
+    if (!tenantId) return;
+    searchRequestIdRef.current += 1;
+    setSelectedTenantId(tenantId);
+    setSelectedOperationId(null);
+    setRecentCalls([]);
+    setSearchResults([]);
+    setLoading(searchQuery.trim().length >= 2);
+    localStorage.setItem(SELECTED_TENANT_STORAGE_KEY, tenantId);
+    localStorage.removeItem(SELECTED_OPERATION_STORAGE_KEY);
+    syncedOperationIdRef.current = null;
+  }, [searchQuery]);
+
+  const statToday = useMemo(() => {
+    const today = new Date().toDateString();
+
+    return recentCalls.filter(
+      (call) => new Date(call.created_at).toDateString() === today,
+    ).length;
+  }, [recentCalls]);
+
+  const statInProgress = useMemo(
+    () => recentCalls.filter((call) => call.status === "in_progress").length,
+    [recentCalls],
+  );
+
+  const statCompleted = useMemo(
+    () => recentCalls.filter((call) => call.status === "completed").length,
+    [recentCalls],
+  );
+
+  const statNoAnswer = useMemo(
+    () => recentCalls.filter((call) => call.status === "no_answer").length,
+    [recentCalls],
+  );
+
+  return {
+    callsLoading,
+    handleCallStarted,
+    handleClientSaved,
+    handleEditClient,
+    handleSearchInput,
+    handleSignOut,
+    loading,
+    opLocked,
+    operations,
+    opsError,
+    opsLoading,
+    recentCalls,
+    searchQuery,
+    searchResults,
+    selectedClient,
+    selectedTenantId,
+    selectedOperation,
+    selectedOperationId,
+    selectOperation,
+    selectTenant,
+    setShowEditModal,
+    showEditModal,
+    statCompleted,
+    statInProgress,
+    statNoAnswer,
+    statToday,
+    tenants,
+  };
+}
