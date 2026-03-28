@@ -2,9 +2,9 @@ import * as React from "react";
 import { cn } from "../../../lib/utils";
 
 export const inputBaseClassName =
-  "w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm outline-none transition " +
-  "shadow-[0_1px_0_rgba(255,255,255,0.7)] hover:border-brand/20 " +
-  "focus-visible:ring-4 focus-visible:ring-brand/15 focus-visible:border-brand/40 " +
+  "w-full rounded-[1.25rem] border border-white/70 bg-surface/86 px-4 py-3 text-sm text-ink outline-none transition backdrop-blur-xl " +
+  "shadow-[0_18px_40px_rgba(30,41,59,0.08),inset_0_1px_0_rgba(255,255,255,0.78)] hover:-translate-y-[1px] hover:border-brand/24 hover:bg-surface " +
+  "focus-visible:ring-4 focus-visible:ring-brand/15 focus-visible:border-brand/40 placeholder:text-muted/72 " +
   "disabled:opacity-50 disabled:cursor-not-allowed";
 
 type InputProps = React.ComponentPropsWithoutRef<"input"> & {

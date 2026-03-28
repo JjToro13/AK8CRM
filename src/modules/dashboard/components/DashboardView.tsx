@@ -1,5 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { LogOut, Phone } from "lucide-react";
+import {
+  canUseCalendarWorkspace,
+  canUseCallHistory,
+  canUseClientActions,
+} from "../../../lib/supabase";
 import EditClientModal from "../../../shared/components/client/EditClientModal";
 import SecurityInfo from "./SecurityInfo";
 import AppFooter from "../../../shared/components/layout/AppFooter";
@@ -52,6 +57,19 @@ export default function DashboardView(props: DashboardProps) {
   } = useDashboard(props);
 
   const { canSeeAllOperations = false, isAdmin, role } = props;
+  const canUseSearch = canUseClientActions(role);
+  const canUseCalendar = canUseCalendarWorkspace(role);
+  const canUseCalls = canUseCallHistory(role);
+  const panelSubtitle =
+    role === "dev"
+      ? "Panel de desarrollo"
+      : role === "owner"
+        ? "Panel de owner"
+        : role === "manager"
+          ? "Panel de gestión"
+          : role === "loader"
+            ? "Panel de carga"
+            : "Panel del agente";
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
@@ -60,7 +78,7 @@ export default function DashboardView(props: DashboardProps) {
         title={branding.productName}
         subtitle={
           <span className="text-xs text-muted">
-            {isAdmin ? "Panel de administracion" : "Panel del agente"}
+            {panelSubtitle}
           </span>
         }
         supportingContent={
@@ -79,7 +97,7 @@ export default function DashboardView(props: DashboardProps) {
               <span className="absolute inset-0 rounded-full bg-emerald-400/25 blur-[6px] animate-blink-glow" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.65)] animate-blink-glow" />
             </span>
-            <span className="font-semibold text-ink/80">Centralita</span>
+            <span className="font-semibold text-ink/80">{branding.productName}</span>
             <span className="text-muted">•</span>
             <span className="font-semibold text-emerald-700">ONLINE</span>
           </motion.div>
@@ -153,35 +171,51 @@ export default function DashboardView(props: DashboardProps) {
                 initial="initial"
                 animate="animate"
               >
-                <DashboardSearchPanel
-                  loading={loading}
-                  onCallStarted={handleCallStarted}
-                  onEditClient={handleEditClient}
-                  onSearchChange={handleSearchInput}
-                  opLocked={opLocked}
-                  searchQuery={searchQuery}
-                  searchResults={searchResults}
-                />
+                {canUseSearch ? (
+                  <DashboardSearchPanel
+                    loading={loading}
+                    onCallStarted={handleCallStarted}
+                    onEditClient={handleEditClient}
+                    onSearchChange={handleSearchInput}
+                    opLocked={opLocked}
+                    searchQuery={searchQuery}
+                    searchResults={searchResults}
+                  />
+                ) : (
+                  <section className="rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-7">
+                    <h2 className="text-base font-semibold tracking-tight text-ink">
+                      Acceso de carga
+                    </h2>
+                    <p className="mt-2 text-sm text-muted">
+                      Este perfil esta orientado a carga y preparacion de datos.
+                      Las acciones comerciales y de contacto no se muestran aqui.
+                    </p>
+                  </section>
+                )}
               </motion.div>
 
-              <motion.div
-                variants={dashboardFadeUp}
-                initial="initial"
-                animate="animate"
-              >
-                <DashboardCalendarPanel />
-              </motion.div>
+              {canUseCalendar ? (
+                <motion.div
+                  variants={dashboardFadeUp}
+                  initial="initial"
+                  animate="animate"
+                >
+                  <DashboardCalendarPanel />
+                </motion.div>
+              ) : null}
 
-              <motion.div
-                variants={dashboardFadeUp}
-                initial="initial"
-                animate="animate"
-              >
-                <DashboardRecentCallsPanel
-                  callsLoading={callsLoading}
-                  recentCalls={recentCalls}
-                />
-              </motion.div>
+              {canUseCalls ? (
+                <motion.div
+                  variants={dashboardFadeUp}
+                  initial="initial"
+                  animate="animate"
+                >
+                  <DashboardRecentCallsPanel
+                    callsLoading={callsLoading}
+                    recentCalls={recentCalls}
+                  />
+                </motion.div>
+              ) : null}
             </div>
 
             <div className="space-y-6">
@@ -211,7 +245,7 @@ export default function DashboardView(props: DashboardProps) {
                 initial="initial"
                 animate="animate"
               >
-                <DashboardQuickActionsPanel isAdmin={isAdmin} />
+                <DashboardQuickActionsPanel role={role ?? null} />
               </motion.div>
             </div>
           </div>

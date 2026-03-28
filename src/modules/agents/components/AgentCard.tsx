@@ -5,7 +5,8 @@ import type { Agent } from "../../../lib/supabase";
 type AgentCardProps = {
   agent: Agent;
   assignedCount: number;
-  isAdmin: boolean;
+  canAssignClients: boolean;
+  canEdit: boolean;
   onAssign: (agent: Agent) => void;
   onEdit: (agent: Agent) => void;
   onViewDetails: (agent: Agent) => void;
@@ -33,7 +34,8 @@ const pillPrimaryClass =
 export default function AgentCard({
   agent,
   assignedCount,
-  isAdmin,
+  canAssignClients,
+  canEdit,
   onAssign,
   onEdit,
   onViewDetails,
@@ -42,8 +44,11 @@ export default function AgentCard({
   totalAvailable,
   canReceiveAssignments,
 }: AgentCardProps) {
-  const disabledAssign = !canReceiveAssignments || totalAvailable <= 0;
-  const assignTitle = !canReceiveAssignments
+  const disabledAssign =
+    !canAssignClients || !canReceiveAssignments || totalAvailable <= 0;
+  const assignTitle = !canAssignClients
+    ? "No tienes permisos para asignar clientes"
+    : !canReceiveAssignments
     ? `${roleLabel} no recibe asignaciones de clientes`
     : totalAvailable <= 0
       ? "No hay clientes disponibles para asignar"
@@ -79,7 +84,7 @@ export default function AgentCard({
           </div>
         </div>
 
-        {isAdmin ? (
+        {canEdit ? (
           <button
             type="button"
             onClick={() => onEdit(agent)}
@@ -87,8 +92,8 @@ export default function AgentCard({
               "h-10 w-10 rounded-2xl border border-border bg-surface hover:bg-surface2 transition",
               "flex items-center justify-center text-muted hover:text-ink",
             )}
-            title="Editar agente"
-            aria-label="Editar agente"
+            title="Editar usuario"
+            aria-label="Editar usuario"
           >
             <Pencil className="w-4 h-4" />
           </button>
@@ -131,7 +136,11 @@ export default function AgentCard({
           title={assignTitle}
         >
           <Plus className="h-4 w-4" />
-          {canReceiveAssignments ? "Asignar" : "No aplica"}
+          {!canAssignClients
+            ? "Sin permiso"
+            : canReceiveAssignments
+              ? "Asignar"
+              : "No aplica"}
         </button>
       </div>
     </div>

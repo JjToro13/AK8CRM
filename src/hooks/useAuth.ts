@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../integrations/supabase/client";
 
-export type AppRole = "dev" | "super_admin" | "admin" | "agent" | null;
+export type AppRole =
+  | "dev"
+  | "owner"
+  | "manager"
+  | "loader"
+  | "agent"
+  | null;
 
 interface AuthState {
   user: User | null;
@@ -123,8 +129,9 @@ export function useAuth() {
       }
 
       const role = (agent.role as AppRole) ?? null;
-      const canSeeAllOperations = role === "dev" || role === "super_admin";
-      const isAdmin = role === "admin" || canSeeAllOperations;
+      const canSeeAllOperations = role === "dev" || role === "owner";
+      const isAdmin =
+        role === "manager" || role === "owner" || canSeeAllOperations;
 
       return {
         role,

@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   agents,
+  canAssignOperationalClients,
+  canCreateManagedUsers,
+  canEditManagedUsers,
   getAgentManagementVisibleRoles,
   getAgentRoleLabel,
   isOperationalAgentRole,
@@ -11,10 +14,11 @@ import { agentManagement } from "../services/agent-management.service";
 import type { AgentManagementProps } from "../types/agent-management.types";
 
 const roleSortOrder: Record<Agent["role"], number> = {
-  super_admin: 0,
-  admin: 1,
-  agent: 2,
-  dev: 3,
+  dev: 0,
+  owner: 1,
+  manager: 2,
+  loader: 3,
+  agent: 4,
 };
 
 function sortVisibleAgents(agentsList: Agent[]) {
@@ -31,7 +35,6 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
   const {
     activeOperationId,
     canSeeAllOperations,
-    isAdmin,
     loading: authLoading,
     operationId,
     operationReady,
@@ -53,7 +56,11 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
   const [showUpsertModal, setShowUpsertModal] = useState(false);
   const [upsertMode, setUpsertMode] = useState<"create" | "edit">("create");
 
-  const canManageAgents = isAdmin && !!role;
+  const canManageAgents =
+    !!role && ["dev", "owner", "manager"].includes(role);
+  const canCreateAgents = canCreateManagedUsers(role);
+  const canEditAgents = canEditManagedUsers(role);
+  const canAssignClients = canAssignOperationalClients(role);
   const scopedOperationId = canSeeAllOperations ? activeOperationId : operationId;
 
   const totalAvailable = useMemo(
@@ -156,18 +163,21 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
   ]);
 
   const openCreateAgent = () => {
+    if (!canCreateAgents) return;
     setUpsertMode("create");
     setSelectedAgent(null);
     setShowUpsertModal(true);
   };
 
   const openEditAgent = (agent: Agent) => {
+    if (!canEditAgents) return;
     setUpsertMode("edit");
     setSelectedAgent(agent);
     setShowUpsertModal(true);
   };
 
   const handleCreateAssignment = (agent: Agent) => {
+    if (!canAssignClients) return;
     setSelectedAgent(agent);
     setShowAssignmentModal(true);
   };
@@ -191,6 +201,9 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     agentsList,
     assignedCounts,
     availableCampaigns,
+    canAssignClients,
+    canCreateAgents,
+    canEditAgents,
     canManageAgents,
     compact,
     error,
@@ -199,7 +212,6 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     handleAssignmentCreated,
     handleCreateAssignment,
     handleViewAgentDetails,
-    isAdmin,
     isOperationalAgentRole,
     loading,
     loadData,

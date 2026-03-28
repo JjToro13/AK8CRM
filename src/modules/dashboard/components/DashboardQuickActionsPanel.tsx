@@ -1,82 +1,86 @@
-import { CalendarDays, Clock, Settings, UserCog, Users } from "lucide-react";
+import { CalendarDays, Clock, UserCog, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  canAccessAgentWorkspace,
+  canAccessCampaignWorkspace,
+  canUseCalendarWorkspace,
+  canUseCallHistory,
+  type AgentRole,
+} from "../../../lib/supabase";
 import { cn } from "../../../lib/utils";
 import { pageHeaderActionClassName } from "../../../shared/components/layout/PageHeader";
 import {
   dashboardCardClass,
-  dashboardPrimaryActionClass,
   dashboardSubTextClass,
   dashboardTitleClass,
 } from "./dashboardUi";
 
 type DashboardQuickActionsPanelProps = {
-  isAdmin: boolean;
+  role: AgentRole | null;
 };
 
 export default function DashboardQuickActionsPanel({
-  isAdmin,
+  role,
 }: DashboardQuickActionsPanelProps) {
+  const showCalls = canUseCallHistory(role);
+  const showCalendar = canUseCalendarWorkspace(role);
+  const showAgents = canAccessAgentWorkspace(role);
+  const showCampaigns = canAccessCampaignWorkspace(role);
+
   return (
     <section className={dashboardCardClass}>
       <h2 className={dashboardTitleClass}>Acciones Rapidas</h2>
       <p className={cn(dashboardSubTextClass, "mt-1")}>
-        Accede a lo mas usado con un click.
+        Accede a lo mas usado segun tu alcance actual.
       </p>
 
       <div className="mt-5 space-y-3">
-        <Link
-          to="/calls"
-          className={cn(pageHeaderActionClassName, "w-full justify-center")}
-        >
-          <Clock className="w-4 h-4" />
-          Ver Historial
-        </Link>
+        {showCalls ? (
+          <Link
+            to="/calls"
+            className={cn(pageHeaderActionClassName, "w-full justify-center")}
+          >
+            <Clock className="h-4 w-4" />
+            Ver Historial
+          </Link>
+        ) : null}
 
         <Link
           to="/clients"
           className={cn(pageHeaderActionClassName, "w-full justify-center")}
         >
-          <Users className="w-4 h-4" />
+          <Users className="h-4 w-4" />
           Gestionar Clientes
         </Link>
 
-        <Link
-          to="/calendar"
-          className={cn(pageHeaderActionClassName, "w-full justify-center")}
-        >
-          <CalendarDays className="w-4 h-4" />
-          Calendario Comercial
-        </Link>
+        {showCalendar ? (
+          <Link
+            to="/calendar"
+            className={cn(pageHeaderActionClassName, "w-full justify-center")}
+          >
+            <CalendarDays className="h-4 w-4" />
+            Calendario Comercial
+          </Link>
+        ) : null}
 
-        {isAdmin ? (
-          <>
-            <Link
-              to="/agents"
-              className={cn(pageHeaderActionClassName, "w-full justify-center")}
-            >
-              <UserCog className="w-4 h-4" />
-              Gestionar Agentes
-            </Link>
+        {showAgents ? (
+          <Link
+            to="/agents"
+            className={cn(pageHeaderActionClassName, "w-full justify-center")}
+          >
+            <UserCog className="h-4 w-4" />
+            Gestionar Usuarios
+          </Link>
+        ) : null}
 
-            <Link
-              to="/did"
-              className={cn(
-                dashboardPrimaryActionClass,
-                "w-full justify-center",
-              )}
-            >
-              <Settings className="w-4 h-4" />
-              Configurar Did-glo-bal
-            </Link>
-
-            <Link
-              to="/campaigns"
-              className={cn(pageHeaderActionClassName, "w-full justify-center")}
-            >
-              <Users className="w-4 h-4" />
-              Gestionar Campañas
-            </Link>
-          </>
+        {showCampaigns ? (
+          <Link
+            to="/campaigns"
+            className={cn(pageHeaderActionClassName, "w-full justify-center")}
+          >
+            <Users className="h-4 w-4" />
+            Gestionar Campanas
+          </Link>
         ) : null}
       </div>
     </section>

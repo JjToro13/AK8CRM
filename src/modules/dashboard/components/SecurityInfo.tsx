@@ -1,36 +1,30 @@
 import {
   Shield,
-  Lock,
   Eye,
   EyeOff,
   AlertTriangle,
-  MessageSquare,
-  Settings,
   Users,
-  Trash2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../../../lib/supabase";
+import type { AgentRole } from "../../../shared/types/crm";
+import { getAgentRoleLabel } from "../../../shared/types/crm";
 
 interface SecurityInfoProps {
   isAdmin: boolean;
 }
 
-type AppRole = "dev" | "super_admin" | "admin" | "agent" | null;
-
-function roleLabel(role: AppRole, isAdmin: boolean) {
-  if (role === "dev") return "Developer";
-  if (role === "super_admin") return "Super Admin";
-  if (role === "admin") return "Administrador";
-  if (role === "agent") return "Agente";
-  return isAdmin ? "Administrador" : "Agente";
+function roleLabel(role: AgentRole | null, isAdmin: boolean) {
+  if (role) return getAgentRoleLabel(role);
+  return isAdmin ? "Gestión" : "Usuario";
 }
 
-function roleDotClass(role: AppRole, isAdmin: boolean) {
+function roleDotClass(role: AgentRole | null, isAdmin: boolean) {
   if (role === "dev") return "bg-purple-500";
-  if (role === "super_admin") return "bg-emerald-500";
-  if (role === "admin") return "bg-green-500";
+  if (role === "owner") return "bg-emerald-500";
+  if (role === "manager") return "bg-green-500";
+  if (role === "loader") return "bg-amber-500";
   if (role === "agent") return "bg-brand";
   return isAdmin ? "bg-green-500" : "bg-brand";
 }
@@ -38,7 +32,7 @@ function roleDotClass(role: AppRole, isAdmin: boolean) {
 export default function SecurityInfo({ isAdmin }: SecurityInfoProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [userName, setUserName] = useState<string>("");
-  const [role, setRole] = useState<AppRole>(null);
+  const [role, setRole] = useState<AgentRole | null>(null);
 
   useEffect(() => {
     const loadUserInfo = async () => {
@@ -50,7 +44,7 @@ export default function SecurityInfo({ isAdmin }: SecurityInfoProps) {
         if (!agent) return;
 
         setUserName(agent.name || "Usuario");
-        setRole((agent.role as AppRole) ?? null);
+        setRole((agent.role as AgentRole) ?? null);
       } catch (error) {
         console.error("Error cargando info de seguridad:", error);
 
@@ -68,9 +62,39 @@ export default function SecurityInfo({ isAdmin }: SecurityInfoProps) {
 
   const label = roleLabel(role, isAdmin);
   const dot = roleDotClass(role, isAdmin);
+  const permissionItems =
+    role === "dev"
+      ? [
+          "Acceso multi-tenant y cambio de operación activo.",
+          "Gestión completa de usuarios y configuraciones críticas.",
+          "Puede auditar datos operativos y resolver incidencias.",
+        ]
+      : role === "owner"
+        ? [
+            "Control total dentro de su tenant.",
+            "Puede cambiar entre operaciones visibles de su tenant.",
+            "Puede crear managers, loaders y agentes del tenant.",
+          ]
+        : role === "manager"
+          ? [
+              "Opera dentro de su operación activa.",
+              "Puede revisar cartera, asignaciones y seguimiento comercial.",
+              "No puede crear usuarios ni salir de su scope operativo.",
+            ]
+          : role === "loader"
+            ? [
+                "Acceso limitado a carga y preparación de datos.",
+                "No debe operar flujos administrativos ni de asignación.",
+                "Visibilidad restringida según el alcance de su operación.",
+              ]
+            : [
+                "Gestiona clientes y seguimiento dentro de su scope.",
+                "Acceso restringido a datos sensibles según RLS.",
+                "No puede administrar usuarios ni configuraciones críticas.",
+              ];
 
   return (
-    <div className="rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-7">
+    <div className="crm-shell-card rounded-[1.5rem] border border-border bg-surface p-6 shadow-soft sm:p-7">
       <div className="flex items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-brand" />
@@ -113,86 +137,42 @@ export default function SecurityInfo({ isAdmin }: SecurityInfoProps) {
                 filter: "blur(6px)",
                 transition: { duration: 0.18 },
               }}
-              className="space-y-4 pt-4 border-t border-border"
+              className="space-y-4 border-t border-border pt-4"
             >
               <div>
                 <h3 className="text-sm font-semibold text-ink mb-2">Permisos de {label}:</h3>
                 <ul className="text-sm text-muted space-y-1">
-                  {isAdmin ? (
-                    <>
-                      <li className="flex items-center">
-                        <Users className="h-3 w-3 text-green-600 mr-2" />
-                        Acceso a datos de clientes segun tu operacion
-                      </li>
-                      <li className="flex items-center">
-                        <Lock className="h-3 w-3 text-green-600 mr-2" />
-                        Puede ver datos completos (segun RLS)
-                      </li>
-                      <li className="flex items-center">
-                        <Settings className="h-3 w-3 text-green-600 mr-2" />
-                        Gestion de clientes (crear, editar, eliminar) segun permisos
-                      </li>
-                      <li className="flex items-center">
-                        <MessageSquare className="h-3 w-3 text-green-600 mr-2" />
-                        Anadir y editar comentarios
-                      </li>
-                      <li className="flex items-center">
-                        <Trash2 className="h-3 w-3 text-green-600 mr-2" />
-                        Eliminar clientes (si aplica)
-                      </li>
-                      <li className="flex items-center">
-                        <Lock className="h-3 w-3 text-green-600 mr-2" />
-                        Importar / Exportar listas (si aplica)
-                      </li>
-                    </>
-                  ) : (
-                    <>
-                      <li className="flex items-center">
-                        <Users className="h-3 w-3 text-brand mr-2" />
-                        Ver datos de clientes asignados
-                      </li>
-                      <li className="flex items-center">
-                        <Lock className="h-3 w-3 text-red-600 mr-2" />
-                        Acceso restringido a datos sensibles
-                      </li>
-                      <li className="flex items-center">
-                        <MessageSquare className="h-3 w-3 text-brand mr-2" />
-                        Anadir y editar comentarios de clientes asignados
-                      </li>
-                      <li className="flex items-center">
-                        <Settings className="h-3 w-3 text-brand mr-2" />
-                        Cambiar estado/color de clientes
-                      </li>
-                      <li className="flex items-center">
-                        <Trash2 className="h-3 w-3 text-red-600 mr-2" />
-                        No puede eliminar clientes
-                      </li>
-                    </>
-                  )}
+                  {permissionItems.map((item) => (
+                    <li key={item} className="flex items-center">
+                      <Users className="h-3 w-3 text-brand mr-2" />
+                      {item}
+                    </li>
+                  ))}
                 </ul>
               </div>
 
-              <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-3">
+              <div className="rounded-2xl border border-yellow-200/90 bg-yellow-50/90 p-3 backdrop-blur-sm">
                 <div className="flex items-start">
                   <AlertTriangle className="h-4 w-4 text-yellow-700 mr-2 mt-0.5" />
                   <div>
                     <h4 className="text-sm font-semibold text-yellow-900">Seguridad de Datos</h4>
                     <p className="text-xs text-yellow-800/80 mt-1">
-                      Los datos estan protegidos por RLS y segmentados por operacion. Solo
-                      perfiles autorizados pueden acceder a informacion completa.
+                      Los datos estan protegidos por RLS y segmentados por tenant y
+                      operacion. Solo perfiles autorizados pueden acceder a
+                      informacion completa.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-brand/20 bg-brand/5 p-3">
+              <div className="rounded-2xl border border-brand/20 bg-brand/10 p-3 backdrop-blur-sm">
                 <div className="flex items-start">
                   <Shield className="h-4 w-4 text-brand mr-2 mt-0.5" />
                   <div>
-                    <h4 className="text-sm font-semibold text-ink">Llamadas Enmascaradas</h4>
+                    <h4 className="text-sm font-semibold text-ink">Alcance Operativo</h4>
                     <p className="text-xs text-muted mt-1">
-                      Las llamadas se realizan a traves de un numero proxy para proteger la
-                      privacidad de agentes y clientes.
+                      El acceso visual y operativo se ajusta al rol activo para
+                      mantener separadas gestion, carga y ejecucion comercial.
                     </p>
                   </div>
                 </div>

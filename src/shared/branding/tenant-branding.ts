@@ -4,8 +4,12 @@ import { defaultBrandPresetId, getBrandPreset } from "./brand-presets";
 const legacyOperationSlugBrandMap: Record<string, string> = {
   esp: "atlas-finance",
   ext: "cobalt-ops",
+  light: "atlas-finance",
+  "light-crm": "atlas-finance",
   special: "atlas-finance",
   exterior: "cobalt-ops",
+  shade: "cobalt-ops",
+  "shade-crm": "cobalt-ops",
 };
 
 type TenantBrandingExtra = {
@@ -24,8 +28,8 @@ function normalizeLegacyBrandText(value?: string | null) {
   if (!text) return null;
 
   const normalized = text.toLowerCase();
-  if (normalized === "mascara crm") return "Call Master CRM";
-  if (normalized === "mascara") return "Call Master";
+  if (normalized === "mascara crm") return "AK8 CRM";
+  if (normalized === "mascara") return "AK8 CRM";
 
   return text;
 }
@@ -34,7 +38,8 @@ export function resolveBrandPresetIdForOperation(
   operationSlug?: string | null,
 ): string {
   if (!operationSlug) return defaultBrandPresetId;
-  return legacyOperationSlugBrandMap[operationSlug] ?? defaultBrandPresetId;
+  const normalizedSlug = operationSlug.trim().toLowerCase();
+  return legacyOperationSlugBrandMap[normalizedSlug] ?? defaultBrandPresetId;
 }
 
 export function resolveTenantBranding(params?: {

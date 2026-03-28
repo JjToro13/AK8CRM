@@ -21,6 +21,7 @@ type ClientsPaginationProps = {
   onPageInputChange: (value: string) => void;
   onPageInputSubmit: () => void;
   selectedClient: Client | null;
+  canExecuteClientActions: boolean;
   enableCalls: boolean;
   callingClient: string | null;
   onCallClient: (client: Client) => void;
@@ -72,6 +73,7 @@ export default function ClientsPagination({
   onPageInputChange,
   onPageInputSubmit,
   selectedClient,
+  canExecuteClientActions,
   enableCalls,
   callingClient,
   onCallClient,
@@ -143,10 +145,14 @@ export default function ClientsPagination({
                 if (enableCalls) onCallClient(selectedClient);
                 else onOpenCallNotice();
               }}
-              disabled={!selectedClient || (enableCalls && callingClient === selectedClient.id)}
+              disabled={
+                !canExecuteClientActions ||
+                !selectedClient ||
+                (enableCalls && callingClient === selectedClient.id)
+              }
               className={cn(
                 actionBtnClass,
-                hasSelectedClient
+                hasSelectedClient && canExecuteClientActions
                   ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
                   : inactiveActionBtnClass,
               )}
@@ -161,10 +167,12 @@ export default function ClientsPagination({
                 if (!selectedClient) return;
                 onEmailClient(selectedClient);
               }}
-              disabled={!selectedClient || !selectedClient.email}
+              disabled={
+                !canExecuteClientActions || !selectedClient || !selectedClient.email
+              }
               className={cn(
                 actionBtnClass,
-                hasSelectedClient
+                hasSelectedClient && canExecuteClientActions
                   ? "border-brand-200 bg-brand-50 text-brand-800 hover:bg-brand-100"
                   : inactiveActionBtnClass,
               )}
@@ -179,10 +187,10 @@ export default function ClientsPagination({
                 if (!selectedClient) return;
                 onScheduleClient(selectedClient);
               }}
-              disabled={!selectedClient}
+              disabled={!canExecuteClientActions || !selectedClient}
               className={cn(
                 actionBtnClass,
-                hasSelectedClient
+                hasSelectedClient && canExecuteClientActions
                   ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
                   : inactiveActionBtnClass,
               )}
@@ -197,10 +205,10 @@ export default function ClientsPagination({
                 if (!selectedClient) return;
                 onEditClient(selectedClient);
               }}
-              disabled={!selectedClient}
+              disabled={!canExecuteClientActions || !selectedClient}
               className={cn(
                 actionBtnClass,
-                hasSelectedClient
+                hasSelectedClient && canExecuteClientActions
                   ? "border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100"
                   : inactiveActionBtnClass,
               )}

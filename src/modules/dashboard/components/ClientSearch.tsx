@@ -12,7 +12,8 @@ import {
   Send,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { Client, calls, supabase } from "../../../lib/supabase";
+import { canUseClientActions, Client, calls, supabase } from "../../../lib/supabase";
+import { appEnv } from "../../../config/env";
 import {
   getStatusColor,
   getStatusText,
@@ -36,7 +37,9 @@ export default function ClientSearch({
   onCallStarted,
   onEditClient,
 }: ClientSearchProps) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, role } = useAuth();
+  const canUseActions = canUseClientActions(role);
+  const enableCalls = appEnv.features.enableCalls;
   const [calling, setCalling] = useState(false);
   const [error, setError] = useState("");
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -114,7 +117,7 @@ export default function ClientSearch({
         </div>
 
         <div className="flex items-center gap-2">
-          {onEditClient && (
+          {canUseActions && onEditClient ? (
             <button
               onClick={() => onEditClient(client)}
               className={pillBtn}
@@ -124,9 +127,9 @@ export default function ClientSearch({
               <Edit className="h-4 w-4 text-brand" />
               <span className="hidden sm:inline">Editar</span>
             </button>
-          )}
+          ) : null}
 
-          {client.email && (
+          {canUseActions && client.email ? (
             <button
               onClick={() => setShowEmailModal(true)}
               className={pillBtn}
@@ -136,18 +139,25 @@ export default function ClientSearch({
               <Send className="h-4 w-4 text-green-600" />
               <span className="hidden sm:inline">Email</span>
             </button>
-          )}
+          ) : null}
 
-          <button onClick={handleCall} disabled={calling} className={pillPrimary} type="button">
-            {calling ? (
-              <LoadingSpinner size="sm" text="" fullScreen={false} />
-            ) : (
-              <>
-                <Phone className="w-4 h-4" />
-                Llamar
-              </>
-            )}
-          </button>
+          {canUseActions && enableCalls ? (
+            <button
+              onClick={handleCall}
+              disabled={calling}
+              className={pillPrimary}
+              type="button"
+            >
+              {calling ? (
+                <LoadingSpinner size="sm" text="" fullScreen={false} />
+              ) : (
+                <>
+                  <Phone className="w-4 h-4" />
+                  Llamar
+                </>
+              )}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -193,9 +203,11 @@ export default function ClientSearch({
         </div>
       </div>
 
-      <div className="mt-4">
-        <ClientCommentsDropdown clientId={client.id} />
-      </div>
+      {canUseActions ? (
+        <div className="mt-4">
+          <ClientCommentsDropdown clientId={client.id} />
+        </div>
+      ) : null}
 
       {error && (
         <div className="mt-3 flex items-center text-red-600 text-xs">
@@ -204,11 +216,13 @@ export default function ClientSearch({
         </div>
       )}
 
-      <EmailModal
-        client={client}
-        isOpen={showEmailModal}
-        onClose={() => setShowEmailModal(false)}
-      />
+      {canUseActions ? (
+        <EmailModal
+          client={client}
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+        />
+      ) : null}
     </motion.div>
   );
 }

@@ -34,9 +34,9 @@ export const productModulesCatalog: Record<
   },
   agent_management: {
     key: "agent_management",
-    name: "Gestion de Agentes y Admin",
+    name: "Gestion de Usuarios y Roles",
     category: "core",
-    description: "Usuarios, roles operativos y control administrativo.",
+    description: "Usuarios, roles operativos y permisos por tenant u operacion.",
   },
   custom_dispositions: {
     key: "custom_dispositions",

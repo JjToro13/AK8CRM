@@ -216,7 +216,7 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
             <div className="flex items-center justify-between gap-3 mb-2">
               <h3 className="text-xs font-semibold text-brand">Información del Cliente</h3>
               <span className="text-[11px] text-ink/60">
-                {isAdmin ? "Admin" : "Agente"}
+                {isAdmin ? "Gestion" : "Operativo"}
               </span>
             </div>
 

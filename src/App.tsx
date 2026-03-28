@@ -18,7 +18,12 @@ import CallHistoryPage from "./modules/calls/pages/CallHistoryPage";
 import CampaignManagementPage from "./modules/campaigns/pages/CampaignManagementPage";
 import ClientManagementPage from "./modules/clients/pages/ClientManagementPage";
 import DashboardPage from "./modules/dashboard/pages/DashboardPage";
-import AgentDidConfigurationPage from "./modules/did/pages/AgentDidConfigurationPage";
+import {
+  canAccessAgentWorkspace,
+  canAccessCampaignWorkspace,
+  canUseCalendarWorkspace,
+  canUseCallHistory,
+} from "./lib/supabase";
 import { useBranding } from "./shared/branding/BrandingProvider";
 import { resolveTenantBranding } from "./shared/branding/tenant-branding";
 import { dashboard } from "./modules/dashboard/services/dashboard.service";
@@ -82,6 +87,10 @@ export default function App() {
     operationId,
     role,
   } = useAuth();
+  const canAccessAgents = !!user && canAccessAgentWorkspace(role);
+  const canAccessCampaigns = !!user && canAccessCampaignWorkspace(role);
+  const canAccessCalls = !!user && canUseCallHistory(role);
+  const canAccessCalendar = !!user && canUseCalendarWorkspace(role);
 
   useEffect(() => {
     if (role !== "dev") {
@@ -204,7 +213,10 @@ export default function App() {
             <Route
               path="/calendar"
               element={
-                <ProtectedRoute isAllowed={!!user}>
+                <ProtectedRoute
+                  isAllowed={canAccessCalendar}
+                  redirectTo={user ? "/dashboard" : "/login"}
+                >
                   <CalendarPage />
                 </ProtectedRoute>
               }
@@ -213,7 +225,10 @@ export default function App() {
             <Route
               path="/calls"
               element={
-                <ProtectedRoute isAllowed={!!user}>
+                <ProtectedRoute
+                  isAllowed={canAccessCalls}
+                  redirectTo={user ? "/dashboard" : "/login"}
+                >
                   <CallHistoryPage isAdmin={isAdmin} />
                 </ProtectedRoute>
               }
@@ -239,7 +254,7 @@ export default function App() {
               path="/agents"
               element={
                 <ProtectedRoute
-                  isAllowed={!!user && isAdmin}
+                  isAllowed={canAccessAgents}
                   redirectTo={user ? "/dashboard" : "/login"}
                 >
                   <AgentManagementPage />
@@ -251,22 +266,10 @@ export default function App() {
               path="/campaigns"
               element={
                 <ProtectedRoute
-                  isAllowed={!!user && isAdmin}
+                  isAllowed={canAccessCampaigns}
                   redirectTo={user ? "/dashboard" : "/login"}
                 >
                   <CampaignManagementPage />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/did"
-              element={
-                <ProtectedRoute
-                  isAllowed={!!user && isAdmin}
-                  redirectTo={user ? "/dashboard" : "/login"}
-                >
-                  <AgentDidConfigurationPage />
                 </ProtectedRoute>
               }
             />

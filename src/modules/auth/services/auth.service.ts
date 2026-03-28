@@ -34,7 +34,7 @@ export const auth = {
       const agent = Array.isArray(data) ? data[0] : data;
       const role = agent?.role as string | undefined;
 
-      return role === "admin" || role === "dev" || role === "super_admin";
+      return role === "manager" || role === "owner" || role === "dev";
     } catch (error) {
       console.error("Error verificando admin:", error);
       return false;

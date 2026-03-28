@@ -19,27 +19,26 @@ export default function AppFooter({
   const version = "2.5.9";
 
   return (
-    <footer className="border-t border-border bg-surface2/92 backdrop-blur supports-[backdrop-filter]:bg-surface2/76">
+    <footer className="relative overflow-hidden border-t border-white/45 bg-surface/74 backdrop-blur-2xl supports-[backdrop-filter]:bg-surface/68">
+      <div className="pointer-events-none absolute inset-x-[24%] top-0 h-px bg-gradient-to-r from-transparent via-brand/28 to-transparent" />
       <div
         className={cn(
-          "max-w-[92rem] mx-auto px-4 sm:px-6 lg:px-10 py-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
+          "mx-auto flex max-w-[92rem] flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10",
           containerClassName,
         )}
       >
         <div>
-          <div className="text-sm font-semibold tracking-tight text-ink">
+          <div className="text-sm font-semibold tracking-tight text-ink/90">
             {branding.productName}
           </div>
-          <div className="text-xs text-muted">{footerNote}</div>
+          <div className="text-xs text-muted/90">{footerNote}</div>
         </div>
 
-        <div className="flex flex-col items-start gap-1 text-xs text-muted sm:items-end">
+        <div className="flex flex-col items-start gap-1 text-xs text-muted/90 sm:items-end">
           <div>
             &copy; {year} {branding.platformLabel}. Todos los derechos reservados.
           </div>
-          <div className="font-medium tracking-[0.08em] text-muted/85">
-            Versión {version}
-          </div>
+          <div className="font-medium tracking-[0.08em] text-muted/90">Version {version}</div>
         </div>
       </div>
     </footer>

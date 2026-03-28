@@ -1,6 +1,12 @@
 import type { Call, Client } from "../../../shared/types/crm";
 
-export type DashboardRole = "dev" | "super_admin" | "admin" | "agent" | null;
+export type DashboardRole =
+  | "dev"
+  | "owner"
+  | "manager"
+  | "loader"
+  | "agent"
+  | null;
 
 export type Operation = {
   id: string;

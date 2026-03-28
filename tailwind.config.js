@@ -45,8 +45,8 @@ export default {
 
       boxShadow: {
         // ✅ Sombras premium tipo mockup
-        soft: "0 10px 30px rgba(17, 24, 39, 0.08)",
-        soft2: "0 18px 50px rgba(17, 24, 39, 0.10)",
+        soft: "0 20px 48px rgba(30, 41, 59, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72)",
+        soft2: "0 28px 72px rgba(30, 41, 59, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
         insetSoft: "inset 0 1px 0 rgba(255,255,255,0.7)",
       },
 

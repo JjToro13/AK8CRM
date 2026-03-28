@@ -30,6 +30,7 @@ export default function ClientManagementPage(
 ) {
   const {
     isAdmin,
+    canExecuteClientActions,
     opLocked,
     clients,
     initialLoading,
@@ -290,6 +291,7 @@ export default function ClientManagementPage(
               onPageInputChange={setPageInput}
               onPageInputSubmit={handlePageInputSubmit}
               selectedClient={selectedActionClient}
+              canExecuteClientActions={canExecuteClientActions}
               enableCalls={enableCalls}
               callingClient={callingClient}
               onCallClient={handleCallClient}
@@ -304,15 +306,17 @@ export default function ClientManagementPage(
 
       <AppFooter note="Vista de clientes, seguimiento comercial y cartera activa." />
 
-      <EditClientModal
-        client={modalClient}
-        isOpen={showEditModal}
-        onClose={closeEditModal}
-        onSave={handleClientSaved}
-        isAdmin={isAdmin}
-      />
+      {canExecuteClientActions ? (
+        <EditClientModal
+          client={modalClient}
+          isOpen={showEditModal}
+          onClose={closeEditModal}
+          onSave={handleClientSaved}
+          isAdmin={isAdmin}
+        />
+      ) : null}
 
-      {selectedClientForEmail ? (
+      {canExecuteClientActions && selectedClientForEmail ? (
         <EmailModal
           client={selectedClientForEmail}
           isOpen={showEmailModal}
@@ -320,30 +324,34 @@ export default function ClientManagementPage(
         />
       ) : null}
 
-      <CalendarEventModal
-        isOpen={showScheduleModal}
-        onClose={closeScheduleModal}
-        event={selectedScheduledEvent}
-        draftDate={scheduleDraftDate}
-        presetClient={selectedClientForSchedule}
-        isAdmin={isAdmin}
-        viewerAgentId={viewerAgentId}
-        targetOperationId={selectedClientForSchedule?.operation_id ?? null}
-        agentsList={scheduleAgents}
-        saving={scheduleSaving}
-        onCreate={handleScheduleCreated}
-        onUpdate={handleScheduleUpdated}
-        onDelete={handleScheduleDeleted}
-      />
+      {canExecuteClientActions ? (
+        <CalendarEventModal
+          isOpen={showScheduleModal}
+          onClose={closeScheduleModal}
+          event={selectedScheduledEvent}
+          draftDate={scheduleDraftDate}
+          presetClient={selectedClientForSchedule}
+          isAdmin={isAdmin}
+          viewerAgentId={viewerAgentId}
+          targetOperationId={selectedClientForSchedule?.operation_id ?? null}
+          agentsList={scheduleAgents}
+          saving={scheduleSaving}
+          onCreate={handleScheduleCreated}
+          onUpdate={handleScheduleUpdated}
+          onDelete={handleScheduleDeleted}
+        />
+      ) : null}
 
-      <CalendarFollowUpModal
-        isOpen={showScheduleFollowUpModal}
-        event={selectedScheduledEvent}
-        saving={scheduleSaving}
-        onClose={closeScheduleFollowUpModal}
-        onOpenEdit={openScheduleEditFromFollowUp}
-        onUpdate={handleScheduleUpdated}
-      />
+      {canExecuteClientActions ? (
+        <CalendarFollowUpModal
+          isOpen={showScheduleFollowUpModal}
+          event={selectedScheduledEvent}
+          saving={scheduleSaving}
+          onClose={closeScheduleFollowUpModal}
+          onOpenEdit={openScheduleEditFromFollowUp}
+          onUpdate={handleScheduleUpdated}
+        />
+      ) : null}
 
     </div>
   );

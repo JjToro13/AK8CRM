@@ -20,10 +20,12 @@ function roleBadgeClass(role: Agent["role"]) {
   switch (role) {
     case "dev":
       return "border border-violet-200 bg-violet-50 text-violet-700";
-    case "super_admin":
+    case "owner":
       return "border border-emerald-200 bg-emerald-50 text-emerald-700";
-    case "admin":
+    case "manager":
       return "border border-sky-200 bg-sky-50 text-sky-700";
+    case "loader":
+      return "border border-amber-200 bg-amber-50 text-amber-700";
     case "agent":
     default:
       return "border border-brand/20 bg-brand/10 text-ink/80";
@@ -35,6 +37,9 @@ export default function AgentManagementView(props: AgentManagementProps) {
     agentsList,
     assignedCounts,
     availableCampaigns,
+    canAssignClients,
+    canCreateAgents,
+    canEditAgents,
     canManageAgents,
     compact,
     error,
@@ -43,7 +48,6 @@ export default function AgentManagementView(props: AgentManagementProps) {
     handleAssignmentCreated,
     handleCreateAssignment,
     handleViewAgentDetails,
-    isAdmin,
     isOperationalAgentRole,
     loading,
     loadData,
@@ -80,9 +84,9 @@ export default function AgentManagementView(props: AgentManagementProps) {
             <Users className="w-5 h-5 text-brand" />
           </div>
           <div>
-            <div className={titleClass}>Gestion de Agentes</div>
+            <div className={titleClass}>Gestion de Usuarios</div>
             <div className="text-sm text-muted">
-              Disponible solo para administradores.
+              Disponible para developer, owner y manager.
             </div>
           </div>
         </div>
@@ -96,6 +100,7 @@ export default function AgentManagementView(props: AgentManagementProps) {
 
       {!compact ? (
         <AgentManagementHeader
+          canCreateAgent={canCreateAgents}
           onCreateAgent={openCreateAgent}
           onRefresh={loadData}
         />
@@ -109,7 +114,8 @@ export default function AgentManagementView(props: AgentManagementProps) {
       <AgentsGrid
         agentsList={agentsList}
         assignedCounts={assignedCounts}
-        isAdmin={isAdmin}
+        canAssignClients={canAssignClients}
+        canEditAgents={canEditAgents}
         onAssign={handleCreateAssignment}
         onEdit={openEditAgent}
         onViewDetails={handleViewAgentDetails}

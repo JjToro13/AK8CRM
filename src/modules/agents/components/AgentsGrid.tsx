@@ -4,7 +4,8 @@ import AgentCard from "./AgentCard";
 type AgentsGridProps = {
   agentsList: Agent[];
   assignedCounts: Record<string, number>;
-  isAdmin: boolean;
+  canAssignClients: boolean;
+  canEditAgents: boolean;
   onAssign: (agent: Agent) => void;
   onEdit: (agent: Agent) => void;
   onViewDetails: (agent: Agent) => void;
@@ -17,7 +18,8 @@ type AgentsGridProps = {
 export default function AgentsGrid({
   agentsList,
   assignedCounts,
-  isAdmin,
+  canAssignClients,
+  canEditAgents,
   onAssign,
   onEdit,
   onViewDetails,
@@ -33,7 +35,8 @@ export default function AgentsGrid({
           key={agent.id}
           agent={agent}
           assignedCount={assignedCounts[agent.id] ?? 0}
-          isAdmin={isAdmin}
+          canAssignClients={canAssignClients}
+          canEdit={canEditAgents}
           onAssign={onAssign}
           onEdit={onEdit}
           onViewDetails={onViewDetails}

@@ -51,7 +51,7 @@ export default function BrandPresetSelector({
         </SelectItem>
         {Object.values(availableBrandPresets).map((preset) => (
           <SelectItem key={preset.id} value={preset.id}>
-            {preset.productName}
+            {preset.displayName}
           </SelectItem>
         ))}
       </SelectContent>

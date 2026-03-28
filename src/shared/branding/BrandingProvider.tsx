@@ -37,9 +37,14 @@ function applyThemeVariables(branding: BrandPreset) {
   root.style.setProperty("--color-bg", theme.bg);
   root.style.setProperty("--color-surface", theme.surface);
   root.style.setProperty("--color-surface2", theme.surface2);
+  root.style.setProperty("--color-surface-elevated", theme.surfaceElevated);
   root.style.setProperty("--color-border", theme.border);
   root.style.setProperty("--color-ink", theme.ink);
   root.style.setProperty("--color-muted", theme.muted);
+  root.style.setProperty("--color-shell-top", theme.shellTop);
+  root.style.setProperty("--color-shell-bottom", theme.shellBottom);
+  root.style.setProperty("--color-shell-glow", theme.shellGlow);
+  root.style.setProperty("--color-shell-accent", theme.shellAccent);
   root.style.setProperty("--color-brand", theme.brand.DEFAULT);
   root.style.setProperty("--color-brand-50", theme.brand[50]);
   root.style.setProperty("--color-brand-100", theme.brand[100]);

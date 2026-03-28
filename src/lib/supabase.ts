@@ -13,6 +13,14 @@ export type {
 } from "../shared/types/crm";
 
 export {
+  canAccessAgentWorkspace,
+  canAccessCampaignWorkspace,
+  canAssignOperationalClients,
+  canCreateManagedUsers,
+  canEditManagedUsers,
+  canUseCalendarWorkspace,
+  canUseCallHistory,
+  canUseClientActions,
   getAgentManagementVisibleRoles,
   getAgentRoleLabel,
   isOperationalAgentRole,

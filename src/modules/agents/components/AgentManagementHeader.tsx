@@ -2,6 +2,7 @@ import { Plus, RefreshCw, Users } from "lucide-react";
 import { cn } from "../../../lib/utils";
 
 type AgentManagementHeaderProps = {
+  canCreateAgent: boolean;
   onCreateAgent: () => void;
   onRefresh: () => void;
 };
@@ -22,6 +23,7 @@ const pillPrimaryClass =
   "disabled:opacity-50 disabled:cursor-not-allowed";
 
 export default function AgentManagementHeader({
+  canCreateAgent,
   onCreateAgent,
   onRefresh,
 }: AgentManagementHeaderProps) {
@@ -43,11 +45,11 @@ export default function AgentManagementHeader({
               Centro operativo
             </div>
             <h2 className={cn(titleClass, "mt-3 text-xl sm:text-2xl")}>
-              Gestion de agentes con vista ejecutiva
+              Gestion de usuarios operativos
             </h2>
             <p className={cn(subTextClass, "mt-2 max-w-2xl leading-6")}>
-              Controla altas, roles y asignaciones desde una vista mas editorial,
-              con mejor jerarquia visual y acciones rapidas a mano.
+              Revisa roles, carga operativa y asignaciones desde una vista mas clara,
+              alineada con tenant, operacion y permisos reales.
             </p>
           </div>
         </div>
@@ -63,15 +65,17 @@ export default function AgentManagementHeader({
             Recargar
           </button>
 
-          <button
-            type="button"
-            onClick={onCreateAgent}
-            className={pillPrimaryClass}
-            title="Crear un nuevo agente"
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo agente
-          </button>
+          {canCreateAgent ? (
+            <button
+              type="button"
+              onClick={onCreateAgent}
+              className={pillPrimaryClass}
+              title="Crear un nuevo usuario"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo usuario
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

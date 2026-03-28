@@ -16,7 +16,7 @@ export const agents = {
   update: async (params: {
     id: string;
     name: string;
-    role: "agent" | "admin" | "dev" | "super_admin";
+    role: "agent" | "loader" | "manager" | "owner" | "dev";
     is_active: boolean;
   }) => {
     const { error } = await supabase.rpc("upsert_agent", {
@@ -32,7 +32,7 @@ export const agents = {
   create: async (params: {
     email: string;
     name: string;
-    role?: "agent" | "admin" | "dev" | "super_admin";
+    role?: "agent" | "loader" | "manager" | "owner" | "dev";
     password?: string;
     is_active?: boolean;
   }) => {

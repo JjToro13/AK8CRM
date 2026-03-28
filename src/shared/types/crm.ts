@@ -50,7 +50,7 @@ export interface Agent {
   id: string;
   name: string;
   email: string;
-  role: "dev" | "super_admin" | "admin" | "agent";
+  role: "dev" | "owner" | "manager" | "loader" | "agent";
   is_active?: boolean;
   operation_id?: string | null;
   active_operation_id?: string | null;
@@ -64,11 +64,11 @@ export function getAgentManagementVisibleRoles(
 ): AgentRole[] {
   switch (viewerRole) {
     case "dev":
-      return ["super_admin", "admin", "agent"];
-    case "super_admin":
-      return ["admin", "agent"];
-    case "admin":
-      return ["agent"];
+      return ["owner", "manager", "loader", "agent"];
+    case "owner":
+      return ["owner", "manager", "loader", "agent"];
+    case "manager":
+      return ["loader", "agent"];
     default:
       return [];
   }
@@ -78,15 +78,65 @@ export function getAgentRoleLabel(role: AgentRole | null | undefined) {
   switch (role) {
     case "dev":
       return "Developer";
-    case "super_admin":
-      return "Super Admin";
-    case "admin":
-      return "Admin";
+    case "owner":
+      return "Owner";
+    case "manager":
+      return "Manager";
+    case "loader":
+      return "Loader";
     case "agent":
       return "Agente";
     default:
       return "Usuario";
   }
+}
+
+export function canCreateManagedUsers(
+  role: AgentRole | null | undefined,
+): boolean {
+  return role === "dev" || role === "owner";
+}
+
+export function canAccessAgentWorkspace(
+  role: AgentRole | null | undefined,
+): boolean {
+  return role === "dev" || role === "owner" || role === "manager";
+}
+
+export function canEditManagedUsers(
+  role: AgentRole | null | undefined,
+): boolean {
+  return role === "dev" || role === "owner";
+}
+
+export function canAssignOperationalClients(
+  role: AgentRole | null | undefined,
+): boolean {
+  return role === "dev" || role === "owner" || role === "manager";
+}
+
+export function canAccessCampaignWorkspace(
+  role: AgentRole | null | undefined,
+): boolean {
+  return role === "dev" || role === "owner";
+}
+
+export function canUseClientActions(
+  role: AgentRole | null | undefined,
+): boolean {
+  return role === "dev" || role === "owner" || role === "manager" || role === "agent";
+}
+
+export function canUseCalendarWorkspace(
+  role: AgentRole | null | undefined,
+): boolean {
+  return canUseClientActions(role);
+}
+
+export function canUseCallHistory(
+  role: AgentRole | null | undefined,
+): boolean {
+  return canUseClientActions(role);
 }
 
 export function isOperationalAgentRole(

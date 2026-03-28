@@ -1,33 +1,16 @@
-// AgentUpsertModal.tsx - Modal premium para crear/editar agentes
-// ✅ Portal + am:submodal (apaga modal padre)
-// ✅ Overlay blur + panel premium alineado a Dashboard Modal
-// ✅ ESC + click afuera
-// ✅ UI premium (bg-surface, bg-surface2, rounded 2xl, pill buttons)
-
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  Save,
   AlertCircle,
-  UserPlus,
   Copy,
-  Shield,
   KeyRound,
+  Save,
+  Shield,
+  UserPlus,
 } from "lucide-react";
-import { Agent, getAgentRoleLabel, supabase } from "../../../lib/supabase";
 import { appEnv, buildSupabaseFunctionUrl } from "../../../config/env";
-import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import { useAuth } from "../../../hooks/useAuth";
-import { notify } from "../../../shared/lib/notify";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../shared/components/ui/Select";
-import Field from "../../../shared/components/ui/Field";
-import Input from "../../../shared/components/ui/Input";
+import { Agent, getAgentRoleLabel, supabase } from "../../../lib/supabase";
 import {
   ModalBody,
   ModalFooter,
@@ -36,9 +19,19 @@ import {
   modalPrimaryActionClassName,
   modalSecondaryActionClassName,
 } from "../../../shared/components/layout/ModalLayout";
+import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
+import { notify } from "../../../shared/lib/notify";
+import Field from "../../../shared/components/ui/Field";
+import Input from "../../../shared/components/ui/Input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../shared/components/ui/Select";
 
 type Mode = "create" | "edit";
-
 type Props = {
   mode: Mode;
   agent: Agent | null;
@@ -47,16 +40,21 @@ type Props = {
   onSaved: () => void;
 };
 
-type RoleOption = "agent" | "admin" | "super_admin";
+type RoleOption = Agent["role"];
 
-function getAssignableRoles(viewerRole: Agent["role"] | null | undefined): RoleOption[] {
+function getAssignableRoles(
+  viewerRole: Agent["role"] | null | undefined,
+  mode: Mode,
+  currentRole: Agent["role"] | null | undefined,
+): RoleOption[] {
   switch (viewerRole) {
     case "dev":
-      return ["agent", "admin", "super_admin"];
-    case "super_admin":
-      return ["agent", "admin"];
-    case "admin":
-      return ["agent"];
+      if (mode === "edit" && currentRole === "dev") {
+        return ["dev", "owner", "manager", "loader", "agent"];
+      }
+      return ["owner", "manager", "loader", "agent"];
+    case "owner":
+      return ["manager", "loader", "agent"];
     default:
       return [];
   }
@@ -66,8 +64,8 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function normUsername(v: string) {
-  return v
+function normUsername(value: string) {
+  return value
     .toLowerCase()
     .trim()
     .replace(/\s+/g, "")
@@ -85,61 +83,65 @@ export default function AgentUpsertModal({
   const { activeOperationId, operationId, role: viewerRole } = useAuth();
   const effectiveOperationId = activeOperationId ?? operationId ?? null;
   const assignableRoles = useMemo(
-    () => getAssignableRoles(viewerRole),
-    [viewerRole],
+    () => getAssignableRoles(viewerRole, mode, agent?.role),
+    [agent?.role, mode, viewerRole],
   );
 
   const [name, setName] = useState("");
   const [role, setRole] = useState<RoleOption>("agent");
   const [isActive, setIsActive] = useState(true);
-  const [useSadminSuffix, setUseSadminSuffix] = useState(true);
-
-  // create-only
   const [username, setUsername] = useState("");
   const [tempPassword, setTempPassword] = useState("");
-
-  // slug para preview correo
-  const [operationSlug, setOperationSlug] = useState<string>("");
-
+  const [tenantSlug, setTenantSlug] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const title = isEdit ? "Editar agente" : "Crear agente";
-
-  // estilos premium
+  const title = isEdit ? "Editar usuario" : "Crear usuario";
   const pillBtn =
     "inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 " +
     "hover:bg-surface2 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 disabled:opacity-50 disabled:cursor-not-allowed";
 
-  // cargar slug al abrir (solo create)
   useEffect(() => {
     if (!isOpen) return;
 
-    setOperationSlug("");
+    setTenantSlug("");
     setError("");
     setSaving(false);
 
     const run = async () => {
-      if (isEdit) return;
-      if (!effectiveOperationId) return;
+      if (isEdit || !effectiveOperationId) return;
 
-      const { data, error } = await supabase.rpc("operation_slug", {
-        p_operation_id: effectiveOperationId,
-      });
+      const { data: operationData, error: operationError } = await supabase
+        .from("operations")
+        .select("tenant_id")
+        .eq("id", effectiveOperationId)
+        .maybeSingle();
 
-      if (error) {
-        console.warn("[operation_slug] error:", error);
-        setOperationSlug("");
+      if (operationError) {
+        console.warn("[operations] error:", operationError);
         return;
       }
 
-      setOperationSlug(String(data ?? "").trim());
+      const targetTenantId = operationData?.tenant_id ?? null;
+      if (!targetTenantId) return;
+
+      const { data: tenantData, error: tenantError } = await supabase
+        .from("tenants")
+        .select("slug")
+        .eq("id", targetTenantId)
+        .maybeSingle();
+
+      if (tenantError) {
+        console.warn("[tenants] error:", tenantError);
+        return;
+      }
+
+      setTenantSlug(String(tenantData?.slug ?? "").trim());
     };
 
     void run();
-  }, [isOpen, isEdit, effectiveOperationId]);
+  }, [effectiveOperationId, isEdit, isOpen]);
 
-  // set values al abrir
   useEffect(() => {
     if (!isOpen) return;
 
@@ -148,22 +150,19 @@ export default function AgentUpsertModal({
 
     if (isEdit && agent) {
       setName(agent.name ?? "");
-      setRole((agent.role as RoleOption) ?? "agent");
+      setRole(agent.role ?? "agent");
       setIsActive(agent.is_active !== false);
-      setUseSadminSuffix(true);
-
       setUsername("");
       setTempPassword("");
-    } else {
-      setName("");
-      setRole(assignableRoles[0] ?? "agent");
-      setIsActive(true);
-      setUseSadminSuffix(true);
-
-      setUsername("");
-      setTempPassword("");
+      return;
     }
-  }, [isOpen, isEdit, agent, assignableRoles]);
+
+    setName("");
+    setRole(assignableRoles[0] ?? "agent");
+    setIsActive(true);
+    setUsername("");
+    setTempPassword("");
+  }, [agent, assignableRoles, isEdit, isOpen]);
 
   useEffect(() => {
     if (!assignableRoles.includes(role)) {
@@ -172,36 +171,26 @@ export default function AgentUpsertModal({
   }, [assignableRoles, role]);
 
   const usernameNorm = useMemo(() => normUsername(username), [username]);
-  const usesOperationScopedEmail = role !== "super_admin";
-  const superAdminEmailPreview = useMemo(() => {
-    if (!usernameNorm || usernameNorm.length < 3) return "";
-    const localPart = useSadminSuffix ? `${usernameNorm}.sadmin` : usernameNorm;
-    return `${localPart}@call-master.com`;
-  }, [usernameNorm, useSadminSuffix]);
+  const requiresOperationContext = role !== "dev";
 
   const emailPreview = useMemo(() => {
-    if (role === "super_admin") {
-      return superAdminEmailPreview;
-    }
-
-    const slug = operationSlug.trim();
-    if (!slug) return "";
+    if (isEdit) return agent?.email ?? "";
     if (!usernameNorm || usernameNorm.length < 3) return "";
-    return `${usernameNorm}.${role}@${slug}.call-master.com`;
-  }, [usernameNorm, role, operationSlug, superAdminEmailPreview]);
+    if (!requiresOperationContext || !tenantSlug.trim()) return "";
+    return `${usernameNorm}.${role}@${tenantSlug.trim()}.ak8crm.com`;
+  }, [agent?.email, isEdit, requiresOperationContext, role, tenantSlug, usernameNorm]);
 
   const canSubmit = () => {
     if (!name.trim()) return false;
+    if (assignableRoles.length === 0) return false;
 
     if (!isEdit) {
       if (usernameNorm.length < 3) return false;
-      if (usesOperationScopedEmail) {
-        if (!effectiveOperationId) return false;
-        if (!operationSlug) return false;
+      if (requiresOperationContext && (!effectiveOperationId || !tenantSlug)) {
+        return false;
       }
 
-      const pass = tempPassword.trim();
-      if (pass.length < 6) return false;
+      if (tempPassword.trim().length < 6) return false;
     }
 
     return true;
@@ -209,11 +198,12 @@ export default function AgentUpsertModal({
 
   const copyEmail = async () => {
     if (!emailPreview) return;
+
     try {
       await navigator.clipboard.writeText(emailPreview);
       notify.copied("Email");
-    } catch (e) {
-      console.warn("No se pudo copiar al portapapeles:", e);
+    } catch (copyError) {
+      console.warn("No se pudo copiar el email:", copyError);
       notify.error("No se pudo copiar el email");
     }
   };
@@ -222,13 +212,11 @@ export default function AgentUpsertModal({
     setError("");
 
     if (!canSubmit()) {
-      if (!isEdit) {
-        const pass = tempPassword.trim();
-        if (pass.length > 0 && pass.length < 6) {
-          setError("La contraseña temporal debe tener mínimo 6 caracteres.");
-          return;
-        }
+      if (!isEdit && tempPassword.trim().length > 0 && tempPassword.trim().length < 6) {
+        setError("La contrasena temporal debe tener minimo 6 caracteres.");
+        return;
       }
+
       setError("Completa los campos requeridos.");
       return;
     }
@@ -236,43 +224,40 @@ export default function AgentUpsertModal({
     setSaving(true);
 
     try {
-      // EDIT
       if (isEdit) {
-        if (!agent?.id) throw new Error("No hay agente seleccionado.");
+        if (!agent?.id) throw new Error("No hay usuario seleccionado.");
 
-        const { error: rpcErr } = await supabase.rpc("upsert_agent", {
+        const { error: rpcError } = await supabase.rpc("upsert_agent", {
           p_id: agent.id,
           p_name: name.trim(),
           p_role: role,
           p_is_active: isActive,
         });
 
-        if (rpcErr) throw rpcErr;
+        if (rpcError) throw rpcError;
 
         notify.success(
-          "Agente actualizado",
-          "Los cambios del agente se guardaron correctamente.",
+          "Usuario actualizado",
+          "Los cambios del usuario se guardaron correctamente.",
         );
         onSaved();
         return;
       }
 
-      // CREATE (debug fetch)
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("No hay una sesion activa.");
+
       const payload = {
         name: name.trim(),
-        username: role === "super_admin" ? undefined : usernameNorm,
-        email: role === "super_admin" ? emailPreview : undefined,
+        username: usernameNorm,
         role,
         password: tempPassword.trim(),
         is_active: isActive,
-        operation_id: usesOperationScopedEmail ? effectiveOperationId : null,
+        operation_id: requiresOperationContext ? effectiveOperationId : null,
       };
 
-      const { data: sess } = await supabase.auth.getSession();
-      const token = sess?.session?.access_token;
-      if (!token) throw new Error("No hay sesión activa (token).");
-
-      const res = await fetch(buildSupabaseFunctionUrl("create-agent"), {
+      const response = await fetch(buildSupabaseFunctionUrl("create-agent"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -282,173 +267,144 @@ export default function AgentUpsertModal({
         body: JSON.stringify(payload),
       });
 
-      const txt = await res.text();
-      console.log("[create-agent] status:", res.status);
-      console.log("[create-agent] raw:", txt);
+      const raw = await response.text();
+      let json: any = null;
 
-      let j: any = null;
       try {
-        j = txt ? JSON.parse(txt) : null;
+        json = raw ? JSON.parse(raw) : null;
       } catch {
-        // ignore
+        json = null;
       }
 
-      if (!res.ok) {
-        if (j?.error) {
-          throw new Error(j.details ? `${j.error} — ${j.details}` : j.error);
-        }
-        throw new Error(txt || `HTTP ${res.status}`);
-      }
-
-      if (j?.success === false) {
-        throw new Error(
-          j.details ? `${j.error} — ${j.details}` : j.error || "No se pudo crear el agente",
-        );
+      if (!response.ok || json?.success === false) {
+        const details = json?.details ? ` - ${json.details}` : "";
+        throw new Error(json?.error ? `${json.error}${details}` : raw || `HTTP ${response.status}`);
       }
 
       notify.success(
-        "Agente creado",
-        "El nuevo agente quedó registrado correctamente.",
+        "Usuario creado",
+        "El nuevo usuario quedo registrado correctamente.",
       );
       onSaved();
-    } catch (e: any) {
-      console.error(e);
-      setError(e?.message || "Error guardando agente");
+    } catch (saveError: any) {
+      console.error(saveError);
+      setError(saveError?.message || "Error guardando usuario");
     } finally {
       setSaving(false);
     }
   };
 
-  // click afuera
-  const onBackdropMouseDown = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget && !saving) onClose();
-  };
-
-  // ESC
   useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !saving) onClose();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) {
+        onClose();
+      }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose, saving]);
 
-  // apaga modal padre (Dashboard Modal)
-  useEffect(() => {
     if (!isOpen) return;
 
+    window.addEventListener("keydown", onKeyDown);
+    document.body.style.overflow = "hidden";
     window.dispatchEvent(
       new CustomEvent("am:submodal", { detail: { open: true } }),
     );
 
     return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
       window.dispatchEvent(
         new CustomEvent("am:submodal", { detail: { open: false } }),
       );
     };
-  }, [isOpen]);
+  }, [isOpen, onClose, saving]);
+
+  const onBackdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (saving) return;
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  };
 
   if (!isOpen) return null;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] p-4 sm:p-6 flex items-center justify-center"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
       onMouseDown={onBackdropMouseDown}
       role="dialog"
       aria-modal="true"
     >
-      {/* overlay premium */}
       <div className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" />
 
       <ModalPanel className="relative max-w-xl rounded-[1.5rem]">
         <ModalHeader
           icon={
             isEdit ? (
-              <Shield className="w-5 h-5 text-brand" />
+              <Shield className="h-5 w-5 text-brand" />
             ) : (
-              <UserPlus className="w-5 h-5 text-brand" />
+              <UserPlus className="h-5 w-5 text-brand" />
             )
           }
           title={title}
-          description={isEdit ? "Actualiza nombre, rol y estado." : "Crea un usuario y genera su correo."}
+          description={
+            isEdit
+              ? "Actualiza nombre, rol y estado del usuario."
+              : "Crea un usuario nuevo y genera su correo por tenant."
+          }
           onClose={() => !saving && onClose()}
           closeDisabled={saving}
         />
 
         <ModalBody className="space-y-5">
-          {error && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 mt-0.5" />
+          {error ? (
+            <div className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <AlertCircle className="mt-0.5 h-4 w-4" />
               <span className="font-semibold">{error}</span>
             </div>
-          )}
+          ) : null}
 
-          {!isEdit && usesOperationScopedEmail && !operationSlug && (
+          {!isEdit && requiresOperationContext && !tenantSlug ? (
             <div className="rounded-2xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-              No se pudo cargar el <b>slug</b> de la operación. Verifica que tengas
-              una operación activa.
+              No se pudo cargar el tenant de la operacion activa. Verifica que
+              tengas una operacion seleccionada.
             </div>
-          )}
+          ) : null}
 
-          {/* Nombre */}
           <Field label="Nombre" required>
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(event) => setName(event.target.value)}
               disabled={saving}
-              placeholder="Ej: Juan Pérez"
+              placeholder="Ej: Juan Perez"
               autoComplete="off"
             />
           </Field>
 
-          {/* Username + correo generado */}
-          {!isEdit && (
+          {!isEdit ? (
             <div className="space-y-2">
-              <Field label="Apodo (username)" required>
+              <Field label="Username" required>
                 <Input
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(event) => setUsername(event.target.value)}
                   disabled={saving}
-                  placeholder="Apodo para generar el correo"
+                  placeholder="Alias para generar el correo"
                   autoComplete="off"
                 />
               </Field>
 
               <p className="text-xs text-muted">
-                Permitido: letras/números y <span className="font-mono">_</span>{" "}
-                (mín 3).
+                Permitido: letras, numeros y <span className="font-mono">_</span>.
+                Minimo 3 caracteres.
               </p>
 
-              {role === "super_admin" ? (
-                <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface2 px-4 py-3 text-sm text-ink/80">
-                  <div>
-                    <label htmlFor="useSadminSuffix" className="font-semibold">
-                      Usar sufijo `.sadmin`
-                    </label>
-                    <div className="text-xs text-muted mt-1">
-                      Activo: `{usernameNorm || "usuario"}.sadmin@call-master.com` <br/> Inactivo: `{usernameNorm || "usuario"}@call-master.com`
-                    </div>
-                  </div>
-
-                  <input
-                    id="useSadminSuffix"
-                    type="checkbox"
-                    checked={useSadminSuffix}
-                    onChange={(e) => setUseSadminSuffix(e.target.checked)}
-                    disabled={saving}
-                  />
-                </div>
-              ) : null}
-
-              <div className="mt-2 rounded-2xl border border-border bg-surface2 p-4">
+              <div className="rounded-2xl border border-border bg-surface2 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-[11px] text-muted mb-1">
+                    <div className="mb-1 text-[11px] text-muted">
                       Correo generado
                     </div>
-                    <div className="font-mono text-sm text-ink break-all">
-                      {emailPreview || "—"}
+                    <div className="break-all font-mono text-sm text-ink">
+                      {emailPreview || "-"}
                     </div>
                   </div>
 
@@ -459,20 +415,19 @@ export default function AgentUpsertModal({
                     className={cn(pillBtn, "px-3 py-2")}
                     title="Copiar correo"
                   >
-                    <Copy className="w-4 h-4" />
+                    <Copy className="h-4 w-4" />
                     <span className="hidden sm:inline">Copiar</span>
                   </button>
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
 
-          {/* Rol */}
           <Field label="Rol" required>
             <Select
               value={role}
               onValueChange={(value) => setRole(value as RoleOption)}
-              disabled={saving}
+              disabled={saving || assignableRoles.length === 0}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona un rol" />
@@ -488,49 +443,45 @@ export default function AgentUpsertModal({
             </Select>
           </Field>
 
-          {/* Password */}
-          {!isEdit && (
-            <div>
-            <Field label="Contraseña temporal" required>
+          {!isEdit ? (
+            <Field label="Contrasena temporal" required>
               <div className="relative">
-                <KeyRound className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
+                <KeyRound className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <Input
                   className="pl-11"
                   value={tempPassword}
-                  onChange={(e) => setTempPassword(e.target.value)}
+                  onChange={(event) => setTempPassword(event.target.value)}
                   disabled={saving}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Minimo 6 caracteres"
                   type="password"
                   autoComplete="new-password"
                   minLength={6}
                 />
               </div>
 
-              <p className="text-xs text-muted mt-2">
-                El agente podrá cambiarla después de iniciar sesión.
+              <p className="mt-2 text-xs text-muted">
+                El usuario podra cambiarla despues de iniciar sesion.
               </p>
             </Field>
-            </div>
-          )}
+          ) : null}
 
-          {/* Activo */}
-          <div className="rounded-2xl border border-border bg-surface2 p-4 flex items-center justify-between">
+          <div className="flex items-center justify-between rounded-2xl border border-border bg-surface2 p-4">
             <div>
               <div className="text-sm font-semibold text-ink/80">Activo</div>
-              <div className="text-xs text-muted mt-1">
-                Si lo desactivas, no podrá iniciar sesión.
+              <div className="mt-1 text-xs text-muted">
+                Si lo desactivas, no podra iniciar sesion.
               </div>
             </div>
 
             <label
-              className="inline-flex items-center gap-2 cursor-pointer select-none"
+              className="inline-flex cursor-pointer select-none items-center gap-2"
               htmlFor="isActive"
             >
               <input
                 id="isActive"
                 type="checkbox"
                 checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
+                onChange={(event) => setIsActive(event.target.checked)}
                 disabled={saving}
                 aria-label="Cambiar estado activo"
               />
@@ -539,7 +490,12 @@ export default function AgentUpsertModal({
         </ModalBody>
 
         <ModalFooter className="gap-2">
-          <button type="button" className={modalSecondaryActionClassName} onClick={onClose} disabled={saving}>
+          <button
+            type="button"
+            className={modalSecondaryActionClassName}
+            onClick={onClose}
+            disabled={saving}
+          >
             Cancelar
           </button>
 
@@ -553,7 +509,7 @@ export default function AgentUpsertModal({
               <LoadingSpinner size="sm" text="Guardando..." fullScreen={false} />
             ) : (
               <>
-                <Save className="w-4 h-4" />
+                <Save className="h-4 w-4" />
                 Guardar
               </>
             )}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { appEnv } from "../../../config/env";
 import { useAuth } from "../../../hooks/useAuth";
 import { supabase } from "../../../integrations/supabase/client";
+import { canUseClientActions } from "../../../lib/supabase";
 import type { ClientStatusCode } from "../../../lib/utils";
 import { notify } from "../../../shared/lib/notify";
 import { agents } from "../../agents/services/agents.service";
@@ -73,6 +74,7 @@ export function useClientManagement(
 ) {
   const {
     user,
+    role,
     isAdmin: hookIsAdmin,
     canSeeAllOperations: hookCanSeeAllOperations,
     operationReady: hookOperationReady,
@@ -88,6 +90,7 @@ export function useClientManagement(
   const operationId = props.operationId ?? hookOperationId;
 
   const opLocked = canSeeAllOperations && !operationReady;
+  const canExecuteClientActions = canUseClientActions(role);
 
   const [clients, setClients] = useState<Client[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -684,7 +687,7 @@ export function useClientManagement(
           ? (agentsData ?? [])
               .filter(
                 (agent) =>
-                  (agent.role === "agent" || agent.role === "admin") &&
+                  agent.role === "agent" &&
                   agent.is_active !== false &&
                   agent.operation_id === targetOperationId,
               )
@@ -811,6 +814,7 @@ export function useClientManagement(
   };
 
   const handleEditClient = (client: Client) => {
+    if (!canExecuteClientActions) return;
     setSelectedClient(client);
     setShowEditModal(true);
   };
@@ -818,6 +822,7 @@ export function useClientManagement(
   const handleClientSaved = () => loadClients({ silent: true });
 
   const handleCallClient = async (client: Client) => {
+    if (!canExecuteClientActions) return;
     setCallingClient(client.id);
     setError("");
 
@@ -860,6 +865,7 @@ export function useClientManagement(
   };
 
   const handleEmailClient = (client: Client) => {
+    if (!canExecuteClientActions) return;
     setSelectedClientForEmail(client);
     setShowEmailModal(true);
   };
@@ -897,6 +903,7 @@ export function useClientManagement(
   };
 
   const handleScheduleClient = async (client: Client) => {
+    if (!canExecuteClientActions) return;
     setError("");
     setSelectedClientForSchedule(client);
 
@@ -1105,6 +1112,7 @@ export function useClientManagement(
 
   return {
     isAdmin,
+    canExecuteClientActions,
     opLocked,
     clients,
     initialLoading,

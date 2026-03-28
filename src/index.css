@@ -3,33 +3,106 @@
 @tailwind utilities;
 
 :root {
-  --color-bg: 246 243 239;
-  --color-surface: 255 255 255;
-  --color-surface2: 251 250 248;
-  --color-border: 232 226 218;
-  --color-ink: 18 24 38;
-  --color-muted: 107 114 128;
-  --color-brand: 37 99 235;
-  --color-brand-50: 239 246 255;
-  --color-brand-100: 219 234 254;
-  --color-brand-200: 191 219 254;
-  --color-brand-300: 147 197 253;
-  --color-brand-400: 96 165 250;
-  --color-brand-500: 59 130 246;
-  --color-brand-600: 37 99 235;
-  --color-brand-700: 29 78 216;
-  --color-brand-800: 30 64 175;
-  --color-brand-900: 30 58 138;
+  --color-bg: 232 238 248;
+  --color-surface: 249 252 255;
+  --color-surface2: 241 246 252;
+  --color-surface-elevated: 241 246 253;
+  --color-border: 204 216 233;
+  --color-ink: 15 23 42;
+  --color-muted: 97 110 131;
+  --color-shell-top: 241 246 253;
+  --color-shell-bottom: 224 233 246;
+  --color-shell-glow: 133 171 236;
+  --color-shell-accent: 194 214 247;
+  --color-brand: 75 123 236;
+  --color-brand-50: 238 244 255;
+  --color-brand-100: 220 231 255;
+  --color-brand-200: 190 212 255;
+  --color-brand-300: 147 181 255;
+  --color-brand-400: 111 149 255;
+  --color-brand-500: 84 128 248;
+  --color-brand-600: 75 123 236;
+  --color-brand-700: 57 96 191;
+  --color-brand-800: 46 74 146;
+  --color-brand-900: 37 59 109;
 }
 
 /* Estilos base personalizados */
 @layer base {
   html {
     font-family: "Inter", system-ui, sans-serif;
+    background: rgb(var(--color-bg));
   }
 
   body {
-    @apply bg-bg text-ink;
+    @apply text-ink;
+    min-height: 100vh;
+    position: relative;
+    isolation: isolate;
+    background-color: rgb(var(--color-bg));
+    background-image:
+      radial-gradient(
+        circle at 16% 16%,
+        rgb(var(--color-shell-glow) / 0.36),
+        transparent 24%
+      ),
+      radial-gradient(
+        circle at 84% 14%,
+        rgb(var(--color-shell-accent) / 0.34),
+        transparent 20%
+      ),
+      radial-gradient(
+        circle at 50% 102%,
+        rgb(var(--color-brand) / 0.16),
+        transparent 28%
+      ),
+      linear-gradient(
+        180deg,
+        rgb(var(--color-shell-top)) 0%,
+        rgb(var(--color-bg)) 42%,
+        rgb(var(--color-shell-bottom)) 100%
+      );
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -2;
+    opacity: 0.46;
+    background-image:
+      linear-gradient(rgba(18, 27, 43, 0.038) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(18, 27, 43, 0.038) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(circle at center, black 44%, transparent 100%);
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    left: 22%;
+    right: 22%;
+    bottom: -9rem;
+    height: 22rem;
+    pointer-events: none;
+    z-index: -1;
+    background: radial-gradient(
+      circle,
+      rgb(var(--color-brand-300) / 0.22) 0%,
+      transparent 70%
+    );
+    filter: blur(44px);
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: rgb(var(--color-brand) / 0.18);
+    color: rgb(var(--color-ink));
   }
 }
 
@@ -37,12 +110,14 @@
 @layer components {
   /* Input premium */
   .auth-input {
-    @apply w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm
-           outline-none transition shadow-[0_1px_0_rgba(255,255,255,0.7)];
+    @apply w-full rounded-[1.25rem] border border-white/70 bg-surface px-4 py-3 text-sm
+           text-ink outline-none transition backdrop-blur-xl
+           shadow-[0_18px_40px_rgba(30,41,59,0.08),inset_0_1px_0_rgba(255,255,255,0.78)];
+    background-color: rgb(var(--color-surface) / 0.86);
   }
 
   .auth-input:hover {
-    @apply border-brand/20;
+    @apply -translate-y-[1px] border-brand/24 bg-surface;
   }
 
   .auth-input:focus-visible {
@@ -52,9 +127,9 @@
   /* Botón pill */
   .auth-pill {
     @apply w-full rounded-full px-5 py-3 text-sm font-semibold transition
-           text-white shadow-soft
+           text-white shadow-[0_22px_44px_rgba(75,123,236,0.26)]
            bg-gradient-to-r from-brand via-brand-600 to-brand-700
-           hover:brightness-105 active:brightness-95
+           hover:-translate-y-[1px] hover:brightness-105 active:brightness-95
            disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden;
   }
 
@@ -95,27 +170,68 @@
   }
 
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply rounded-full bg-gradient-to-r from-brand via-brand-600 to-brand-700 px-4 py-2 font-medium text-white transition duration-200 hover:-translate-y-[1px] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply rounded-full border border-white/65 bg-surface px-4 py-2 font-medium text-ink shadow-soft backdrop-blur-xl transition hover:-translate-y-[1px] hover:border-brand/24 hover:bg-surface;
+    background-color: rgb(var(--color-surface-elevated) / 0.88);
   }
 
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply rounded-full bg-red-600 px-4 py-2 font-medium text-white transition duration-200 hover:-translate-y-[1px] hover:bg-red-700;
   }
 
   .btn-success {
-    @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply rounded-full bg-emerald-600 px-4 py-2 font-medium text-white transition duration-200 hover:-translate-y-[1px] hover:bg-emerald-700;
   }
 
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply w-full rounded-[1.25rem] border border-white/70 bg-surface px-4 py-3 text-ink shadow-soft backdrop-blur-xl focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/15;
+    background-color: rgb(var(--color-surface-elevated) / 0.88);
   }
 
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+    @apply rounded-[1.5rem] border border-white/65 bg-surface p-6 shadow-soft backdrop-blur-xl;
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.96) 0%, rgb(var(--color-surface-elevated) / 0.88) 100%);
+  }
+
+  .crm-shell-card {
+    position: relative;
+    overflow: hidden;
+    border-color: rgb(var(--color-border) / 0.84);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.97) 0%, rgb(var(--color-surface-elevated) / 0.9) 100%);
+    box-shadow:
+      0 24px 54px rgb(var(--color-brand-900) / 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.74);
+    backdrop-filter: blur(20px);
+  }
+
+  .crm-shell-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at top right, rgb(var(--color-shell-accent) / 0.18), transparent 28%),
+      linear-gradient(180deg, rgba(255,255,255,0.16), transparent 30%);
+  }
+
+  .crm-shell-pill {
+    border-color: rgb(var(--color-border) / 0.78);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.92) 0%, rgb(var(--color-surface-elevated) / 0.84) 100%);
+    box-shadow:
+      0 14px 30px rgb(var(--color-brand-900) / 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  }
+
+  .crm-shell-soft-row {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.94) 0%, rgb(var(--color-surface-elevated) / 0.88) 100%);
+    border-color: rgb(var(--color-border) / 0.9);
   }
 
   .status-indicator {
