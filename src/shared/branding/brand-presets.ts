@@ -74,7 +74,7 @@ export const brandPresets: Record<string, BrandPreset> = {
   "atlas-finance": {
     id: "atlas-finance",
     displayName: "Light",
-    productName: "Atlas Finance CRM",
+    productName: "Light CRM",
     platformLabel: "AK8 CRM",
     defaultFooterNote:
       "Operacion comercial, seguimiento y reporting adaptados para fintech.",
@@ -108,7 +108,7 @@ export const brandPresets: Record<string, BrandPreset> = {
   "cobalt-ops": {
     id: "cobalt-ops",
     displayName: "Shade",
-    productName: "Cobalt Ops",
+    productName: "Shade CRM",
     platformLabel: "AK8 CRM",
     defaultFooterNote:
       "Vista operacional preparada para soporte, llamadas y seguimiento intensivo.",
