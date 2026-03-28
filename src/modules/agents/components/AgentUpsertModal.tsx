@@ -6,11 +6,12 @@ import {
   KeyRound,
   Save,
   Shield,
+  Trash2,
   UserPlus,
 } from "lucide-react";
 import { appEnv, buildSupabaseFunctionUrl } from "../../../config/env";
 import { useAuth } from "../../../hooks/useAuth";
-import { Agent, getAgentRoleLabel, supabase } from "../../../lib/supabase";
+import { Agent, agents, getAgentRoleLabel, supabase } from "../../../lib/supabase";
 import {
   ModalBody,
   ModalFooter,
@@ -60,6 +61,24 @@ function getAssignableRoles(
   }
 }
 
+function canDeleteManagedAgent(
+  viewerRole: Agent["role"] | null | undefined,
+  targetAgent: Agent | null,
+  currentUserId: string | null | undefined,
+) {
+  if (!targetAgent?.id) return false;
+  if (targetAgent.id === currentUserId) return false;
+
+  switch (viewerRole) {
+    case "dev":
+      return ["owner", "manager", "loader", "agent"].includes(targetAgent.role);
+    case "owner":
+      return ["manager", "loader", "agent"].includes(targetAgent.role);
+    default:
+      return false;
+  }
+}
+
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
@@ -80,11 +99,15 @@ export default function AgentUpsertModal({
   onSaved,
 }: Props) {
   const isEdit = mode === "edit";
-  const { activeOperationId, operationId, role: viewerRole } = useAuth();
+  const { activeOperationId, operationId, role: viewerRole, user } = useAuth();
   const effectiveOperationId = activeOperationId ?? operationId ?? null;
   const assignableRoles = useMemo(
     () => getAssignableRoles(viewerRole, mode, agent?.role),
     [agent?.role, mode, viewerRole],
+  );
+  const canDelete = useMemo(
+    () => isEdit && canDeleteManagedAgent(viewerRole, agent, user?.id),
+    [agent, isEdit, user?.id, viewerRole],
   );
 
   const [name, setName] = useState("");
@@ -94,6 +117,7 @@ export default function AgentUpsertModal({
   const [tempPassword, setTempPassword] = useState("");
   const [tenantSlug, setTenantSlug] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
   const title = isEdit ? "Editar usuario" : "Crear usuario";
@@ -107,6 +131,7 @@ export default function AgentUpsertModal({
     setTenantSlug("");
     setError("");
     setSaving(false);
+    setDeleting(false);
 
     const run = async () => {
       if (isEdit || !effectiveOperationId) return;
@@ -147,6 +172,7 @@ export default function AgentUpsertModal({
 
     setError("");
     setSaving(false);
+    setDeleting(false);
 
     if (isEdit && agent) {
       setName(agent.name ?? "");
@@ -294,9 +320,38 @@ export default function AgentUpsertModal({
     }
   };
 
+  const remove = async () => {
+    if (!isEdit || !agent?.id || !canDelete) return;
+
+    const confirmed = window.confirm(
+      `Eliminar a ${agent.name}? Se liberaran sus clientes asignados. Esta accion no se puede deshacer.`,
+    );
+
+    if (!confirmed) return;
+
+    setError("");
+    setDeleting(true);
+
+    try {
+      const { error: deleteError } = await agents.remove(agent.id);
+      if (deleteError) throw deleteError;
+
+      notify.success(
+        "Usuario eliminado",
+        "El usuario se elimino correctamente.",
+      );
+      onSaved();
+    } catch (deleteError: any) {
+      console.error(deleteError);
+      setError(deleteError?.message || "Error eliminando usuario");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !saving) {
+      if (event.key === "Escape" && !saving && !deleting) {
         onClose();
       }
     };
@@ -316,10 +371,10 @@ export default function AgentUpsertModal({
         new CustomEvent("am:submodal", { detail: { open: false } }),
       );
     };
-  }, [isOpen, onClose, saving]);
+  }, [deleting, isOpen, onClose, saving]);
 
   const onBackdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (saving) return;
+    if (saving || deleting) return;
     if (event.target === event.currentTarget) {
       onClose();
     }
@@ -351,8 +406,8 @@ export default function AgentUpsertModal({
               ? "Actualiza nombre, rol y estado del usuario."
               : "Crea un usuario nuevo y genera su correo por tenant."
           }
-          onClose={() => !saving && onClose()}
-          closeDisabled={saving}
+          onClose={() => !saving && !deleting && onClose()}
+          closeDisabled={saving || deleting}
         />
 
         <ModalBody className="space-y-5">
@@ -374,7 +429,7 @@ export default function AgentUpsertModal({
             <Input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              disabled={saving}
+              disabled={saving || deleting}
               placeholder="Ej: Juan Perez"
               autoComplete="off"
             />
@@ -386,7 +441,7 @@ export default function AgentUpsertModal({
                 <Input
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
-                  disabled={saving}
+                  disabled={saving || deleting}
                   placeholder="Alias para generar el correo"
                   autoComplete="off"
                 />
@@ -411,7 +466,7 @@ export default function AgentUpsertModal({
                   <button
                     type="button"
                     onClick={copyEmail}
-                    disabled={!emailPreview || saving}
+                    disabled={!emailPreview || saving || deleting}
                     className={cn(pillBtn, "px-3 py-2")}
                     title="Copiar correo"
                   >
@@ -427,7 +482,7 @@ export default function AgentUpsertModal({
             <Select
               value={role}
               onValueChange={(value) => setRole(value as RoleOption)}
-              disabled={saving || assignableRoles.length === 0}
+              disabled={saving || deleting || assignableRoles.length === 0}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona un rol" />
@@ -451,7 +506,7 @@ export default function AgentUpsertModal({
                   className="pl-11"
                   value={tempPassword}
                   onChange={(event) => setTempPassword(event.target.value)}
-                  disabled={saving}
+                  disabled={saving || deleting}
                   placeholder="Minimo 6 caracteres"
                   type="password"
                   autoComplete="new-password"
@@ -482,7 +537,7 @@ export default function AgentUpsertModal({
                 type="checkbox"
                 checked={isActive}
                 onChange={(event) => setIsActive(event.target.checked)}
-                disabled={saving}
+                disabled={saving || deleting}
                 aria-label="Cambiar estado activo"
               />
             </label>
@@ -490,11 +545,29 @@ export default function AgentUpsertModal({
         </ModalBody>
 
         <ModalFooter className="gap-2">
+          {canDelete ? (
+            <button
+              type="button"
+              className="mr-auto inline-flex items-center rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={remove}
+              disabled={saving || deleting}
+            >
+              {deleting ? (
+                <LoadingSpinner size="sm" text="Eliminando..." fullScreen={false} />
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar
+                </>
+              )}
+            </button>
+          ) : null}
+
           <button
             type="button"
             className={modalSecondaryActionClassName}
             onClick={onClose}
-            disabled={saving}
+            disabled={saving || deleting}
           >
             Cancelar
           </button>
@@ -503,7 +576,7 @@ export default function AgentUpsertModal({
             type="button"
             className={modalPrimaryActionClassName}
             onClick={save}
-            disabled={saving || !canSubmit()}
+            disabled={saving || deleting || !canSubmit()}
           >
             {saving ? (
               <LoadingSpinner size="sm" text="Guardando..." fullScreen={false} />

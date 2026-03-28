@@ -16,7 +16,7 @@ export default function AppFooter({
   const { branding } = useBranding();
   const year = new Date().getFullYear();
   const footerNote = note ?? branding.defaultFooterNote;
-  const version = "2.5.9";
+  const version = "1.0.15";
 
   return (
     <footer className="relative overflow-hidden border-t border-white/45 bg-surface/74 backdrop-blur-2xl supports-[backdrop-filter]:bg-surface/68">

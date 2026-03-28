@@ -29,6 +29,14 @@ export const agents = {
     return { error };
   },
 
+  remove: async (id: string) => {
+    const { error } = await supabase.rpc("delete_agent", {
+      p_id: id,
+    });
+
+    return { error };
+  },
+
   create: async (params: {
     email: string;
     name: string;
