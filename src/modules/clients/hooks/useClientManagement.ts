@@ -3,7 +3,10 @@ import { appEnv } from "../../../config/env";
 import { useAuth } from "../../../hooks/useAuth";
 import { supabase } from "../../../integrations/supabase/client";
 import { canUseClientActions } from "../../../lib/supabase";
-import type { ClientStatusCode } from "../../../lib/utils";
+import {
+  isClientStatusCode,
+  type ClientStatusCode,
+} from "../../../lib/utils";
 import { notify } from "../../../shared/lib/notify";
 import { agents } from "../../agents/services/agents.service";
 import { agentAssignments } from "../../assignments/services/agent-assignments.service";
@@ -51,7 +54,7 @@ function filterAssignedClients(
     const matchesOperation =
       !targetOperationId || client.operation_id === targetOperationId;
     const matchesStatus =
-      statusFilter === "all" || (client.status_code ?? "SC") === statusFilter;
+      statusFilter === "all" || (client.status_code ?? "NU") === statusFilter;
     const matchesCampaign =
       campaignFilter === "all" || client.campaign_id === campaignFilter;
 
@@ -213,16 +216,7 @@ export function useClientManagement(
       if (saved) setSearchQuery(saved);
 
       const savedStatusFilter = localStorage.getItem(CLIENTS_STATUS_FILTER_KEY);
-      if (
-        savedStatusFilter === "all" ||
-        savedStatusFilter === "SC" ||
-        savedStatusFilter === "NA" ||
-        savedStatusFilter === "NI" ||
-        savedStatusFilter === "CB" ||
-        savedStatusFilter === "WN" ||
-        savedStatusFilter === "HU" ||
-        savedStatusFilter === "CP"
-      ) {
+      if (savedStatusFilter === "all" || isClientStatusCode(savedStatusFilter)) {
         setStatusFilter(savedStatusFilter);
       }
 
@@ -1087,13 +1081,16 @@ export function useClientManagement(
     isSearchActive ? searchQuery.trim() : null,
     statusFilter !== "all"
       ? ({
-          SC: "Sin contacto",
-          NA: "No Contesta",
-          NI: "No le interesa",
-          CB: "Caso abierto",
-          WN: "Número errado",
-          HU: "Contesta y cuelga",
-          CP: "Casos potenciales",
+          NU: "Nuevo",
+          LD: "Llamar despues",
+          DP: "Deposito",
+          SG: "Seguimiento",
+          NC: "No contesta",
+          NI: "No interesado",
+          NX: "Numero no existe",
+          NE: "Numero equivocado",
+          RA: "Reasignar",
+          FS: "Fin de seguimiento",
         } as const)[statusFilter]
       : null,
     isCampaignFilterActive

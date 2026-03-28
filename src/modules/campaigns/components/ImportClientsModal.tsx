@@ -331,16 +331,11 @@ export default function ImportClientsModal({
         return;
       }
 
-      const { data, error: importError } = await supabase.functions.invoke(
-        "import-clients",
-        {
-          body: {
-            clients: clientsData,
-            campaign_name: campaignName.trim() || null,
-            operation_id: selectedOperationId ?? null,
-          },
-        },
-      );
+      const { data, error: importError } = await supabase.rpc("import_clients_v1", {
+        p_clients: clientsData,
+        p_campaign_name: campaignName.trim() || null,
+        p_operation_id: selectedOperationId ?? null,
+      });
 
       if (importError) {
         setError(
@@ -351,22 +346,32 @@ export default function ImportClientsModal({
         return;
       }
 
-      if (!data) {
+      const importResult = data as ImportResult | null;
+
+      if (!importResult) {
         setError("No se recibió respuesta del servidor.");
         return;
       }
 
-      if (data.error) {
-        setError(formatFrontendParseError(String(data.error)));
+      if ((importResult as { error?: unknown }).error) {
+        setError(
+          formatFrontendParseError(
+            String((importResult as { error?: unknown }).error),
+          ),
+        );
         return;
       }
 
-      if ((data.success ?? 0) <= 0) {
-        setError(formatImportErrors(Array.isArray(data.errors) ? data.errors : []));
+      if ((importResult.success ?? 0) <= 0) {
+        setError(
+          formatImportErrors(
+            Array.isArray(importResult.errors) ? importResult.errors : [],
+          ),
+        );
         return;
       }
 
-      setResult(data);
+      setResult(importResult);
       onImport();
     } catch (err: any) {
       setError(

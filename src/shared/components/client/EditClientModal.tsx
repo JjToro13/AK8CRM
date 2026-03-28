@@ -16,6 +16,7 @@ import {
   CLIENT_STATUS_OPTIONS,
   ClientStatusCode,
   formatDate,
+  getLegacyStatusColor,
   getStatusCode,
   getStatusDotClass,
   getStatusText,
@@ -58,7 +59,7 @@ export default function EditClientModal({
 }: EditClientModalProps) {
   const { user } = useAuth();
 
-  const [statusCode, setStatusCode] = useState<ClientStatusCode>("SC");
+  const [statusCode, setStatusCode] = useState<ClientStatusCode>("NU");
 
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState<ClientComment[]>([]);
@@ -82,7 +83,7 @@ export default function EditClientModal({
   }, [client]);
 
   const selectableStatusOptions = useMemo(() => {
-    return CLIENT_STATUS_OPTIONS.filter((status) => status.code !== "SC");
+    return CLIENT_STATUS_OPTIONS.filter((status) => status.code !== "NU");
   }, []);
 
   const statusGroups = useMemo<StatusGroup[]>(() => {
@@ -92,20 +93,20 @@ export default function EditClientModal({
 
     return [
       {
-        title: "Sin contacto efectivo",
-        items: ["NA", "WN"]
+        title: "No contacto",
+        items: ["NC", "NX", "NE"]
           .map((code) => byCode.get(code as ClientStatusCode))
           .filter(Boolean) as Array<(typeof CLIENT_STATUS_OPTIONS)[number]>,
       },
       {
-        title: "Contacto inicial",
-        items: ["HU", "CP"]
+        title: "Gestión activa",
+        items: ["LD", "SG", "RA"]
           .map((code) => byCode.get(code as ClientStatusCode))
           .filter(Boolean) as Array<(typeof CLIENT_STATUS_OPTIONS)[number]>,
       },
       {
-        title: "Resultado comercial",
-        items: ["CB", "NI"]
+        title: "Cierre comercial",
+        items: ["DP", "NI", "FS"]
           .map((code) => byCode.get(code as ClientStatusCode))
           .filter(Boolean) as Array<(typeof CLIENT_STATUS_OPTIONS)[number]>,
       },
@@ -206,8 +207,8 @@ export default function EditClientModal({
         return;
       }
 
-      if (statusCode === "SC" && currentStatus !== "SC") {
-        setError("La tipificación SC es automática y no puede asignarse manualmente.");
+      if (statusCode === "NU" && currentStatus !== "NU") {
+        setError("La tipificacion Nuevo es automatica y no puede asignarse manualmente.");
         return;
       }
 
@@ -216,6 +217,7 @@ export default function EditClientModal({
           .from("clients")
           .update({
             status_code: statusCode,
+            status_color: getLegacyStatusColor(statusCode),
             updated_at: new Date().toISOString(),
           })
           .eq("id", client.id);
@@ -269,7 +271,7 @@ export default function EditClientModal({
   const currentResolvedText = getStatusText(client);
   const selectedResolvedText = getStatusText(statusCode);
   const currentStatusCode = getStatusCode(client);
-  const currentStatusIsSC = currentStatusCode === "SC";
+  const currentStatusIsSC = currentStatusCode === "NU";
   const statusChanged = statusCode !== currentStatusCode;
 
   return (
@@ -372,9 +374,9 @@ export default function EditClientModal({
 
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2">
               <p className="text-[11px] leading-relaxed text-amber-800">
-                <span className="font-semibold">SC</span> es automático y no se
-                puede asignar manualmente. Puedes guardar solo un comentario sin
-                cambiar el estado.
+                <span className="font-semibold">Nuevo</span> es automatico y no
+                se puede asignar manualmente. Puedes guardar solo un comentario
+                sin cambiar el estado.
               </p>
             </div>
 
@@ -443,10 +445,11 @@ export default function EditClientModal({
 
             {currentStatusIsSC && !statusChanged && (
               <p className="text-[11px] text-muted">
-                El cliente sigue en <span className="font-semibold">SC</span>. No
-                necesitas cambiar la tipificación para agregar un comentario.
+                El cliente sigue en <span className="font-semibold">Nuevo</span>.
+                No necesitas cambiar la tipificacion para agregar un comentario.
               </p>
             )}
+
           </div>
 
           {/* Historial */}

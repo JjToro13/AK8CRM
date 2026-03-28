@@ -1,22 +1,23 @@
-// utils.ts - Funciones utilitarias para formateo de fechas, validación de datos,
-// generación de seriales únicos, debounce y manejo de estados/tipificaciones.
+// utils.ts - Utilidades de UI, estados de cliente y formatos compartidos.
 
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-// Función para combinar clases de Tailwind CSS
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 export type ClientStatusCode =
-  | "SC"
-  | "NA"
+  | "NU"
+  | "LD"
+  | "DP"
+  | "SG"
+  | "NC"
   | "NI"
-  | "CB"
-  | "WN"
-  | "HU"
-  | "CP";
+  | "NX"
+  | "NE"
+  | "RA"
+  | "FS";
 
 type LegacyStatusColor = "gray" | "red" | "yellow" | "green" | "blue";
 
@@ -38,58 +39,82 @@ export type ClientStatusMeta = {
 
 export const CLIENT_STATUS_OPTIONS: ClientStatusMeta[] = [
   {
-    code: "SC",
-    label: "Sin contactar",
-    shortLabel: "SC",
-    description: "Estado base al subir una nueva base",
+    code: "NU",
+    label: "Nuevo",
+    shortLabel: "NU",
+    description: "Estado base automático al cargar una base nueva",
     dotClass: "bg-gray-100 ring-1 ring-inset ring-gray-300",
     indicatorClass: "bg-gray-100 ring-1 ring-inset ring-gray-300",
   },
   {
-    code: "NA",
-    label: "No Contesta",
-    shortLabel: "NA",
-    description: "No atiende, buzón, llamada cortada",
+    code: "LD",
+    label: "Llamar después",
+    shortLabel: "LD",
+    description: "Cliente pidió retomar el contacto más adelante",
+    dotClass: "bg-sky-500 ring-1 ring-inset ring-sky-600/30",
+    indicatorClass: "bg-sky-500 ring-1 ring-inset ring-sky-600/30",
+  },
+  {
+    code: "DP",
+    label: "Depósito",
+    shortLabel: "DP",
+    description: "El cliente ya realizó el depósito o confirmó ingreso",
+    dotClass: "bg-emerald-500 ring-1 ring-inset ring-emerald-600/30",
+    indicatorClass: "bg-emerald-500 ring-1 ring-inset ring-emerald-600/30",
+  },
+  {
+    code: "SG",
+    label: "Seguimiento",
+    shortLabel: "SG",
+    description: "Cliente activo en gestión comercial o de continuidad",
+    dotClass: "bg-blue-500 ring-1 ring-inset ring-blue-600/30",
+    indicatorClass: "bg-blue-500 ring-1 ring-inset ring-blue-600/30",
+  },
+  {
+    code: "NC",
+    label: "No contesta",
+    shortLabel: "NC",
+    description: "No atiende, buzón o no fue posible concretar contacto",
     dotClass: "bg-slate-400 ring-1 ring-inset ring-slate-500/30",
     indicatorClass: "bg-slate-400 ring-1 ring-inset ring-slate-500/30",
   },
   {
     code: "NI",
-    label: "No le Interesa",
+    label: "No interesado",
     shortLabel: "NI",
-    description: "Rechazo explícito o no desea continuar",
-    dotClass: "bg-red-500 ring-1 ring-inset ring-red-600/30",
-    indicatorClass: "bg-red-500 ring-1 ring-inset ring-red-600/30",
+    description: "Rechazo explícito o sin intención de continuar",
+    dotClass: "bg-rose-500 ring-1 ring-inset ring-rose-600/30",
+    indicatorClass: "bg-rose-500 ring-1 ring-inset ring-rose-600/30",
   },
   {
-    code: "CB",
-    label: "Caso Abierto",
-    shortLabel: "CB",
-    description: "Hubo contacto y el caso queda pendiente de seguimiento",
-    dotClass: "bg-sky-500 ring-1 ring-inset ring-sky-600/30",
-    indicatorClass: "bg-sky-500 ring-1 ring-inset ring-sky-600/30",
+    code: "NX",
+    label: "Número no existe",
+    shortLabel: "NX",
+    description: "La línea no existe, está fuera de servicio o inválida",
+    dotClass: "bg-amber-500 ring-1 ring-inset ring-amber-600/30",
+    indicatorClass: "bg-amber-500 ring-1 ring-inset ring-amber-600/30",
   },
   {
-    code: "CP",
-    label: "Casos Potenciales",
-    shortLabel: "CP",
-    description: "Cliente con potencial de avance o seguimiento comercial",
-    dotClass: "bg-emerald-500 ring-1 ring-inset ring-emerald-600/30",
-    indicatorClass: "bg-emerald-500 ring-1 ring-inset ring-emerald-600/30",
-  },
-  {
-    code: "WN",
-    label: "Número Errado",
-    shortLabel: "WN",
-    description: "Número inexistente, inválido o equivocado",
+    code: "NE",
+    label: "Número equivocado",
+    shortLabel: "NE",
+    description: "El contacto responde, pero no corresponde al cliente",
     dotClass: "bg-yellow-400 ring-1 ring-inset ring-yellow-500/30",
     indicatorClass: "bg-yellow-400 ring-1 ring-inset ring-yellow-500/30",
   },
   {
-    code: "HU",
-    label: "Contesta y cuelga",
-    shortLabel: "HU",
-    description: "Responde y corta inmediatamente",
+    code: "RA",
+    label: "Reasignar",
+    shortLabel: "RA",
+    description: "El lead debe volver a reparto o cambiar de responsable",
+    dotClass: "bg-violet-500 ring-1 ring-inset ring-violet-600/30",
+    indicatorClass: "bg-violet-500 ring-1 ring-inset ring-violet-600/30",
+  },
+  {
+    code: "FS",
+    label: "Fin de seguimiento",
+    shortLabel: "FS",
+    description: "La gestión se cierra sin más acciones pendientes",
     dotClass: "bg-zinc-600 ring-1 ring-inset ring-zinc-700/30",
     indicatorClass: "bg-zinc-600 ring-1 ring-inset ring-zinc-700/30",
   },
@@ -104,38 +129,55 @@ const STATUS_META_MAP: Record<ClientStatusCode, ClientStatusMeta> =
     {} as Record<ClientStatusCode, ClientStatusMeta>,
   );
 
-// Lectura legacy:
-// gray   -> Sin contactar
-// red    -> Múltiples intentos     => ahora se interpreta como NA
-// yellow -> No desea ser contactado => ahora se interpreta como NI
-// green  -> Contacto exitoso        => ahora se interpreta como CB
-// blue   -> En proceso de venta     => ahora se interpreta como CB
-const LEGACY_COLOR_TO_CODE: Record<LegacyStatusColor, ClientStatusCode> = {
-  gray: "SC",
-  red: "NA",
-  yellow: "NI",
-  green: "CB",
-  blue: "CB",
+const LEGACY_STATUS_CODE_TO_CODE: Record<string, ClientStatusCode> = {
+  SC: "NU",
+  NA: "NC",
+  NI: "NI",
+  CB: "SG",
+  WN: "NE",
+  HU: "LD",
+  CP: "SG",
 };
+
+const LEGACY_COLOR_TO_CODE: Record<LegacyStatusColor, ClientStatusCode> = {
+  gray: "NU",
+  red: "NC",
+  yellow: "NI",
+  green: "DP",
+  blue: "SG",
+};
+
+export function isClientStatusCode(
+  value?: string | null,
+): value is ClientStatusCode {
+  const code = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  return (
+    code === "NU" ||
+    code === "LD" ||
+    code === "DP" ||
+    code === "SG" ||
+    code === "NC" ||
+    code === "NI" ||
+    code === "NX" ||
+    code === "NE" ||
+    code === "RA" ||
+    code === "FS"
+  );
+}
 
 function normalizeStatusCode(value?: string | null): ClientStatusCode | null {
   const code = String(value ?? "")
     .trim()
     .toUpperCase();
 
-  if (
-    code === "SC" ||
-    code === "NA" ||
-    code === "NI" ||
-    code === "CB" ||
-    code === "CP" ||
-    code === "WN" ||
-    code === "HU"
-  ) {
+  if (isClientStatusCode(code)) {
     return code;
   }
 
-  return null;
+  return LEGACY_STATUS_CODE_TO_CODE[code] ?? null;
 }
 
 function normalizeLegacyStatusColor(
@@ -164,10 +206,11 @@ export function resolveClientStatus(status: StatusLike): ClientStatusMeta {
     if (asCode) return STATUS_META_MAP[asCode];
 
     const asLegacyColor = normalizeLegacyStatusColor(status);
-    if (asLegacyColor)
+    if (asLegacyColor) {
       return STATUS_META_MAP[LEGACY_COLOR_TO_CODE[asLegacyColor]];
+    }
 
-    return STATUS_META_MAP.SC;
+    return STATUS_META_MAP.NU;
   }
 
   const code = normalizeStatusCode(status?.status_code);
@@ -176,29 +219,48 @@ export function resolveClientStatus(status: StatusLike): ClientStatusMeta {
   const legacyColor = normalizeLegacyStatusColor(status?.status_color);
   if (legacyColor) return STATUS_META_MAP[LEGACY_COLOR_TO_CODE[legacyColor]];
 
-  return STATUS_META_MAP.SC;
+  return STATUS_META_MAP.NU;
 }
 
 export function getStatusCode(status: StatusLike): ClientStatusCode {
   return resolveClientStatus(status).code;
 }
 
-// Devuelve clases para el puntito/indicador visual
 export function getStatusColor(status: StatusLike): string {
   return resolveClientStatus(status).indicatorClass;
 }
 
-// Devuelve el texto largo visible
 export function getStatusText(status: StatusLike): string {
   return resolveClientStatus(status).label;
 }
 
-// Devuelve clases del dot usado en botones/modales
 export function getStatusDotClass(status: StatusLike): string {
   return resolveClientStatus(status).dotClass;
 }
 
-// Función para formatear fechas
+export function getLegacyStatusColor(status: StatusLike): LegacyStatusColor {
+  const code = getStatusCode(status);
+
+  switch (code) {
+    case "NU":
+      return "gray";
+    case "DP":
+      return "green";
+    case "SG":
+    case "LD":
+      return "blue";
+    case "NC":
+    case "NX":
+    case "NE":
+      return "red";
+    case "NI":
+    case "FS":
+    case "RA":
+    default:
+      return "yellow";
+  }
+}
+
 export function formatDate(date: string | Date): string {
   const d = new Date(date);
   return d.toLocaleDateString("es-ES", {
@@ -210,7 +272,6 @@ export function formatDate(date: string | Date): string {
   });
 }
 
-// Función para formatear duración de llamadas
 export function formatDuration(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -225,7 +286,22 @@ export function formatDuration(seconds: number): string {
   return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
 
-// Función para obtener el texto del estado de llamada
+export function formatCurrency(value: number | string): string {
+  const amount =
+    typeof value === "number" ? value : Number(String(value).replace(",", "."));
+
+  if (!Number.isFinite(amount)) {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 export function getCallStatusText(status: string): string {
   const texts = {
     in_progress: "En progreso",
@@ -236,19 +312,16 @@ export function getCallStatusText(status: string): string {
   return texts[status as keyof typeof texts] || "Desconocido";
 }
 
-// Función para validar email
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
-// Función para validar número de teléfono
 export function isValidPhone(phone: string): boolean {
   const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
   return phoneRegex.test(phone.replace(/\s/g, ""));
 }
 
-// Función para formatear número de teléfono
 export function formatPhone(phone: string): string {
   const cleaned = phone.replace(/\D/g, "");
   if (cleaned.length === 9) {
@@ -258,32 +331,4 @@ export function formatPhone(phone: string): string {
     return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{3})/, "+$1 $2 $3 $4");
   }
   return phone;
-}
-
-// Función para formatear moneda
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-  }).format(amount);
-}
-
-// Función para generar número de serie único
-export function generateSerial(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substr(2, 5);
-  return `CLI${timestamp}${random}`.toUpperCase();
-}
-
-// Función para debounce
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number,
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
-
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
 }

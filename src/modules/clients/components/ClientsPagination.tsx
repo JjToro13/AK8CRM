@@ -46,19 +46,25 @@ const inactiveActionBtnClass =
 
 function getStatusBadgeClass(code?: string | null) {
   switch (code) {
-    case "NA":
+    case "NC":
       return "border-slate-300 bg-slate-100 text-slate-700";
-    case "NI":
-      return "border-red-200 bg-red-50 text-red-700";
-    case "CB":
+    case "LD":
       return "border-sky-200 bg-sky-50 text-sky-700";
-    case "CP":
+    case "SG":
+      return "border-blue-200 bg-blue-50 text-blue-700";
+    case "DP":
       return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    case "WN":
+    case "NI":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    case "NX":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    case "NE":
       return "border-yellow-200 bg-yellow-50 text-yellow-800";
-    case "HU":
+    case "RA":
+      return "border-violet-200 bg-violet-50 text-violet-700";
+    case "FS":
       return "border-zinc-300 bg-zinc-100 text-zinc-700";
-    case "SC":
+    case "NU":
     default:
       return "border-gray-200 bg-gray-50 text-gray-700";
   }
