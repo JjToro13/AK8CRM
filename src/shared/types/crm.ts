@@ -55,6 +55,9 @@ export interface Agent {
   operation_id?: string | null;
   active_operation_id?: string | null;
   created_at: string;
+  updated_at?: string;
+  presence_status?: "online" | "offline" | null;
+  last_seen_at?: string | null;
 }
 
 export type AgentRole = Agent["role"];

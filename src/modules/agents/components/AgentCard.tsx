@@ -1,6 +1,7 @@
 import { Eye, Pencil, Plus } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import type { Agent } from "../../../lib/supabase";
+import { getAgentPresenceCopy } from "../domain/agent-presence";
 
 type AgentCardProps = {
   agent: Agent;
@@ -18,8 +19,6 @@ type AgentCardProps = {
 
 const badgeBaseClass =
   "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold";
-const inactiveBadgeClass =
-  "inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700";
 const pillButtonClass =
   "inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 " +
   "shadow-[0_8px_20px_rgba(17,24,39,0.06)] hover:shadow-[0_12px_26px_rgba(17,24,39,0.09)] " +
@@ -44,9 +43,13 @@ export default function AgentCard({
   totalAvailable,
   canReceiveAssignments,
 }: AgentCardProps) {
+  const presence = getAgentPresenceCopy(agent);
+  const isActive = agent.is_active !== false;
   const disabledAssign =
-    !canAssignClients || !canReceiveAssignments || totalAvailable <= 0;
-  const assignTitle = !canAssignClients
+    !isActive || !canAssignClients || !canReceiveAssignments || totalAvailable <= 0;
+  const assignTitle = !isActive
+    ? "El usuario esta inactivo"
+    : !canAssignClients
     ? "No tienes permisos para asignar clientes"
     : !canReceiveAssignments
     ? `${roleLabel} no recibe asignaciones de clientes`
@@ -66,20 +69,28 @@ export default function AgentCard({
           <span
             className={cn(
               "w-3 h-3 rounded-full mr-3 flex-shrink-0",
-              agent.is_active ? "bg-emerald-500" : "bg-gray-300",
+              presence.dotClass,
             )}
           />
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-ink truncate">{agent.name}</h3>
             <p className="text-sm text-muted truncate break-all">{agent.email}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full px-2.5 py-1 font-semibold",
+                  presence.badgeClass,
+                )}
+              >
+                {presence.badgeLabel}
+              </span>
+              <span className="text-muted">{presence.activityLabel}</span>
+            </div>
 
             <div className="mt-2 flex flex-wrap gap-2">
               <span className={cn(badgeBaseClass, roleBadgeClass(agent.role))}>
                 {roleLabel}
               </span>
-              {!agent.is_active ? (
-                <span className={inactiveBadgeClass}>Inactivo</span>
-              ) : null}
             </div>
           </div>
         </div>
@@ -136,7 +147,9 @@ export default function AgentCard({
           title={assignTitle}
         >
           <Plus className="h-4 w-4" />
-          {!canAssignClients
+          {!isActive
+            ? "Inactivo"
+            : !canAssignClients
             ? "Sin permiso"
             : canReceiveAssignments
               ? "Asignar"

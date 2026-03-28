@@ -24,6 +24,7 @@ interface AuthState {
   operationReady: boolean;
 }
 
+const PRESENCE_HEARTBEAT_MS = 30_000;
 const AUTH_DEBUG = false;
 const dlog = (...a: any[]) => AUTH_DEBUG && console.log("[AUTH]", ...a);
 const dwarn = (...a: any[]) => AUTH_DEBUG && console.warn("[AUTH]", ...a);
@@ -325,9 +326,79 @@ export function useAuth() {
     };
   }, []);
 
+  useEffect(() => {
+    if (authState.loading || !authState.user) {
+      return;
+    }
+
+    let heartbeatId: number | null = null;
+
+    const stopHeartbeat = () => {
+      if (heartbeatId !== null) {
+        window.clearInterval(heartbeatId);
+        heartbeatId = null;
+      }
+    };
+
+    const touchPresence = async () => {
+      const { error } = await supabase.rpc("touch_my_presence");
+      if (error) {
+        dwarn("touch_my_presence error", error);
+      }
+    };
+
+    const ensureHeartbeat = () => {
+      stopHeartbeat();
+
+      if (document.visibilityState === "hidden") {
+        return;
+      }
+
+      void touchPresence();
+
+      heartbeatId = window.setInterval(() => {
+        if (document.visibilityState !== "hidden") {
+          void touchPresence();
+        }
+      }, PRESENCE_HEARTBEAT_MS);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        ensureHeartbeat();
+        return;
+      }
+
+      stopHeartbeat();
+    };
+
+    const handleFocus = () => {
+      if (document.visibilityState === "visible") {
+        void touchPresence();
+      }
+    };
+
+    ensureHeartbeat();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      stopHeartbeat();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [authState.loading, authState.user]);
+
   const signOut = async () => {
     dlog("signOut called");
     setAuthState((prev) => ({ ...prev, loading: true }));
+
+    if (authState.user) {
+      const { error: presenceError } = await supabase.rpc("set_my_presence_offline");
+      if (presenceError) {
+        dwarn("set_my_presence_offline error", presenceError);
+      }
+    }
 
     const { error } = await supabase.auth.signOut({ scope: "local" });
     localStorage.removeItem("cm_selected_operation_id");

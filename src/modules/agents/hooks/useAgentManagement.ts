@@ -72,8 +72,10 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     [availableCampaigns],
   );
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true);
+    }
     setError("");
 
     try {
@@ -136,7 +138,9 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
         error instanceof Error ? error.message : "Error inesperado cargando agentes.",
       );
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -161,6 +165,33 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     role,
     scopedOperationId,
   ]);
+
+  useEffect(() => {
+    if (authLoading || !canManageAgents || !scopedOperationId) {
+      return;
+    }
+
+    const refreshPresence = () => {
+      void loadData({ silent: true });
+    };
+
+    const intervalId = window.setInterval(refreshPresence, 30_000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshPresence();
+      }
+    };
+
+    window.addEventListener("focus", refreshPresence);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshPresence);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, canManageAgents, scopedOperationId]);
 
   const openCreateAgent = () => {
     if (!canCreateAgents) return;
