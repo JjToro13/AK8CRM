@@ -1,20 +1,27 @@
 import { Calendar } from "lucide-react";
 import { cn } from "../../../lib/utils";
-
-const cardClass =
-  "rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-7";
+import {
+  campaignCardClass,
+  campaignEyebrowClass,
+  campaignSubTextClass,
+} from "./campaignUi";
 
 export default function CampaignManagementNote() {
   return (
-    <section className={cn(cardClass, "bg-brand/5 border-brand/15")}>
+    <section
+      className={cn(
+        campaignCardClass,
+        "border-brand/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,255,255,0.72)_55%,rgb(var(--color-brand-100)/0.16)_100%)]",
+      )}
+    >
       <div className="flex items-start gap-3">
-        <div className="h-10 w-10 rounded-2xl bg-brand/10 flex items-center justify-center mt-0.5">
+        <div className="mt-0.5 flex h-11 w-11 items-center justify-center rounded-[1.35rem] border border-white/72 bg-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
           <Calendar className="w-5 h-5 text-brand" />
         </div>
 
         <div className="min-w-0">
-          <h4 className="text-sm font-semibold text-ink">Nota</h4>
-          <div className="mt-2 text-sm text-ink/70 space-y-1">
+          <div className={campaignEyebrowClass}>Nota operativa</div>
+          <div className={cn(campaignSubTextClass, "mt-4 space-y-1 text-ink/74")}>
             <p>
               - Cada lista importada crea una nueva campaña con un prefijo único
               (A, B, C...).

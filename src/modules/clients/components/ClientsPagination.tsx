@@ -7,6 +7,11 @@ import {
   Phone,
 } from "lucide-react";
 import { cn, resolveClientStatus } from "../../../lib/utils";
+import {
+  clientGhostButtonClass,
+  clientInsetClass,
+  clientStatusBadgeClass,
+} from "../../../shared/components/client/clientUi";
 import type { Client } from "../../../shared/types/crm";
 
 type ClientsPaginationProps = {
@@ -31,44 +36,12 @@ type ClientsPaginationProps = {
   onEditClient: (client: Client) => void;
 };
 
-const pillBtn =
-  "inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 " +
-  "shadow-[0_8px_20px_rgba(17,24,39,0.06)] hover:shadow-[0_12px_26px_rgba(17,24,39,0.09)] " +
-  "hover:bg-surface2 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 " +
-  "disabled:opacity-50 disabled:cursor-not-allowed";
-
 const actionBtnClass =
-  "inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition " +
+  "inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold shadow-[0_16px_34px_rgba(15,23,42,0.07),inset_0_1px_0_rgba(255,255,255,0.84)] backdrop-blur-xl transition " +
   "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 disabled:cursor-not-allowed disabled:opacity-45";
 
 const inactiveActionBtnClass =
-  "border-border bg-surface2 text-muted hover:bg-surface2";
-
-function getStatusBadgeClass(code?: string | null) {
-  switch (code) {
-    case "NC":
-      return "border-slate-300 bg-slate-100 text-slate-700";
-    case "LD":
-      return "border-sky-200 bg-sky-50 text-sky-700";
-    case "SG":
-      return "border-blue-200 bg-blue-50 text-blue-700";
-    case "DP":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    case "NI":
-      return "border-rose-200 bg-rose-50 text-rose-700";
-    case "NX":
-      return "border-amber-200 bg-amber-50 text-amber-800";
-    case "NE":
-      return "border-yellow-200 bg-yellow-50 text-yellow-800";
-    case "RA":
-      return "border-violet-200 bg-violet-50 text-violet-700";
-    case "FS":
-      return "border-zinc-300 bg-zinc-100 text-zinc-700";
-    case "NU":
-    default:
-      return "border-gray-200 bg-gray-50 text-gray-700";
-  }
-}
+  "border-white/76 bg-white/66 text-muted hover:bg-white/78";
 
 export default function ClientsPagination({
   currentPage,
@@ -99,10 +72,10 @@ export default function ClientsPagination({
     selectedClient?.source || selectedClient?.trading_company || null;
 
   return (
-    <div className="mt-5 border-t border-border/70 pt-4">
+    <div className="mt-5 border-t border-white/55 pt-5">
       <div className="space-y-3">
         <div className="flex min-h-[28px] min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted">
             Acciones rápidas
           </div>
 
@@ -120,8 +93,8 @@ export default function ClientsPagination({
               {selectedStatus ? (
                 <span
                   className={cn(
-                    "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
-                    getStatusBadgeClass(selectedStatus.code),
+                    "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] shadow-[0_12px_26px_rgba(15,23,42,0.05)] backdrop-blur-xl",
+                    clientStatusBadgeClass(selectedStatus.code),
                   )}
                 >
                   <span>{selectedStatus.label}</span>
@@ -159,7 +132,7 @@ export default function ClientsPagination({
               className={cn(
                 actionBtnClass,
                 hasSelectedClient && canExecuteClientActions
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                  ? "border-emerald-200/90 bg-emerald-50/86 text-emerald-800 hover:bg-emerald-100/88"
                   : inactiveActionBtnClass,
               )}
             >
@@ -179,7 +152,7 @@ export default function ClientsPagination({
               className={cn(
                 actionBtnClass,
                 hasSelectedClient && canExecuteClientActions
-                  ? "border-brand-200 bg-brand-50 text-brand-800 hover:bg-brand-100"
+                  ? "border-brand/18 bg-brand/[0.08] text-brand-800 hover:bg-brand/[0.12]"
                   : inactiveActionBtnClass,
               )}
             >
@@ -197,7 +170,7 @@ export default function ClientsPagination({
               className={cn(
                 actionBtnClass,
                 hasSelectedClient && canExecuteClientActions
-                  ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                  ? "border-amber-200/90 bg-amber-50/86 text-amber-800 hover:bg-amber-100/88"
                   : inactiveActionBtnClass,
               )}
             >
@@ -215,7 +188,7 @@ export default function ClientsPagination({
               className={cn(
                 actionBtnClass,
                 hasSelectedClient && canExecuteClientActions
-                  ? "border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100"
+                  ? "border-slate-200/90 bg-slate-50/86 text-slate-800 hover:bg-slate-100/88"
                   : inactiveActionBtnClass,
               )}
             >
@@ -224,12 +197,12 @@ export default function ClientsPagination({
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className={cn(clientInsetClass, "flex items-center gap-2 px-3 py-2")}>
             <button
               type="button"
               onClick={onPrevPage}
               disabled={currentPage <= 1}
-              className={pillBtn}
+              className={clientGhostButtonClass}
             >
               <ChevronLeft className="h-4 w-4" />
               Anterior
@@ -250,7 +223,7 @@ export default function ClientsPagination({
                     onPageInputSubmit();
                   }
                 }}
-                className="w-16 rounded-xl border border-border bg-surface px-3 py-2 text-center text-sm font-semibold outline-none focus:ring-4 focus:ring-brand/15"
+                className="w-16 rounded-2xl border border-white/78 bg-white/78 px-3 py-2 text-center text-sm font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.86)] outline-none backdrop-blur-xl focus:ring-4 focus:ring-brand/15"
               />
               <span>de {totalPages}</span>
             </div>
@@ -259,7 +232,7 @@ export default function ClientsPagination({
               type="button"
               onClick={onNextPage}
               disabled={currentPage >= totalPages}
-              className={pillBtn}
+              className={clientGhostButtonClass}
             >
               Siguiente
               <ChevronRight className="h-4 w-4" />

@@ -23,6 +23,12 @@ import {
   modalPrimaryActionClassName,
   modalSecondaryActionClassName,
 } from "../layout/ModalLayout";
+import {
+  clientInsetClass,
+  clientModalFooterClass,
+  clientModalHeaderClass,
+  clientModalPanelClass,
+} from "./clientUi";
 
 interface EmailModalProps {
   client: Client;
@@ -189,11 +195,11 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.14),transparent_42%),rgba(15,23,42,0.5)] backdrop-blur-[4px]"
         onClick={handleBackdropClick}
         aria-label="Cerrar modal de email"
       />
-      <ModalPanel className="relative max-h-[90vh] max-w-3xl">
+      <ModalPanel className={`${clientModalPanelClass} max-h-[90vh] max-w-3xl`}>
         <ModalHeader
           icon={<Mail className="h-5 w-5 text-brand" />}
           title="Enviar Email"
@@ -203,6 +209,7 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
             </>
           }
           onClose={onClose}
+          className={clientModalHeaderClass}
         />
 
         <form
@@ -212,7 +219,7 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
         >
           <ModalBody>
           {/* Información cliente */}
-          <div className="rounded-3xl border border-brand/20 bg-brand/10 p-4">
+          <div className="rounded-3xl border border-brand/20 bg-[linear-gradient(180deg,rgba(var(--color-brand-50),0.74),rgba(255,255,255,0.66))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]">
             <div className="flex items-center justify-between gap-3 mb-2">
               <h3 className="text-xs font-semibold text-brand">Información del Cliente</h3>
               <span className="text-[11px] text-ink/60">
@@ -237,7 +244,7 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
 
           {/* Selector cuenta */}
           {loadingAccounts ? (
-            <div className="rounded-3xl border border-border bg-surface2 p-4">
+            <div className={`${clientInsetClass} rounded-3xl p-4`}>
               <div className="flex items-center justify-center">
                 <LoadingSpinner size="sm" text="Cargando cuentas de email..." fullScreen={false} />
               </div>
@@ -272,7 +279,7 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
               )}
             </div>
           ) : (
-            <div className="rounded-3xl border border-red-200 bg-red-50 p-4">
+            <div className="rounded-3xl border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,226,226,0.82),rgba(255,255,255,0.7))] p-4">
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
                 <p className="text-red-700 text-sm font-semibold">
@@ -309,7 +316,7 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
           </Field>
 
           {/* Instrucciones */}
-          <div className="rounded-3xl border border-border bg-surface2 p-4">
+          <div className={`${clientInsetClass} rounded-3xl p-4`}>
             <h3 className="text-xs font-semibold text-ink/80 mb-2">Instrucciones</h3>
             <ul className="text-sm text-muted space-y-1 list-disc pl-5">
               <li>El email se enviará desde la cuenta seleccionada arriba</li>
@@ -321,7 +328,7 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
 
           {/* Error */}
           {error && (
-            <div className="rounded-3xl border border-red-200 bg-red-50 p-4">
+            <div className="rounded-3xl border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,226,226,0.82),rgba(255,255,255,0.7))] p-4">
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
                 <p className="text-red-700 text-sm font-semibold">{error}</p>
@@ -331,7 +338,7 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
 
           {/* Success */}
           {success && (
-            <div className="rounded-3xl border border-green-200 bg-green-50 p-4">
+            <div className="rounded-3xl border border-green-200/90 bg-[linear-gradient(180deg,rgba(220,252,231,0.82),rgba(255,255,255,0.7))] p-4">
               <div className="flex items-start gap-2">
                 <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
                 <p className="text-green-700 text-sm font-semibold">
@@ -346,7 +353,7 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
           </ModalBody>
         </form>
 
-        <ModalFooter>
+        <ModalFooter className={clientModalFooterClass}>
           <button
             type="button"
             onClick={onClose}

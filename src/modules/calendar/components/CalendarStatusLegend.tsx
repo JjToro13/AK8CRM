@@ -24,7 +24,7 @@ export default function CalendarStatusLegend({
         <div
           key={option.value}
           className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium",
+            "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]",
             option.pillClass,
           )}
         >

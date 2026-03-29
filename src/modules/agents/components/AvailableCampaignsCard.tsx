@@ -1,10 +1,12 @@
 import CampaignBadge from "./CampaignBadge";
 import { cn } from "../../../lib/utils";
 import {
-  dashboardCardClass,
-  dashboardSubTextClass,
-  dashboardTitleClass,
-} from "../../dashboard/components/dashboardUi";
+  agentCardClass,
+  agentEyebrowClass,
+  agentMetricCardClass,
+  agentSubTextClass,
+  agentTitleClass,
+} from "./agentUi";
 
 type AvailableCampaignsCardProps = {
   availableCampaigns: Array<{
@@ -26,30 +28,29 @@ export default function AvailableCampaignsCard({
   return (
     <section
       className={cn(
-        dashboardCardClass,
+        agentCardClass,
         cardClass,
-        "p-6 sm:p-7",
       )}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-300)/0.16),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.18),transparent_28%)]" />
 
       <div className="relative flex flex-wrap items-start justify-between gap-5">
         <div className="space-y-4">
-          <div className="inline-flex items-center rounded-full border border-brand/12 bg-white/55 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-brand/80">
+          <div className={agentEyebrowClass}>
             Pulso de campanas
           </div>
 
           <div className="space-y-2">
-            <h3 className={cn(dashboardTitleClass, "text-xl")}>
+            <h3 className={cn(agentTitleClass, "text-xl")}>
               Campanas disponibles para repartir
             </h3>
-            <p className={cn(dashboardSubTextClass, "max-w-xl leading-6")}>
+            <p className={cn(agentSubTextClass, "max-w-xl")}>
               Mantiene la lectura limpia del login, pero enfocada en la carga
               lista para distribuir.
             </p>
           </div>
 
-          <div className="crm-shell-soft-row inline-flex min-w-[11rem] flex-col rounded-[1.5rem] border border-border bg-surface2 px-4 py-3">
+          <div className={cn(agentMetricCardClass("brand"), "inline-flex min-w-[11rem] flex-col")}>
             <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
               Clientes sin asignar
             </span>
@@ -75,7 +76,7 @@ export default function AvailableCampaignsCard({
             ))}
           </div>
         ) : (
-          <div className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-muted shadow-[0_12px_28px_rgba(30,41,59,0.06)]">
+          <div className="rounded-full border border-white/76 bg-white/72 px-4 py-2 text-sm text-muted shadow-[0_12px_28px_rgba(30,41,59,0.06)]">
             No hay clientes sin asignar.
           </div>
         )}

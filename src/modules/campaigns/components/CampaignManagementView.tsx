@@ -12,11 +12,12 @@ import CampaignManagementErrorCard from "./CampaignManagementErrorCard";
 import CampaignManagementNote from "./CampaignManagementNote";
 import CampaignManagementToolbar from "./CampaignManagementToolbar";
 import CampaignsTable from "./CampaignsTable";
-
-const cardClass =
-  "rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-7";
-const titleClass = "text-base sm:text-lg font-semibold tracking-tight text-ink";
-const subTextClass = "text-sm text-muted";
+import {
+  campaignCardClass,
+  campaignEyebrowClass,
+  campaignSubTextClass,
+  campaignTitleClass,
+} from "./campaignUi";
 
 export default function CampaignManagementView(
   props: CampaignManagementProps,
@@ -58,14 +59,15 @@ export default function CampaignManagementView(
 
   if (!isAdmin) {
     return (
-      <div className={cn(cardClass, "bg-surface2")}>
+      <div className={cn(campaignCardClass, "bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(255,255,255,0.72))]")}>
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-brand/10 flex items-center justify-center">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[1.35rem] border border-white/72 bg-white/68 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
             <Users className="w-5 h-5 text-brand" />
           </div>
           <div>
-            <div className={titleClass}>Gestion de Campañas</div>
-            <div className={subTextClass}>Disponible solo para administradores.</div>
+            <div className={campaignEyebrowClass}>Acceso restringido</div>
+            <div className={cn(campaignTitleClass, "mt-3")}>Gestion de Campañas</div>
+            <div className={campaignSubTextClass}>Disponible solo para administradores.</div>
           </div>
         </div>
       </div>
@@ -74,7 +76,7 @@ export default function CampaignManagementView(
 
   if (loading) {
     return (
-      <div className={cardClass}>
+      <div className={campaignCardClass}>
         <div className="flex items-center justify-center py-10">
           <LoadingSpinner
             size="lg"

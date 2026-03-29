@@ -2,6 +2,10 @@ import type { MutableRefObject } from "react";
 import { AlertCircle, Radar } from "lucide-react";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import { cn } from "../../../lib/utils";
+import {
+  clientInsetClass,
+  clientTableShellClass,
+} from "../../../shared/components/client/clientUi";
 import type { Client } from "../../../shared/types/crm";
 import ClientsTableRow from "./ClientsTableRow";
 import {
@@ -24,7 +28,7 @@ type ClientsTableProps = {
 };
 
 const headerCellClass =
-  "border-r border-border/70 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted";
+  "border-r border-white/55 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-muted";
 
 export default function ClientsTable({
   clients,
@@ -40,7 +44,7 @@ export default function ClientsTable({
   onCopy,
 }: ClientsTableProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+    <div className={clientTableShellClass}>
       <div
         ref={tableScrollRef}
         onScroll={onTableScroll}
@@ -60,7 +64,7 @@ export default function ClientsTable({
         ) : opLocked ? (
           <div className="flex min-h-[22rem] items-center justify-center px-6 py-12 text-center">
             <div className="max-w-md">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-surface2 text-brand shadow-sm">
+              <div className={cn(clientInsetClass, "mx-auto flex h-14 w-14 items-center justify-center text-brand")}>
                 <Radar className="h-6 w-6" />
               </div>
               <h3 className="mt-4 text-lg font-semibold text-ink">
@@ -74,7 +78,7 @@ export default function ClientsTable({
         ) : clients.length === 0 ? (
           <div className="flex min-h-[22rem] items-center justify-center px-6 py-12 text-center">
             <div className="max-w-md">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-surface2 text-ink/60 shadow-sm">
+              <div className={cn(clientInsetClass, "mx-auto flex h-14 w-14 items-center justify-center text-ink/60")}>
                 <AlertCircle className="h-6 w-6" />
               </div>
               <h3 className="mt-4 text-lg font-semibold text-ink">
@@ -89,7 +93,7 @@ export default function ClientsTable({
           </div>
         ) : (
           <div className="min-w-max">
-            <div className="sticky top-0 z-30 border-b border-border bg-surface2/95 backdrop-blur supports-[backdrop-filter]:bg-surface2/86">
+            <div className="sticky top-0 z-30 border-b border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.82))] backdrop-blur-xl">
               <div
                 className="grid flex-none"
                 style={{ gridTemplateColumns: CLIENTS_GRID_TEMPLATE }}
@@ -108,7 +112,7 @@ export default function ClientsTable({
               </div>
             </div>
 
-            <div className="divide-y divide-border/70 bg-white">
+            <div className="divide-y divide-white/55 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.66))]">
               {clients.map((client) => (
                 <ClientsTableRow
                   key={client.id}

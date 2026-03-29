@@ -1,13 +1,14 @@
 import { Plus, RefreshCw, Users } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { useBranding } from "../../../shared/branding/BrandingProvider";
-import { pageHeaderActionClassName } from "../../../shared/components/layout/PageHeader";
 import {
-  dashboardCardClass,
-  dashboardPrimaryActionClass,
-  dashboardSubTextClass,
-  dashboardTitleClass,
-} from "../../dashboard/components/dashboardUi";
+  agentCardClass,
+  agentEyebrowClass,
+  agentGhostButtonClass,
+  agentPrimaryButtonClass,
+  agentSubTextClass,
+  agentTitleClass,
+} from "./agentUi";
 
 type AgentManagementHeaderProps = {
   canCreateAgent: boolean;
@@ -26,12 +27,7 @@ export default function AgentManagementHeader({
   const { branding } = useBranding();
 
   return (
-    <div
-      className={cn(
-        dashboardCardClass,
-        cardClass,
-      )}
-    >
+    <div className={cn(agentCardClass, cardClass)}>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-300)/0.18),transparent_22%),linear-gradient(180deg,rgba(255,255,255,0.18),transparent_32%)]" />
       <div className="pointer-events-none absolute right-[-1rem] top-[-2rem] h-36 w-36 rounded-full bg-brand/10 blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-2rem] right-[-1rem] h-28 w-56 rotate-[7deg] rounded-[50%] border-[14px] border-brand/18 bg-surface/80 opacity-75" />
@@ -44,13 +40,13 @@ export default function AgentManagementHeader({
           </div>
 
           <div className="min-w-0">
-            <div className="inline-flex items-center rounded-full border border-brand/15 bg-white/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-brand/80">
+            <div className={agentEyebrowClass}>
               Centro operativo
             </div>
-            <h2 className={cn(dashboardTitleClass, "mt-4 text-xl sm:text-2xl")}>
+            <h2 className={cn(agentTitleClass, "mt-4 text-xl sm:text-2xl")}>
               Gestion de usuarios operativos
             </h2>
-            <p className={cn(dashboardSubTextClass, "mt-2 max-w-2xl leading-6")}>
+            <p className={cn(agentSubTextClass, "mt-2 max-w-2xl")}>
               Mismo sistema visual del producto, con presencia, carga operativa y
               asignaciones usando el branding activo de {branding.productName}.
             </p>
@@ -59,7 +55,7 @@ export default function AgentManagementHeader({
               {["Presencia", "Asignacion", branding.displayName].map((label) => (
                 <span
                   key={label}
-                  className="rounded-full border border-white/72 bg-white/55 px-3 py-1.5 text-ink/78 shadow-[0_12px_24px_rgba(30,41,59,0.06)]"
+                  className="rounded-full border border-white/76 bg-white/72 px-3 py-1.5 text-ink/78 shadow-[0_12px_24px_rgba(30,41,59,0.06)]"
                 >
                   {label}
                 </span>
@@ -72,7 +68,7 @@ export default function AgentManagementHeader({
           <button
             type="button"
             onClick={onRefresh}
-            className={pageHeaderActionClassName}
+            className={agentGhostButtonClass}
             title="Recargar agentes"
           >
             <RefreshCw className="h-4 w-4" />
@@ -83,7 +79,7 @@ export default function AgentManagementHeader({
             <button
               type="button"
               onClick={onCreateAgent}
-              className={dashboardPrimaryActionClass}
+              className={agentPrimaryButtonClass}
               title="Crear un nuevo usuario"
             >
               <Plus className="h-4 w-4" />

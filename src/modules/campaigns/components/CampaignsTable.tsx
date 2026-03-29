@@ -6,6 +6,13 @@ import type {
   CampaignViewRow,
 } from "../types/campaign.types";
 import CampaignsTableRow from "./CampaignsTableRow";
+import {
+  campaignCardClass,
+  campaignEyebrowClass,
+  campaignInsetClass,
+  campaignSubTextClass,
+  campaignTitleClass,
+} from "./campaignUi";
 
 type CampaignsTableProps = {
   campaigns: CampaignViewRow[];
@@ -19,10 +26,6 @@ type CampaignsTableProps = {
   onExport: (campaignId: string) => void;
   onToggleLock: (campaign: CampaignViewRow) => void;
 };
-
-const cardClass =
-  "rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-7";
-const titleClass = "text-base sm:text-lg font-semibold tracking-tight text-ink";
 
 export default function CampaignsTable({
   campaigns,
@@ -49,22 +52,23 @@ export default function CampaignsTable({
   };
 
   const headerButtonClass =
-    "inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition hover:text-ink";
+    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 transition hover:bg-white/58 hover:text-ink";
 
   return (
-    <section className={cardClass}>
+    <section className={campaignCardClass}>
       <div className="flex items-center justify-between gap-4 mb-4">
         <div>
-          <h3 className={titleClass}>Campañas activas</h3>
-          <p className={cn("text-sm text-muted", "mt-1")}>
+          <div className={campaignEyebrowClass}>Vista activa</div>
+          <h3 className={cn(campaignTitleClass, "mt-4")}>Campañas activas</h3>
+          <p className={cn(campaignSubTextClass, "mt-1")}>
             Importa listas, exporta reportes y gestiona bloqueo por campaña.
           </p>
         </div>
       </div>
 
       {campaigns.length === 0 ? (
-        <div className="text-center py-10">
-          <div className="mx-auto h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center">
+        <div className={cn(campaignInsetClass, "py-12 text-center")}>
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[1.35rem] border border-white/78 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
             <Users className="h-6 w-6 text-brand" />
           </div>
           <div className="mt-3 text-sm font-semibold text-ink">
@@ -75,10 +79,10 @@ export default function CampaignsTable({
           </div>
         </div>
       ) : (
-        <div className="rounded-2xl border border-border overflow-hidden bg-surface">
+        <div className={cn(campaignInsetClass, "overflow-hidden")}>
           <div className="overflow-x-auto">
             <table className="min-w-full">
-              <thead className="bg-surface2 border-b border-border">
+              <thead className="border-b border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.68),rgba(255,255,255,0.46))]">
                 <tr className="text-[11px] uppercase tracking-wider text-muted">
                   <th className="px-6 py-3 text-left">
                     <button
@@ -155,7 +159,7 @@ export default function CampaignsTable({
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-white/60">
                 {campaigns.map((campaign) => (
                   <CampaignsTableRow
                     key={campaign.id}
@@ -172,7 +176,7 @@ export default function CampaignsTable({
             </table>
           </div>
 
-          <div className="border-t border-border bg-surface2 px-4 py-3 text-xs text-muted">
+          <div className="border-t border-white/72 bg-white/42 px-4 py-3 text-xs text-muted">
             Tip: puedes hacer scroll horizontal si la tabla no cabe completa.
           </div>
         </div>

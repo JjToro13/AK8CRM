@@ -30,9 +30,13 @@ import CalendarFollowUpModal from "../components/CalendarFollowUpModal";
 import CalendarAgendaList from "../components/CalendarAgendaList";
 import CalendarStatusLegend from "../components/CalendarStatusLegend";
 import CalendarWeekBoard from "../components/CalendarWeekBoard";
-
-const cardClass =
-  "rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-7";
+import {
+  calendarCardClass,
+  calendarEyebrowClass,
+  calendarGhostButtonClass,
+  calendarMetricPillClass,
+  calendarPrimaryButtonClass,
+} from "../components/calendarUi";
 const CALENDAR_UPDATES_NOTICE_KEY = "calendar_updates_notice_v1";
 
 export default function CalendarPage() {
@@ -124,7 +128,7 @@ export default function CalendarPage() {
             <button
               type="button"
               onClick={() => openCreateModal()}
-              className="inline-flex min-h-[46px] items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-soft bg-gradient-to-r from-brand via-brand-600 to-brand-700 hover:brightness-105 active:brightness-95 transition disabled:opacity-50"
+              className={calendarPrimaryButtonClass}
               disabled={!operationReady || !targetOperationId}
             >
               <Plus className="h-4 w-4" />
@@ -176,19 +180,19 @@ export default function CalendarPage() {
             </div>
           ) : null}
 
-          <section className={cardClass}>
+          <section className={calendarCardClass}>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div className="min-w-0">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-brand/15 bg-brand/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand">
+                  <div className={calendarEyebrowClass}>
                     Planeación semanal
                   </div>
 
                   <div className="mt-3 flex flex-wrap items-center gap-2.5">
-                    <div className="rounded-full border border-border bg-surface2 px-4 py-2 text-sm font-semibold text-ink">
+                    <div className={calendarMetricPillClass(true)}>
                       {weekLabel}
                     </div>
-                    <div className="rounded-full border border-border bg-surface2 px-4 py-2 text-sm text-muted">
+                    <div className={calendarMetricPillClass()}>
                       {counts.total} cita{counts.total === 1 ? "" : "s"}
                     </div>
                     <CalendarStatusLegend counts={counts} compact />
@@ -201,7 +205,7 @@ export default function CalendarPage() {
                 <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                   {isAdmin ? (
                     <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                      <SelectTrigger className="h-10 min-w-[14rem] bg-surface">
+                      <SelectTrigger className="h-10 min-w-[14rem] border-white/78 bg-white/72">
                         <SelectValue placeholder="Todos los agentes" />
                       </SelectTrigger>
                       <SelectContent>
@@ -214,12 +218,12 @@ export default function CalendarPage() {
                       </SelectContent>
                     </Select>
                   ) : (
-                    <div className="rounded-full border border-border bg-surface2 px-4 py-2 text-sm text-muted">
+                    <div className={calendarMetricPillClass()}>
                       Mis citas
                     </div>
                   )}
 
-                  <div className="inline-flex items-center gap-1 rounded-full border border-border bg-surface p-1">
+                  <div className="inline-flex items-center gap-1 rounded-full border border-white/76 bg-white/72 p-1 shadow-[0_12px_28px_rgba(30,41,59,0.06)]">
                     <button
                       type="button"
                       onClick={goToPreviousWeek}
@@ -252,7 +256,7 @@ export default function CalendarPage() {
                   <button
                     type="button"
                     onClick={() => reload({ silent: true })}
-                    className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-surface px-4 text-sm font-semibold text-ink/80 transition hover:bg-surface2 hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    className={calendarGhostButtonClass}
                     disabled={refreshing}
                   >
                     {refreshing ? (
@@ -266,7 +270,7 @@ export default function CalendarPage() {
                   <button
                     type="button"
                     onClick={() => openCreateModal()}
-                    className="inline-flex h-10 items-center gap-2 rounded-full bg-gradient-to-r from-brand via-brand-600 to-brand-700 px-4 text-sm font-semibold text-white shadow-soft transition hover:brightness-105 active:brightness-95 disabled:opacity-50"
+                    className={calendarPrimaryButtonClass}
                     disabled={!operationReady || !targetOperationId}
                   >
                     <Plus className="h-4 w-4" />
@@ -277,7 +281,7 @@ export default function CalendarPage() {
             </div>
           </section>
 
-          <section className={cardClass}>
+          <section className={calendarCardClass}>
             {loading ? (
               <div className="flex justify-center py-10">
                 <LoadingSpinner size="md" text="Cargando calendario..." fullScreen={false} />

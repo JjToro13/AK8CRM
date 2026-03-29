@@ -11,6 +11,11 @@ import {
   cn,
   type ClientStatusCode,
 } from "../../../lib/utils";
+import {
+  clientGhostButtonClass,
+  clientInsetClass,
+  clientMutedPillClass,
+} from "../../../shared/components/client/clientUi";
 import Input from "../../../shared/components/ui/Input";
 import {
   Select,
@@ -40,7 +45,7 @@ type ClientsFiltersCardProps = {
 };
 
 const compactTriggerClassName =
-  "w-full min-w-0 rounded-full bg-surface px-4 py-2.5 text-sm shadow-none";
+  "w-full min-w-0 rounded-full border-white/0 bg-white/68 px-4 py-2.5 text-sm shadow-none backdrop-blur-xl";
 
 export default function ClientsFiltersCard({
   searchQuery,
@@ -131,7 +136,7 @@ export default function ClientsFiltersCard({
   }, []);
 
   return (
-    <section className="mb-4 border-b border-border/70 pb-4">
+    <section className="mb-5 border-b border-white/55 pb-5">
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="w-full xl:max-w-[22rem]">
@@ -146,7 +151,7 @@ export default function ClientsFiltersCard({
                   <button
                     type="button"
                     onClick={onClearSearch}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-white text-muted transition hover:bg-surface2 hover:text-ink"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/76 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
                     aria-label="Limpiar búsqueda"
                     title="Limpiar búsqueda"
                   >
@@ -155,13 +160,13 @@ export default function ClientsFiltersCard({
                 ) : null
               }
               disabled={opLocked}
-              className="rounded-full py-2.5"
+              className="rounded-full border-white/0 bg-white/72 py-2.5 shadow-[0_14px_32px_rgba(15,23,42,0.06)] backdrop-blur-xl"
               containerClassName="w-full"
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-3 xl:justify-end">
-            <div className="inline-flex items-center rounded-full border border-border bg-surface2 px-3 py-2 text-sm text-muted">
+            <div className={clientMutedPillClass}>
               {isAdmin ? (
                 <span className="inline-flex items-center">
                   <LockKeyholeIcon className="mr-1 h-4 w-4 text-emerald-600" />
@@ -175,7 +180,7 @@ export default function ClientsFiltersCard({
               )}
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface2 px-3 py-2 text-sm text-muted">
+            <div className={clientMutedPillClass}>
               <span>Mostrar</span>
               <Select
                 value={String(rowsPerPage)}
@@ -212,10 +217,10 @@ export default function ClientsFiltersCard({
                 setIsHoverOpen(true);
               }}
               className={cn(
-                "inline-flex max-w-[32rem] items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition",
+                "inline-flex max-w-[32rem] items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition shadow-[0_14px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl",
                 hasActiveFilters
-                  ? "border-brand/20 bg-brand/8 text-brand shadow-[0_8px_18px_rgba(37,99,235,0.08)]"
-                  : "border-border bg-surface2 text-muted hover:border-brand/15 hover:bg-white",
+                  ? "border-brand/20 bg-brand/[0.08] text-brand"
+                  : "border-white/78 bg-white/70 text-muted hover:border-brand/15 hover:bg-white/86",
               )}
               aria-expanded={isTrayOpen}
               aria-haspopup="dialog"
@@ -233,7 +238,7 @@ export default function ClientsFiltersCard({
             <div
               className={cn(
                 "absolute left-0 top-full z-40 mt-3 w-[46rem] max-w-[calc(100vw-4rem)]",
-                "rounded-[1.4rem] border border-border/90 bg-surface/98 p-4 shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur",
+                "rounded-[1.45rem] border border-white/84 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(255,255,255,0.8))] p-4 shadow-[0_28px_70px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.86)] backdrop-blur-2xl",
                 "transition duration-150 ease-out",
                 isTrayOpen
                   ? "pointer-events-auto translate-y-0 opacity-100"
@@ -259,7 +264,7 @@ export default function ClientsFiltersCard({
                       onCampaignFilterChange("all");
                       if (isAdmin) onAssignedAgentFilterChange("all");
                     }}
-                    className="inline-flex items-center rounded-full border border-border bg-surface2 px-3 py-1.5 text-xs font-semibold text-muted transition hover:bg-surface hover:text-ink"
+                    className={cn(clientGhostButtonClass, "px-3 py-1.5 text-xs")}
                   >
                     Restablecer
                   </button>
@@ -267,7 +272,7 @@ export default function ClientsFiltersCard({
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-border bg-surface2/70 p-3">
+                <div className={cn(clientInsetClass, "p-3")}>
                   <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
                     Tipificación
                   </div>
@@ -303,7 +308,7 @@ export default function ClientsFiltersCard({
                   </Select>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-surface2/70 p-3">
+                <div className={cn(clientInsetClass, "p-3")}>
                   <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
                     Campaña
                   </div>
@@ -328,7 +333,7 @@ export default function ClientsFiltersCard({
                 </div>
 
                 {isAdmin ? (
-                  <div className="rounded-2xl border border-border bg-surface2/70 p-3 md:col-span-2">
+                  <div className={cn(clientInsetClass, "p-3 md:col-span-2")}>
                     <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
                       Agente
                     </div>

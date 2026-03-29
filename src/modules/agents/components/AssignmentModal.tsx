@@ -8,7 +8,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Users, AlertCircle, Tag } from "lucide-react";
+import { Users, AlertCircle, Tag } from "lucide-react";
+import { cn } from "../../../lib/utils";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import { supabase, Agent, agentAssignments } from "../../../lib/supabase";
 import { useAuth } from "../../../hooks/useAuth";
@@ -28,6 +29,12 @@ import {
   modalPrimaryActionClassName,
   modalSecondaryActionClassName,
 } from "../../../shared/components/layout/ModalLayout";
+import {
+  agentInsetClass,
+  agentModalFooterClass,
+  agentModalHeaderClass,
+  agentModalPanelClass,
+} from "./agentUi";
 
 interface AssignmentModalProps {
   agent: Agent;
@@ -342,51 +349,15 @@ export default function AssignmentModal({
         role="dialog"
         aria-modal="true"
       >
-        <div className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" />
+        <div className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm" />
 
         <motion.div
-          className="relative w-full max-w-2xl rounded-[1.5rem] border border-border bg-surface shadow-soft2 overflow-hidden"
+          className={cn(agentModalPanelClass, "max-w-2xl")}
           variants={panelV}
           initial="initial"
           animate="animate"
           exit="exit"
         >
-          <div className="hidden">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-2xl bg-brand/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-brand" />
-              </div>
-
-              <div>
-                <div className="text-base sm:text-lg font-semibold text-ink">
-                  Asignar clientes
-                </div>
-                <div className="text-xs text-muted">
-                  Para:{" "}
-                  <span className="font-semibold text-ink/80">
-                    {agent.name}
-                  </span>
-                  {agent.email ? (
-                    <>
-                      {" "}
-                      • <span className="font-mono">{agent.email}</span>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => !loading && onClose()}
-              className="h-10 w-10 rounded-2xl border border-border bg-surface hover:bg-surface2 transition flex items-center justify-center text-muted hover:text-ink disabled:opacity-50"
-              aria-label="Cerrar"
-              disabled={loading}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
           <ModalHeader
             icon={<Users className="w-5 h-5 text-brand" />}
             title="Asignar clientes"
@@ -403,18 +374,19 @@ export default function AssignmentModal({
             }
             onClose={() => !loading && onClose()}
             closeDisabled={loading}
+            className={agentModalHeaderClass}
           />
 
           <ModalBody className="space-y-5">
             {error && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
+              <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-red-700 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 mt-0.5" />
                 <span className="font-semibold">{error}</span>
               </div>
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="rounded-2xl border border-border bg-surface p-5">
+              <div className={cn(agentInsetClass, "p-5")}>
                 <div className="text-sm font-semibold text-ink/80">
                   Cantidad a asignar
                 </div>
@@ -453,7 +425,7 @@ export default function AssignmentModal({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-border bg-surface p-5">
+              <div className={cn(agentInsetClass, "p-5")}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-ink/80">
                     Campaña (opcional)
@@ -463,8 +435,7 @@ export default function AssignmentModal({
                   ) : null}
                 </div>
 
-                <div className="mt-3 relative">
-                  <Tag className="w-4 h-4 text-muted absolute left-4 top-6 -translate-y-1/2" />
+                <div className="mt-3">
                   <Select
                     value={campaignSelectValue}
                     onValueChange={(v) => {
@@ -503,7 +474,7 @@ export default function AssignmentModal({
               </div>
             </div>
 
-            <div className="rounded-2xl border border-border bg-surface2 px-5 py-4">
+            <div className={cn(agentInsetClass, "px-5 py-4")}>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted">Disponibles totales</span>
                 <span className="font-semibold text-ink">
@@ -527,7 +498,7 @@ export default function AssignmentModal({
             </div>
           </ModalBody>
 
-          <ModalFooter className="justify-end gap-2">
+          <ModalFooter className={cn("justify-end gap-2", agentModalFooterClass)}>
             <button
               type="button"
               onClick={onClose}

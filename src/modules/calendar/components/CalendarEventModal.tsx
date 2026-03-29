@@ -28,6 +28,12 @@ import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import { formatTimeZoneLabel } from "../../../shared/constants/timezones";
 import { cn } from "../../../lib/utils";
 import {
+  calendarInsetClass,
+  calendarModalFooterClass,
+  calendarModalHeaderClass,
+  calendarModalPanelClass,
+} from "./calendarUi";
+import {
   fromLocalDateTimeParts,
   toLocalDateInputValue,
   toLocalTimeInputValue,
@@ -334,7 +340,7 @@ export default function CalendarEventModal({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[rgba(15,23,42,0.42)] p-4 backdrop-blur-sm">
-      <ModalPanel className="max-w-[58rem]">
+      <ModalPanel className={cn(calendarModalPanelClass, "max-w-[58rem]")}>
         <ModalHeader
           icon={<CalendarDays className="h-5 w-5 text-brand" />}
           title={isEditing ? "Editar cita" : "Nueva cita en calendario"}
@@ -345,17 +351,18 @@ export default function CalendarEventModal({
           }
           onClose={onClose}
           closeDisabled={saving}
+          className={calendarModalHeaderClass}
         />
 
         <ModalBody className="space-y-5">
           {submitError ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-red-700">
               {submitError}
             </div>
           ) : null}
 
           {isEditing && isOverdueEvent ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="rounded-[1.2rem] border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.94),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-amber-800">
               Esta cita ya venció en calendario. Sigue agendada en BD hasta que la marques como atendida, pospuesta o pérdida.
             </div>
           ) : null}
@@ -396,10 +403,10 @@ export default function CalendarEventModal({
                           type="button"
                           onClick={() => setSelectedClient(client)}
                           className={cn(
-                            "rounded-2xl border px-4 py-3 text-left transition",
+                            "rounded-2xl border px-4 py-3 text-left transition shadow-[inset_0_1px_0_rgba(255,255,255,0.74)]",
                             isActive
                               ? "border-brand/30 bg-brand/5 shadow-[0_10px_24px_rgba(59,130,246,0.08)]"
-                              : "border-border bg-surface hover:border-brand/20 hover:bg-surface2",
+                              : "border-white/72 bg-white/72 hover:border-brand/20 hover:bg-white/86",
                           )}
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -428,7 +435,7 @@ export default function CalendarEventModal({
           ) : null}
 
           {selectedClient ? (
-            <div className="rounded-[1.4rem] border border-border bg-surface2/65 p-4">
+            <div className={cn(calendarInsetClass, "p-4")}>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
@@ -444,7 +451,7 @@ export default function CalendarEventModal({
                 </div>
 
                 {selectedClient.campaign_id ? (
-                  <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted">
+                  <span className="rounded-full border border-white/74 bg-white/68 px-3 py-1 text-xs font-semibold text-muted">
                     Base vinculada
                   </span>
                 ) : null}
@@ -548,7 +555,7 @@ export default function CalendarEventModal({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="flex min-h-[52px] items-center rounded-[1.25rem] border border-border bg-surface px-4 py-3">
+                <div className="flex min-h-[52px] items-center rounded-[1.25rem] border border-white/72 bg-white/72 px-4 py-3">
                   <div className="inline-flex items-center gap-2">
                     <span
                       className={cn(
@@ -595,7 +602,7 @@ export default function CalendarEventModal({
           </Field>
         </ModalBody>
 
-        <ModalFooter className="justify-between">
+        <ModalFooter className={cn("justify-between", calendarModalFooterClass)}>
           <div>
             {isEditing ? (
               <button

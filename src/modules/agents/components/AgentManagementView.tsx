@@ -11,24 +11,26 @@ import AgentManagementErrorCard from "./AgentManagementErrorCard";
 import AgentManagementHeader from "./AgentManagementHeader";
 import AgentsGrid from "./AgentsGrid";
 import AvailableCampaignsCard from "./AvailableCampaignsCard";
-
-const cardClass =
-  "rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-7";
-const titleClass = "text-base sm:text-lg font-semibold tracking-tight text-ink";
+import {
+  agentCardClass,
+  agentEyebrowClass,
+  agentSubTextClass,
+  agentTitleClass,
+} from "./agentUi";
 
 function roleBadgeClass(role: Agent["role"]) {
   switch (role) {
     case "dev":
-      return "border border-violet-200 bg-violet-50 text-violet-700";
+      return "border border-violet-200/90 bg-violet-50/85 text-violet-700";
     case "owner":
-      return "border border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "border border-emerald-200/90 bg-emerald-50/85 text-emerald-700";
     case "manager":
-      return "border border-sky-200 bg-sky-50 text-sky-700";
+      return "border border-sky-200/90 bg-sky-50/85 text-sky-700";
     case "loader":
-      return "border border-amber-200 bg-amber-50 text-amber-700";
+      return "border border-amber-200/90 bg-amber-50/90 text-amber-700";
     case "agent":
     default:
-      return "border border-brand/20 bg-brand/10 text-ink/80";
+      return "border border-brand/20 bg-brand/[0.08] text-ink/80";
   }
 }
 
@@ -78,14 +80,15 @@ export default function AgentManagementView(props: AgentManagementProps) {
 
   if (!canManageAgents) {
     return (
-      <div className={cn(cardClass, "bg-surface2")}>
+      <div className={cn(agentCardClass, "bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(255,255,255,0.72))]")}>
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-brand/10 flex items-center justify-center">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[1.35rem] border border-white/72 bg-white/68 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
             <Users className="w-5 h-5 text-brand" />
           </div>
           <div>
-            <div className={titleClass}>Gestion de Usuarios</div>
-            <div className="text-sm text-muted">
+            <div className={agentEyebrowClass}>Acceso restringido</div>
+            <div className={cn(agentTitleClass, "mt-3")}>Gestion de Usuarios</div>
+            <div className={agentSubTextClass}>
               Disponible para developer, owner y manager.
             </div>
           </div>

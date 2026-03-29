@@ -10,6 +10,10 @@ import PageStage from "../../../shared/components/layout/PageStage";
 import PageHeader, {
   pageHeaderActionClassName,
 } from "../../../shared/components/layout/PageHeader";
+import {
+  clientCardClass,
+  clientInsetClass,
+} from "../../../shared/components/client/clientUi";
 import ClientsFiltersCard from "../components/ClientsFiltersCard";
 import ClientsPagination from "../components/ClientsPagination";
 import ClientsResultsHeader from "../components/ClientsResultsHeader";
@@ -21,8 +25,6 @@ import {
   type ClientManagementProps,
 } from "../hooks/useClientManagement";
 
-const cardClass =
-  "rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-7";
 const CLIENTS_UPDATES_NOTICE_KEY = "clients_updates_notice_v1";
 
 export default function ClientManagementPage(
@@ -181,13 +183,13 @@ export default function ClientManagementPage(
       <main className="flex-1 w-full">
         <PageStage tone="brand" contentClassName="space-y-6">
           {opLocked ? (
-            <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
+            <div className={`${clientInsetClass} border-amber-200/90 bg-[linear-gradient(180deg,rgba(254,243,199,0.76),rgba(255,255,255,0.6))] p-4 text-sm text-amber-900`}>
               Debes seleccionar una operación para ver clientes.
             </div>
           ) : null}
 
           {error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+            <div className={`${clientInsetClass} border-red-200/90 bg-[linear-gradient(180deg,rgba(254,226,226,0.8),rgba(255,255,255,0.62))] p-4`}>
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-red-600" />
                 <p className="text-red-700 text-sm font-semibold">{error}</p>
@@ -236,7 +238,7 @@ export default function ClientManagementPage(
             primaryText="Entendido"
           />
 
-          <section ref={clientsWorkspaceRef} className={cardClass}>
+          <section ref={clientsWorkspaceRef} className={clientCardClass}>
             <ClientsResultsHeader
               startItem={startItem}
               endItem={endItem}

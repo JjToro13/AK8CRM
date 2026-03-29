@@ -12,6 +12,12 @@ import {
   modalPrimaryActionClassName,
   modalSecondaryActionClassName,
 } from "../../../shared/components/layout/ModalLayout";
+import {
+  campaignInsetClass,
+  campaignModalFooterClass,
+  campaignModalHeaderClass,
+  campaignModalPanelClass,
+} from "./campaignUi";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -75,80 +81,83 @@ export default function EditCampaignNameModal({
     <LazyMotion features={domAnimation}>
       <AnimatePresence mode="wait">
         <m.div
-        className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
-        variants={overlayV}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        onMouseDown={(e) => {
-          if (savingName) return;
-          if (e.target === e.currentTarget) onClose();
-        }}
-        >
-          <div className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" />
-
-          <m.div
-          className="relative w-full max-w-lg overflow-hidden rounded-[1.5rem] border border-border bg-surface shadow-soft2"
-          variants={panelV}
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
+          variants={overlayV}
           initial="initial"
           animate="animate"
           exit="exit"
+          onMouseDown={(e) => {
+            if (savingName) return;
+            if (e.target === e.currentTarget) onClose();
+          }}
+        >
+          <div className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm" />
+
+          <m.div
+            className={cn(campaignModalPanelClass, "max-w-lg")}
+            variants={panelV}
+            initial="initial"
+            animate="animate"
+            exit="exit"
           >
-          <ModalHeader
-            icon={<Pencil className="w-5 h-5 text-brand" />}
-            title={`Editar nombre de campaña${editPrefix ? ` (${editPrefix})` : ""}`}
-            description={
-              <>
-                Actualiza el <span className="font-semibold">display_name</span> (opcional).
-              </>
-            }
-            onClose={() => !savingName && onClose()}
-            closeDisabled={savingName}
-          />
+            <ModalHeader
+              icon={<Pencil className="w-5 h-5 text-brand" />}
+              title={`Editar nombre de campaña${editPrefix ? ` (${editPrefix})` : ""}`}
+              description={
+                <>
+                  Actualiza el <span className="font-semibold">display_name</span> (opcional).
+                </>
+              }
+              onClose={() => !savingName && onClose()}
+              closeDisabled={savingName}
+              className={campaignModalHeaderClass}
+            />
 
-          <ModalBody className="space-y-3">
-            <Field label="Nombre (display_name)">
-              <Input
-                className={cn(savingName && "opacity-70")}
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="Ej: Reactivación MX / VIP Feb"
+            <ModalBody className="space-y-4">
+              <div className={cn(campaignInsetClass, "p-4")}>
+                <Field label="Nombre (display_name)">
+                  <Input
+                    className={cn(savingName && "opacity-70")}
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Ej: Reactivacion MX / VIP Feb"
+                    disabled={savingName}
+                  />
+
+                  <p className="text-xs text-muted">
+                    Si lo dejas vacio, volvera al nombre por defecto{" "}
+                    <span className="font-semibold text-ink/70">
+                      "Campaña {editPrefix ?? ""}"
+                    </span>
+                    .
+                  </p>
+                </Field>
+              </div>
+            </ModalBody>
+
+            <ModalFooter className={cn("justify-end gap-2", campaignModalFooterClass)}>
+              <button
+                className={modalSecondaryActionClassName}
+                onClick={onClose}
                 disabled={savingName}
-              />
+                type="button"
+              >
+                Cancelar
+              </button>
 
-              <p className="text-xs text-muted">
-                Si lo dejas vació, volverá al nombre por defecto{" "}
-                <span className="font-semibold text-ink/70">
-                  "Campaña {editPrefix ?? ""}"
-                </span>
-                .
-              </p>
-            </Field>
-          </ModalBody>
-
-          <ModalFooter className="justify-end gap-2">
-            <button
-              className={modalSecondaryActionClassName}
-              onClick={onClose}
-              disabled={savingName}
-              type="button"
-            >
-              Cancelar
-            </button>
-
-            <button
-              className={modalPrimaryActionClassName}
-              onClick={onSave}
-              disabled={savingName}
-              type="button"
-            >
-              {savingName ? (
-                <LoadingSpinner size="sm" text="Guardando..." fullScreen={false} />
-              ) : (
-                "Guardar"
-              )}
-            </button>
-          </ModalFooter>
+              <button
+                className={modalPrimaryActionClassName}
+                onClick={onSave}
+                disabled={savingName}
+                type="button"
+              >
+                {savingName ? (
+                  <LoadingSpinner size="sm" text="Guardando..." fullScreen={false} />
+                ) : (
+                  "Guardar"
+                )}
+              </button>
+            </ModalFooter>
           </m.div>
         </m.div>
       </AnimatePresence>

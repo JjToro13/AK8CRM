@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import {
-  X,
   Save,
   MessageSquare,
   AlertCircle,
@@ -32,6 +31,13 @@ import {
   modalPrimaryActionClassName,
   modalSecondaryActionClassName,
 } from "../layout/ModalLayout";
+import {
+  clientGhostButtonClass,
+  clientInsetClass,
+  clientModalFooterClass,
+  clientModalHeaderClass,
+  clientModalPanelClass,
+} from "./clientUi";
 
 interface EditClientModalProps {
   client: Client | null;
@@ -280,44 +286,17 @@ export default function EditClientModal({
     >
       <button
         type="button"
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.14),transparent_42%),rgba(15,23,42,0.5)] backdrop-blur-[4px]"
         onClick={handleBackdropClick}
         aria-label="Cerrar modal de cliente"
       />
-      <ModalPanel className="relative max-h-[90vh] max-w-5xl">
-        {/* Header */}
-        <div className="hidden">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-11 w-11 rounded-2xl bg-brand/10 flex items-center justify-center shrink-0">
-              <MessageSquare className="h-5 w-5 text-brand" />
-            </div>
-
-            <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-semibold text-ink truncate">
-                Editar Cliente
-              </h2>
-              <p className="text-xs text-muted truncate">
-                {client.first_name || client.name || "Cliente"} • {client.serial}
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-10 w-10 rounded-2xl border border-border bg-surface text-muted hover:text-ink hover:bg-surface2 transition flex items-center justify-center"
-            aria-label="Cerrar"
-            title="Cerrar"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
+      <ModalPanel className={cn(clientModalPanelClass, "max-h-[90vh] max-w-5xl")}>
         <ModalHeader
           icon={<MessageSquare className="h-5 w-5 text-brand" />}
           title="Editar cliente"
           description={`${client.first_name || client.name || "Cliente"} - ${client.serial}`}
           onClose={onClose}
+          className={clientModalHeaderClass}
         />
 
         {/* Body */}
@@ -332,7 +311,7 @@ export default function EditClientModal({
                 type="text"
                 value={client.first_name || client.name || ""}
                 disabled
-                className="bg-surface2/70"
+                className="border-white/70 bg-white/72 backdrop-blur-xl"
               />
             </div>
 
@@ -344,7 +323,7 @@ export default function EditClientModal({
                 type="text"
                 value={client.serial}
                 disabled
-                className="bg-surface2/70"
+                className="border-white/70 bg-white/72 backdrop-blur-xl"
               />
             </div>
           </div>
@@ -356,7 +335,7 @@ export default function EditClientModal({
                 Tipificación del Cliente
               </div>
 
-              <div className="rounded-2xl border border-border bg-surface2 px-3 py-2 text-xs text-muted">
+              <div className={cn(clientInsetClass, "px-3 py-2 text-xs text-muted")}>
                 <div>
                   Actual:{" "}
                   <span className="font-semibold text-ink/80">
@@ -372,7 +351,7 @@ export default function EditClientModal({
               </div>
             </div>
 
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2">
+            <div className="rounded-2xl border border-amber-200/90 bg-[linear-gradient(180deg,rgba(254,243,199,0.82),rgba(255,255,255,0.68))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
               <p className="text-[11px] leading-relaxed text-amber-800">
                 <span className="font-semibold">Nuevo</span> es automatico y no
                 se puede asignar manualmente. Puedes guardar solo un comentario
@@ -384,7 +363,7 @@ export default function EditClientModal({
               {statusGroups.map((group) => (
                 <div
                   key={group.title}
-                  className="rounded-2xl border border-border bg-surface2 p-3"
+                  className={cn(clientInsetClass, "p-3")}
                 >
                   <div className="mb-2">
                     <h3 className="text-xs font-semibold text-ink/85">
@@ -404,8 +383,8 @@ export default function EditClientModal({
                           className={cn(
                             "rounded-xl border px-3 py-2.5 text-left transition",
                             active
-                              ? "border-brand/30 bg-brand/10 shadow-[0_8px_20px_rgba(17,24,39,0.05)]"
-                              : "border-border bg-surface hover:bg-surface2",
+                              ? "border-brand/24 bg-brand/[0.08] shadow-[0_16px_28px_rgba(15,23,42,0.06)]"
+                              : "border-white/74 bg-white/72 hover:bg-white/84",
                             "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15",
                           )}
                         >
@@ -463,7 +442,7 @@ export default function EditClientModal({
               </span>
             </div>
 
-            <div className="rounded-3xl border border-border bg-surface2 p-4">
+            <div className={cn(clientInsetClass, "rounded-3xl p-4")}>
               {loadingComments ? (
                 <div className="flex justify-center py-6">
                   <LoadingSpinner
@@ -485,7 +464,7 @@ export default function EditClientModal({
                     return (
                       <div
                         key={comment.id}
-                        className="rounded-2xl border border-border bg-surface p-4"
+                        className="rounded-2xl border border-white/76 bg-white/72 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)] backdrop-blur-xl"
                       >
                         {isEditing ? (
                           <div className="space-y-3">
@@ -499,7 +478,7 @@ export default function EditClientModal({
                               rows={3}
                             />
                             {commentError && (
-                              <span className="mt-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
+                              <span className="mt-3 flex items-start gap-2 rounded-xl border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,226,226,0.82),rgba(255,255,255,0.7))] px-3 py-2">
                                 <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
                                 <p className="text-xs text-red-700 font-medium leading-relaxed">
                                   {commentError}
@@ -511,7 +490,7 @@ export default function EditClientModal({
                               <button
                                 type="button"
                                 onClick={cancelEditComment}
-                                className="inline-flex items-center rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink/80 hover:bg-surface2 transition"
+                                className={cn(clientGhostButtonClass, "px-3 py-1.5 text-xs")}
                               >
                                 Cancelar
                               </button>
@@ -547,7 +526,7 @@ export default function EditClientModal({
                                 <button
                                   type="button"
                                   onClick={() => startEditComment(comment)}
-                                  className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink/70 hover:bg-surface2 hover:text-ink transition"
+                                  className={cn(clientGhostButtonClass, "gap-1 px-3 py-1.5 text-xs")}
                                   title="Editar comentario"
                                 >
                                   <Edit2 className="h-3.5 w-3.5" />
@@ -590,8 +569,10 @@ export default function EditClientModal({
           {/* Info adicional */}
           <div
             className={cn(
-              "rounded-3xl border border-border p-4",
-              isAdmin ? "bg-surface2" : "bg-brand/10",
+              "rounded-3xl border p-4",
+              isAdmin
+                ? "border-white/78 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.62))]"
+                : "border-brand/18 bg-[linear-gradient(180deg,rgba(var(--color-brand-50),0.74),rgba(255,255,255,0.66))]",
             )}
           >
             <h3
@@ -619,7 +600,7 @@ export default function EditClientModal({
 
           {/* Error */}
           {error && (
-            <div className="rounded-3xl border border-red-200 bg-red-50 p-4">
+            <div className="rounded-3xl border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,226,226,0.82),rgba(255,255,255,0.7))] p-4">
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
                 <p className="text-red-700 text-sm font-semibold">{error}</p>
@@ -629,7 +610,7 @@ export default function EditClientModal({
         </ModalBody>
 
         {/* Footer */}
-        <ModalFooter>
+        <ModalFooter className={clientModalFooterClass}>
           <button
             type="button"
             onClick={onClose}

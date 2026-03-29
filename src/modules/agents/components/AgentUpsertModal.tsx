@@ -31,6 +31,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../shared/components/ui/Select";
+import {
+  agentInsetClass,
+  agentModalFooterClass,
+  agentModalHeaderClass,
+  agentModalPanelClass,
+} from "./agentUi";
 
 type Mode = "create" | "edit";
 type Props = {
@@ -121,10 +127,6 @@ export default function AgentUpsertModal({
   const [error, setError] = useState("");
 
   const title = isEdit ? "Editar usuario" : "Crear usuario";
-  const pillBtn =
-    "inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 " +
-    "hover:bg-surface2 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 disabled:opacity-50 disabled:cursor-not-allowed";
-
   useEffect(() => {
     if (!isOpen) return;
 
@@ -389,9 +391,9 @@ export default function AgentUpsertModal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" />
+      <div className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm" />
 
-      <ModalPanel className="relative max-w-xl rounded-[1.5rem]">
+      <ModalPanel className={cn(agentModalPanelClass, "max-w-xl rounded-[1.5rem]")}>
         <ModalHeader
           icon={
             isEdit ? (
@@ -408,35 +410,38 @@ export default function AgentUpsertModal({
           }
           onClose={() => !saving && !deleting && onClose()}
           closeDisabled={saving || deleting}
+          className={agentModalHeaderClass}
         />
 
         <ModalBody className="space-y-5">
           {error ? (
-            <div className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="flex items-start gap-2 rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-red-700">
               <AlertCircle className="mt-0.5 h-4 w-4" />
               <span className="font-semibold">{error}</span>
             </div>
           ) : null}
 
           {!isEdit && requiresOperationContext && !tenantSlug ? (
-            <div className="rounded-2xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            <div className="rounded-[1.2rem] border border-yellow-200/90 bg-[linear-gradient(180deg,rgba(254,252,232,0.95),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-yellow-800">
               No se pudo cargar el tenant de la operacion activa. Verifica que
               tengas una operacion seleccionada.
             </div>
           ) : null}
 
-          <Field label="Nombre" required>
-            <Input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              disabled={saving || deleting}
-              placeholder="Ej: Juan Perez"
-              autoComplete="off"
-            />
-          </Field>
+          <div className={cn(agentInsetClass, "p-4")}>
+            <Field label="Nombre" required>
+              <Input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                disabled={saving || deleting}
+                placeholder="Ej: Juan Perez"
+                autoComplete="off"
+              />
+            </Field>
+          </div>
 
           {!isEdit ? (
-            <div className="space-y-2">
+            <div className={cn(agentInsetClass, "space-y-2 p-4")}>
               <Field label="Username" required>
                 <Input
                   value={username}
@@ -452,7 +457,7 @@ export default function AgentUpsertModal({
                 Minimo 3 caracteres.
               </p>
 
-              <div className="rounded-2xl border border-border bg-surface2 p-4">
+              <div className="rounded-[1.1rem] border border-white/74 bg-white/58 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="mb-1 text-[11px] text-muted">
@@ -463,14 +468,14 @@ export default function AgentUpsertModal({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={copyEmail}
-                    disabled={!emailPreview || saving || deleting}
-                    className={cn(pillBtn, "px-3 py-2")}
-                    title="Copiar correo"
-                  >
-                    <Copy className="h-4 w-4" />
+                    <button
+                      type="button"
+                      onClick={copyEmail}
+                      disabled={!emailPreview || saving || deleting}
+                      className={cn(modalSecondaryActionClassName, "px-3 py-2")}
+                      title="Copiar correo"
+                    >
+                      <Copy className="h-4 w-4" />
                     <span className="hidden sm:inline">Copiar</span>
                   </button>
                 </div>
@@ -478,49 +483,53 @@ export default function AgentUpsertModal({
             </div>
           ) : null}
 
-          <Field label="Rol" required>
-            <Select
-              value={role}
-              onValueChange={(value) => setRole(value as RoleOption)}
-              disabled={saving || deleting || assignableRoles.length === 0}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona un rol" />
-              </SelectTrigger>
+          <div className={cn(agentInsetClass, "p-4")}>
+            <Field label="Rol" required>
+              <Select
+                value={role}
+                onValueChange={(value) => setRole(value as RoleOption)}
+                disabled={saving || deleting || assignableRoles.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un rol" />
+                </SelectTrigger>
 
-              <SelectContent>
-                {assignableRoles.map((roleOption) => (
-                  <SelectItem key={roleOption} value={roleOption}>
-                    {getAgentRoleLabel(roleOption)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+                <SelectContent>
+                  {assignableRoles.map((roleOption) => (
+                    <SelectItem key={roleOption} value={roleOption}>
+                      {getAgentRoleLabel(roleOption)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
 
           {!isEdit ? (
-            <Field label="Contrasena temporal" required>
-              <div className="relative">
-                <KeyRound className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-                <Input
-                  className="pl-11"
-                  value={tempPassword}
-                  onChange={(event) => setTempPassword(event.target.value)}
-                  disabled={saving || deleting}
-                  placeholder="Minimo 6 caracteres"
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={6}
-                />
-              </div>
+            <div className={cn(agentInsetClass, "p-4")}>
+              <Field label="Contrasena temporal" required>
+                <div className="relative">
+                  <KeyRound className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                  <Input
+                    className="pl-11"
+                    value={tempPassword}
+                    onChange={(event) => setTempPassword(event.target.value)}
+                    disabled={saving || deleting}
+                    placeholder="Minimo 6 caracteres"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={6}
+                  />
+                </div>
 
-              <p className="mt-2 text-xs text-muted">
-                El usuario podra cambiarla despues de iniciar sesion.
-              </p>
-            </Field>
+                <p className="mt-2 text-xs text-muted">
+                  El usuario podra cambiarla despues de iniciar sesion.
+                </p>
+              </Field>
+            </div>
           ) : null}
 
-          <div className="flex items-center justify-between rounded-2xl border border-border bg-surface2 p-4">
+          <div className={cn(agentInsetClass, "flex items-center justify-between p-4")}>
             <div>
               <div className="text-sm font-semibold text-ink/80">Activo</div>
               <div className="mt-1 text-xs text-muted">
@@ -544,11 +553,11 @@ export default function AgentUpsertModal({
           </div>
         </ModalBody>
 
-        <ModalFooter className="gap-2">
+        <ModalFooter className={cn("gap-2", agentModalFooterClass)}>
           {canDelete ? (
             <button
               type="button"
-              className="mr-auto inline-flex items-center rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mr-auto inline-flex items-center rounded-full border border-red-200 bg-red-50/92 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={remove}
               disabled={saving || deleting}
             >

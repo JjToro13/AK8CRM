@@ -11,6 +11,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ClientComment, clientComments } from "../../../lib/supabase";
 import { formatDate } from "../../../lib/utils";
 import LoadingSpinner from "../feedback/LoadingSpinner";
+import {
+  clientGhostButtonClass,
+  clientInsetClass,
+  clientModalPanelClass,
+} from "./clientUi";
 
 interface ClientCommentsDropdownProps {
   clientId: string;
@@ -157,7 +162,7 @@ export default function ClientCommentsDropdown({
                 <button
                   type="button"
                   onClick={loadComments}
-                  className="h-8 w-8 rounded-xl border border-border bg-surface text-muted hover:text-ink hover:bg-surface2 transition flex items-center justify-center"
+                  className="flex h-8 w-8 items-center justify-center rounded-2xl border border-white/76 bg-white/72 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
                   title="Actualizar comentarios"
                 >
                   <RefreshCw className="h-4 w-4" />
@@ -166,7 +171,7 @@ export default function ClientCommentsDropdown({
                 <button
                   type="button"
                   onClick={() => setOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink/80 hover:bg-surface2 transition"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/76 bg-white/72 px-3 py-1.5 text-xs font-semibold text-ink/80 shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white"
                   title="Ver historial"
                 >
                   Ver todos
@@ -182,8 +187,8 @@ export default function ClientCommentsDropdown({
               onClick={() => setOpen(true)}
               className={cn(
                 "mt-2 w-full text-left",
-                "rounded-2xl border border-border bg-surface2 px-3 py-2",
-                "hover:bg-surface transition",
+                "rounded-2xl border border-white/76 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.68))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]",
+                "hover:bg-white transition",
                 "focus:outline-none focus-visible:ring-4 focus-visible:ring-brand/15",
               )}
               title="Abrir historial"
@@ -220,17 +225,17 @@ export default function ClientCommentsDropdown({
               animate="animate"
               exit="exit"
             >
-              <div className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.14),transparent_42%),rgba(15,23,42,0.5)] backdrop-blur-[4px]" />
 
               <motion.div
-                className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-border bg-surface shadow-soft2"
+                className={`${clientModalPanelClass} max-w-2xl`}
                 variants={panelV}
                 initial="initial"
                 animate="animate"
                 exit="exit"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border bg-surface2">
+                <div className="flex items-center justify-between gap-3 border-b border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.42))] px-5 py-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-ink truncate">
@@ -249,7 +254,7 @@ export default function ClientCommentsDropdown({
                     <button
                       type="button"
                       onClick={loadComments}
-                      className="h-9 w-9 rounded-2xl border border-border bg-surface text-muted hover:text-ink hover:bg-surface2 transition flex items-center justify-center"
+                      className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/78 bg-white/76 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
                       title="Actualizar"
                     >
                       <RefreshCw className="h-4 w-4" />
@@ -258,7 +263,7 @@ export default function ClientCommentsDropdown({
                     <button
                       type="button"
                       onClick={() => setOpen(false)}
-                      className="h-9 w-9 rounded-2xl border border-border bg-surface text-muted hover:text-ink hover:bg-surface2 transition flex items-center justify-center"
+                      className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/78 bg-white/76 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
                       aria-label="Cerrar"
                       title="Cerrar"
                     >
@@ -273,7 +278,7 @@ export default function ClientCommentsDropdown({
                     {sortedComments.map((c) => (
                       <div
                         key={c.id}
-                        className="rounded-2xl border border-border bg-surface2 p-4"
+                        className={`${clientInsetClass} p-4`}
                       >
                         <div className="text-sm text-ink whitespace-pre-wrap leading-relaxed break-words">
                           {c.comment}
@@ -294,10 +299,10 @@ export default function ClientCommentsDropdown({
                 </div>
 
                 {/* Footer */}
-                <div className="px-5 py-4 border-t border-border bg-surface2 flex justify-end">
+                <div className="flex justify-end border-t border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.58))] px-5 py-4">
                   <button
                     type="button"
-                    className="inline-flex items-center rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 hover:bg-surface2 transition"
+                    className={clientGhostButtonClass}
                     onClick={() => setOpen(false)}
                   >
                     Cerrar

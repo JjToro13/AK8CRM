@@ -4,7 +4,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  X,
   Upload,
   FileSpreadsheet,
   AlertCircle,
@@ -20,7 +19,15 @@ import {
   ModalBody,
   ModalFooter,
   ModalHeader,
+  modalPrimaryActionClassName,
+  modalSecondaryActionClassName,
 } from "../../../shared/components/layout/ModalLayout";
+import {
+  campaignInsetClass,
+  campaignModalFooterClass,
+  campaignModalHeaderClass,
+  campaignModalPanelClass,
+} from "./campaignUi";
 
 interface ImportClientsModalProps {
   isOpen: boolean;
@@ -973,231 +980,196 @@ export default function ImportClientsModal({
 
   if (!isOpen) return null;
 
-  const pillBtn =
-    "inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 " +
-    "hover:bg-surface2 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 disabled:opacity-50 disabled:cursor-not-allowed";
-
-  const pillPrimary =
-    "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-soft " +
-    "bg-gradient-to-r from-brand via-brand-600 to-brand-700 hover:brightness-105 active:brightness-95 " +
-    "transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 disabled:opacity-50 disabled:cursor-not-allowed";
-
   return createPortal(
     <LazyMotion features={domAnimation}>
       <AnimatePresence mode="wait">
         <m.div
-        className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6"
-        variants={overlayV}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget) close();
-        }}
-        >
-          <div className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" />
-
-          <m.div
-          className="relative w-full max-w-2xl overflow-hidden rounded-[1.5rem] border border-border bg-surface shadow-soft2"
-          variants={panelV}
+          className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6"
+          variants={overlayV}
           initial="initial"
           animate="animate"
           exit="exit"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) close();
+          }}
+        >
+          <div className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm" />
+
+          <m.div
+            className={cn(campaignModalPanelClass, "max-w-2xl")}
+            variants={panelV}
+            initial="initial"
+            animate="animate"
+            exit="exit"
           >
-          <div className="hidden">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10">
-                <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <div className="text-base font-semibold text-ink sm:text-lg">
-                  Importar Clientes desde Excel
+            <ModalHeader
+              icon={<FileSpreadsheet className="h-5 w-5 text-emerald-600" />}
+              title="Importar clientes desde Excel"
+              description="XLSX/XLS. Se creara una campaña nueva automaticamente."
+              onClose={close}
+              closeDisabled={loading}
+              className={campaignModalHeaderClass}
+            />
+
+            <ModalBody className="space-y-6">
+              <div className={cn(campaignInsetClass, "p-4")}>
+                <div className="mb-2 block text-sm font-semibold text-ink/80">
+                  Nombre de campaña (opcional)
                 </div>
-                <div className="text-xs text-muted">
-                  XLSX/XLS · Se creará una campaña nueva automáticamente.
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={close}
-              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-surface text-muted transition hover:bg-surface2 hover:text-ink"
-              aria-label="Cerrar"
-              disabled={loading}
-              type="button"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <ModalHeader
-            icon={<FileSpreadsheet className="h-5 w-5 text-emerald-600" />}
-            title="Importar clientes desde Excel"
-            description="XLSX/XLS. Se creará una campaña nueva automáticamente."
-            onClose={close}
-            closeDisabled={loading}
-          />
-
-          <ModalBody className="space-y-6">
-            <div>
-                Nombre de campaña (opcional)
-              <div className="mb-2 block text-sm font-semibold text-ink/80">
-                Nombre de campaña (opcional)
-              </div>
-              <Input
-                type="text"
-                value={campaignName}
-                onChange={(e) => setCampaignName(e.target.value)}
-                placeholder="Ej: EZinvest Feb 20 / Reactivación MX"
-                disabled={loading}
-              />
-              <p className="mt-2 text-xs text-muted">
-                Esto solo es una etiqueta para identificar la campaña.
-              </p>
-            </div>
-
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <div className="block text-sm font-semibold text-ink/80">
-                  Seleccionar archivo Excel
-                </div>
-
-                {file ? (
-                  <button
-                    type="button"
-                    onClick={hardReset}
-                    disabled={loading}
-                    className="text-xs font-semibold text-muted transition hover:text-ink"
-                  >
-                    Quitar archivo
-                  </button>
-                ) : null}
+                <Input
+                  type="text"
+                  value={campaignName}
+                  onChange={(e) => setCampaignName(e.target.value)}
+                  placeholder="Ej: EZinvest Feb 20 / Reactivacion MX"
+                  disabled={loading}
+                />
+                <p className="mt-2 text-xs text-muted">
+                  Esto solo es una etiqueta para identificar la campaña.
+                </p>
               </div>
 
-              <div
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={onDrop}
-                className={cn(
-                  "rounded-[1.25rem] border border-dashed p-6 transition",
-                  "border-border bg-surface2 hover:border-brand/30",
-                  loading && "pointer-events-none opacity-70",
-                )}
-              >
-                <div className="flex flex-col items-center gap-3 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10">
-                    <UploadCloud className="h-6 w-6 text-brand" />
+              <div className={cn(campaignInsetClass, "p-4")}>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="block text-sm font-semibold text-ink/80">
+                    Seleccionar archivo Excel
                   </div>
 
-                  <div className="text-sm text-ink/80">
-                    <span className="font-semibold">Arrastra y suelta</span> tu
-                    archivo aquí
-                    <span className="text-muted"> o </span>
-                    <label className="cursor-pointer font-semibold text-brand hover:opacity-90">
-                      selecciona un archivo
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        className="sr-only"
-                        accept=".xlsx,.xls"
-                        onChange={handleFileSelect}
-                        disabled={loading}
-                      />
-                    </label>
-                  </div>
+                  {file ? (
+                    <button
+                      type="button"
+                      onClick={hardReset}
+                      disabled={loading}
+                      className="text-xs font-semibold text-muted transition hover:text-ink"
+                    >
+                      Quitar archivo
+                    </button>
+                  ) : null}
+                </div>
 
-                  <div className="text-xs text-muted">XLSX/XLS hasta 10MB</div>
-
-                  {file && (
-                    <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs text-ink/80">
-                      <CheckCircle className="h-4 w-4 text-emerald-600" />
-                      <span className="font-semibold">{file.name}</span>
-                    </div>
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={onDrop}
+                  className={cn(
+                    "rounded-[1.25rem] border border-dashed p-6 transition",
+                    "border-white/78 bg-white/48 hover:border-brand/30 hover:bg-white/58",
+                    loading && "pointer-events-none opacity-70",
                   )}
-                </div>
-              </div>
-            </div>
-
-            {error && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="mt-0.5 h-5 w-5 text-red-600" />
-                  <div>
-                    <div className="text-sm font-semibold text-red-700">
-                      Error
-                    </div>
-                    <div className="mt-1 whitespace-pre-line text-sm text-red-700/90">
-                      {error}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {result && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="mt-0.5 h-5 w-5 text-emerald-700" />
-                  <div className="w-full">
-                    <div className="text-sm font-semibold text-emerald-900">
-                      Importación completada
-                    </div>
-                    <div className="mt-1 text-sm text-emerald-900/80">
-                      Se importaron <b>{result.success}</b> clientes
-                      correctamente
-                      {result.campaign_prefix
-                        ? ` (prefijo ${result.campaign_prefix})`
-                        : ""}
-                      .
+                >
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/76 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
+                      <UploadCloud className="h-6 w-6 text-brand" />
                     </div>
 
-                    {result.errors?.length > 0 && (
-                      <div className="mt-3 rounded-xl border border-amber-200 bg-white/70 p-3">
-                        <div className="text-sm font-semibold text-amber-700">
-                          Avisos encontrados
-                        </div>
-                        <ul className="mt-2 space-y-1 text-xs text-amber-700">
-                          {result.errors.map((err, idx) => (
-                            <li key={idx}>• {err}</li>
-                          ))}
-                        </ul>
+                    <div className="text-sm text-ink/80">
+                      <span className="font-semibold">Arrastra y suelta</span> tu
+                      archivo aqui
+                      <span className="text-muted"> o </span>
+                      <label className="cursor-pointer font-semibold text-brand hover:opacity-90">
+                        selecciona un archivo
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          className="sr-only"
+                          accept=".xlsx,.xls"
+                          onChange={handleFileSelect}
+                          disabled={loading}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="text-xs text-muted">XLSX/XLS hasta 10MB</div>
+
+                    {file && (
+                      <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/76 bg-white/72 px-3 py-1 text-xs text-ink/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
+                        <CheckCircle className="h-4 w-4 text-emerald-600" />
+                        <span className="font-semibold">{file.name}</span>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
-            )}
-          </ModalBody>
 
-          <ModalFooter className="justify-end gap-2">
-            <button
-              onClick={close}
-              className={pillBtn}
-              disabled={loading}
-              type="button"
-            >
-              Cancelar
-            </button>
-
-            <button
-              onClick={handleImport}
-              disabled={!file || loading}
-              className={pillPrimary}
-              type="button"
-            >
-              {loading ? (
-                <LoadingSpinner
-                  size="sm"
-                  text="Importando..."
-                  fullScreen={false}
-                />
-              ) : (
-                <>
-                  <Upload className="h-4 w-4" />
-                  Importar Clientes
-                </>
+              {error && (
+                <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.8))] p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 h-5 w-5 text-red-600" />
+                    <div>
+                      <div className="text-sm font-semibold text-red-700">
+                        Error
+                      </div>
+                      <div className="mt-1 whitespace-pre-line text-sm text-red-700/90">
+                        {error}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
-            </button>
-          </ModalFooter>
+
+              {result && (
+                <div className="rounded-[1.2rem] border border-emerald-200/90 bg-[linear-gradient(180deg,rgba(236,253,245,0.94),rgba(255,255,255,0.8))] p-4">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="mt-0.5 h-5 w-5 text-emerald-700" />
+                    <div className="w-full">
+                      <div className="text-sm font-semibold text-emerald-900">
+                        Importacion completada
+                      </div>
+                      <div className="mt-1 text-sm text-emerald-900/80">
+                        Se importaron <b>{result.success}</b> clientes
+                        correctamente
+                        {result.campaign_prefix
+                          ? ` (prefijo ${result.campaign_prefix})`
+                          : ""}
+                        .
+                      </div>
+
+                      {result.errors?.length > 0 && (
+                        <div className="mt-3 rounded-xl border border-amber-200 bg-white/76 p-3">
+                          <div className="text-sm font-semibold text-amber-700">
+                            Avisos encontrados
+                          </div>
+                          <ul className="mt-2 space-y-1 text-xs text-amber-700">
+                            {result.errors.map((err, idx) => (
+                              <li key={idx}>• {err}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </ModalBody>
+
+            <ModalFooter className={cn("justify-end gap-2", campaignModalFooterClass)}>
+              <button
+                onClick={close}
+                className={modalSecondaryActionClassName}
+                disabled={loading}
+                type="button"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={handleImport}
+                disabled={!file || loading}
+                className={modalPrimaryActionClassName}
+                type="button"
+              >
+                {loading ? (
+                  <LoadingSpinner
+                    size="sm"
+                    text="Importando..."
+                    fullScreen={false}
+                  />
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Importar Clientes
+                  </>
+                )}
+              </button>
+            </ModalFooter>
           </m.div>
         </m.div>
       </AnimatePresence>

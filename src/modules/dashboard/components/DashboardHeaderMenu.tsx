@@ -43,7 +43,7 @@ export default function DashboardHeaderMenu({
     "Workspace";
 
   return (
-    <details className="group relative">
+    <details className="group relative isolate">
       <summary
         className={`${pageHeaderActionClassName} min-w-[12.5rem] list-none cursor-pointer py-2 [&::-webkit-details-marker]:hidden`}
       >
@@ -65,8 +65,8 @@ export default function DashboardHeaderMenu({
         </div>
       </summary>
 
-      <div className="absolute right-0 top-full z-[120] mt-3 w-[min(25rem,calc(100vw-2rem))] rounded-[1.5rem] border border-white/72 bg-surface/96 p-4 shadow-[0_26px_70px_rgba(30,41,59,0.18),inset_0_1px_0_rgba(255,255,255,0.82)] backdrop-blur-2xl">
-        <div className="mb-4">
+      <div className="absolute right-0 top-full z-[120] mt-3 w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-[1.6rem] border border-white/88 bg-[linear-gradient(180deg,rgb(var(--color-surface)/0.98),rgb(var(--color-surface-elevated)/0.95))] p-4 shadow-[0_30px_80px_rgba(15,23,42,0.22),0_6px_18px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-200)/0.18),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.56),rgba(255,255,255,0.12)_28%,transparent_100%)] supports-[backdrop-filter]:bg-[linear-gradient(180deg,rgb(var(--color-surface)/0.94),rgb(var(--color-surface-elevated)/0.9))]">
+        <div className="relative z-10 mb-4">
           <SecurityInfo
             isAdmin={role === "dev" || role === "owner" || role === "manager"}
             menuStats={{ today, inProgress, recent: recentCount }}
@@ -74,7 +74,7 @@ export default function DashboardHeaderMenu({
           />
         </div>
 
-        <div className="space-y-3">
+        <div className="relative z-10 space-y-3">
           <BrandPresetSelector enabled={role === "dev"} />
 
           <DashboardTenantSelect

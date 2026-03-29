@@ -8,7 +8,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  X,
   Phone,
   Clock,
   User,
@@ -35,6 +34,19 @@ import {
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import ClientCommentsDropdown from "../../../shared/components/client/ClientCommentsDropdown";
 import Input from "../../../shared/components/ui/Input";
+import {
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalPanel,
+  modalSecondaryActionClassName,
+} from "../../../shared/components/layout/ModalLayout";
+import {
+  agentInsetClass,
+  agentModalFooterClass,
+  agentModalHeaderClass,
+  agentModalPanelClass,
+} from "./agentUi";
 
 interface AgentDetailsModalProps {
   agent: Agent;
@@ -59,12 +71,6 @@ export default function AgentDetailsModal({
     new Date().toISOString().split("T")[0],
   );
   const [error, setError] = useState("");
-
-  const titleClass =
-    "text-base sm:text-lg font-semibold tracking-tight text-ink";
-  const pillBtn =
-    "inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 " +
-    "hover:bg-surface2 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 disabled:opacity-50 disabled:cursor-not-allowed";
 
   useEffect(() => {
     if (!isOpen) return;
@@ -203,44 +209,26 @@ export default function AgentDetailsModal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" />
+      <div className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm" />
 
-      <div
+      <ModalPanel
         className={cn(
-          "relative w-full max-w-6xl",
-          "rounded-[1.5rem] border border-border bg-surface shadow-soft2 overflow-hidden",
+          agentModalPanelClass,
+          "max-w-6xl",
           "max-h-[90vh] flex flex-col",
         )}
       >
-        <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-surface2">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-10 w-10 rounded-2xl bg-brand/10 flex items-center justify-center shrink-0">
-              <User className="w-5 h-5 text-brand" />
-            </div>
+        <ModalHeader
+          icon={<User className="w-5 h-5 text-brand" />}
+          title={`Detalles de ${agent.name}`}
+          description={headerSubtitle}
+          onClose={onClose}
+          className={agentModalHeaderClass}
+        />
 
-            <div className="min-w-0">
-              <div className={cn(titleClass, "truncate")}>
-                Detalles de {agent.name}
-              </div>
-              <div className="text-xs text-muted truncate">
-                {headerSubtitle}
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-10 w-10 rounded-2xl border border-border bg-surface hover:bg-surface2 transition flex items-center justify-center text-muted hover:text-ink"
-            aria-label="Cerrar"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="p-6 overflow-y-auto space-y-6">
+        <ModalBody className="space-y-6 overflow-y-auto max-h-[calc(90vh-86px-78px)]">
           {error && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
+            <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-red-700 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 mt-0.5" />
               <span className="font-semibold">{error}</span>
             </div>
@@ -270,10 +258,7 @@ export default function AgentDetailsModal({
                   const resolvedStatus = resolveClientStatus(client);
 
                   return (
-                    <div
-                      key={client.id}
-                      className="rounded-[1.25rem] border border-border bg-surface shadow-soft p-5"
-                    >
+                    <div key={client.id} className={cn(agentInsetClass, "p-5")}>
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="min-w-0">
                           <div className="font-semibold text-ink truncate">
@@ -341,7 +326,7 @@ export default function AgentDetailsModal({
                           </div>
                         )}
 
-                        <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-muted">
+                        <div className="pt-2 border-t border-white/70 flex items-center justify-between text-xs text-muted">
                           <span>Intentos: {client.attempts}</span>
                           {(client as any).assigned_at ? (
                             <span className="text-brand font-semibold">
@@ -359,8 +344,8 @@ export default function AgentDetailsModal({
                 })}
               </div>
             ) : (
-              <div className="rounded-[1.25rem] border border-border bg-surface2 p-10 text-center">
-                <div className="h-14 w-14 rounded-2xl bg-surface border border-border flex items-center justify-center mx-auto">
+              <div className={cn(agentInsetClass, "p-10 text-center")}>
+                <div className="h-14 w-14 rounded-2xl bg-white/72 border border-white/76 flex items-center justify-center mx-auto">
                   <User className="h-7 w-7 text-muted" />
                 </div>
                 <div className="mt-4 text-base font-semibold text-ink">
@@ -404,10 +389,7 @@ export default function AgentDetailsModal({
             ) : agentCalls.length > 0 ? (
               <div className="space-y-3">
                 {agentCalls.map((call) => (
-                  <div
-                    key={call.id}
-                    className="rounded-[1.25rem] border border-border bg-surface hover:bg-surface2 transition p-4"
-                  >
+                  <div key={call.id} className={cn(agentInsetClass, "transition p-4 hover:bg-white/72")}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0">
                         <div className="mt-0.5">
@@ -441,8 +423,8 @@ export default function AgentDetailsModal({
                 ))}
               </div>
             ) : (
-              <div className="rounded-[1.25rem] border border-border bg-surface2 p-10 text-center">
-                <div className="h-14 w-14 rounded-2xl bg-surface border border-border flex items-center justify-center mx-auto">
+              <div className={cn(agentInsetClass, "p-10 text-center")}>
+                <div className="h-14 w-14 rounded-2xl bg-white/72 border border-white/76 flex items-center justify-center mx-auto">
                   <Phone className="h-7 w-7 text-muted" />
                 </div>
                 <div className="mt-4 text-base font-semibold text-ink">
@@ -455,13 +437,14 @@ export default function AgentDetailsModal({
             )}
           </section>
 
-          <div className="pt-2 flex justify-end">
-            <button type="button" onClick={onClose} className={pillBtn}>
+        </ModalBody>
+
+        <ModalFooter className={cn("justify-end", agentModalFooterClass)}>
+          <button type="button" onClick={onClose} className={modalSecondaryActionClassName}>
               Cerrar
-            </button>
-          </div>
-        </div>
-      </div>
+          </button>
+        </ModalFooter>
+      </ModalPanel>
     </div>,
     document.body,
   );

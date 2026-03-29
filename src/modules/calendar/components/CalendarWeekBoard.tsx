@@ -1,5 +1,6 @@
 import { CalendarPlus, Clock, UserRound } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import { calendarInsetClass } from "./calendarUi";
 import { formatTime } from "../domain/calendar-date";
 import {
   resolveScheduledCallDisplayStatus,
@@ -55,10 +56,11 @@ export default function CalendarWeekBoard({
               key={day.key}
               onClick={() => onSelectDay?.(day.key)}
               className={cn(
-                "rounded-[1.35rem] border border-border bg-surface shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition",
+                calendarInsetClass,
+                "rounded-[1.35rem] shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition",
                 compact ? "min-h-[9.75rem]" : "min-h-[18rem]",
                 onSelectDay &&
-                  "cursor-pointer hover:border-brand/20 hover:bg-surface2/70",
+                  "cursor-pointer hover:border-brand/20 hover:bg-white/72",
                 selectedDayKey === day.key &&
                   "border-brand/30 bg-brand/[0.05] shadow-[0_16px_30px_rgba(59,130,246,0.10)]",
               )}
@@ -111,7 +113,7 @@ export default function CalendarWeekBoard({
                 {day.events.length === 0 ? (
                   <div
                     className={cn(
-                      "flex items-center justify-center rounded-2xl border border-dashed border-border bg-surface2/55 text-center text-xs text-muted",
+                      "flex items-center justify-center rounded-2xl border border-dashed border-white/70 bg-white/42 text-center text-xs text-muted",
                       compact ? "min-h-[5.25rem]" : "min-h-[12rem]",
                     )}
                 >
@@ -134,7 +136,7 @@ export default function CalendarWeekBoard({
                           onSelectEvent?.(event);
                         }}
                         className={cn(
-                          "w-full rounded-2xl border border-border border-l-[3px] px-3 py-3 text-left transition hover:-translate-y-[1px] hover:shadow-[0_14px_24px_rgba(15,23,42,0.08)]",
+                          "w-full rounded-2xl border border-white/72 border-l-[3px] px-3 py-3 text-left transition hover:-translate-y-[1px] hover:shadow-[0_14px_24px_rgba(15,23,42,0.08)]",
                           compact && "px-3 py-2.5 shadow-none",
                           status.cardClass,
                         )}

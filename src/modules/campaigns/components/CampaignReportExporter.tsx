@@ -4,7 +4,7 @@
 // ✅ Premium modal (overlay blur + panel soft) + framer-motion
 
 import { useEffect, useMemo, useState } from "react";
-import { Download, FileSpreadsheet, FileText, Filter, X } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Filter } from "lucide-react";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import { supabase } from "../../../lib/supabase";
 import { createPortal } from "react-dom";
@@ -25,7 +25,16 @@ import {
   ModalBody,
   ModalFooter,
   ModalHeader,
+  modalPrimaryActionClassName,
+  modalSecondaryActionClassName,
 } from "../../../shared/components/layout/ModalLayout";
+import {
+  campaignGhostButtonClass,
+  campaignInsetClass,
+  campaignModalFooterClass,
+  campaignModalHeaderClass,
+  campaignModalPanelClass,
+} from "./campaignUi";
 
 type ExportFormat = "csv" | "xlsx";
 type ExportScope = "all" | "available" | "assigned";
@@ -617,238 +626,203 @@ export default function CampaignReportExporter({
 
   if (!isOpen) return null;
 
-  const pillBtn =
-    "inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 " +
-    "hover:bg-surface2 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 disabled:opacity-50 disabled:cursor-not-allowed";
-
-  const pillPrimary =
-    "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-soft " +
-    "bg-gradient-to-r from-brand via-brand-600 to-brand-700 hover:brightness-105 active:brightness-95 " +
-    "transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 disabled:opacity-50 disabled:cursor-not-allowed";
-
   const segBtn = (active: boolean) =>
     cn(
-      "rounded-full px-4 py-2 text-sm font-semibold transition border",
+      "rounded-full px-4 py-2 text-sm font-semibold transition border shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]",
       active
-        ? "bg-brand/10 border-brand/20 text-ink"
-        : "bg-surface border-border text-ink/70 hover:bg-surface2",
+        ? "border-brand/22 bg-brand/[0.08] text-ink"
+        : "border-white/78 bg-white/68 text-ink/70 hover:bg-white/82",
     );
 
   return createPortal(
     <LazyMotion features={domAnimation}>
       <AnimatePresence mode="wait">
         <m.div
-        className="fixed inset-0 z-[90] p-4 sm:p-6 flex items-center justify-center"
-        variants={overlayV}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget && !exporting) onClose();
-        }}
-        >
-          <div className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" />
-
-          <m.div
-          className="relative w-full max-w-lg rounded-[1.5rem] border border-border bg-surface shadow-soft2 overflow-hidden"
-          variants={panelV}
+          className="fixed inset-0 z-[90] p-4 sm:p-6 flex items-center justify-center"
+          variants={overlayV}
           initial="initial"
           animate="animate"
           exit="exit"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !exporting) onClose();
+          }}
+        >
+          <div className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm" />
+
+          <m.div
+            className={cn(campaignModalPanelClass, "max-w-lg")}
+            variants={panelV}
+            initial="initial"
+            animate="animate"
+            exit="exit"
           >
-          <div className="hidden">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-2xl bg-brand/10 flex items-center justify-center">
-                <Download className="w-5 h-5 text-brand" />
-              </div>
-              <div>
-                <div className="text-base sm:text-lg font-semibold text-ink">
-                  Exportar reporte de campaña
+            <ModalHeader
+              icon={<Download className="w-5 h-5 text-brand" />}
+              title="Exportar reporte de campaña"
+              description="CSV o XLSX con resumen"
+              onClose={() => !exporting && onClose()}
+              closeDisabled={exporting}
+              className={campaignModalHeaderClass}
+            />
+
+            <ModalBody className="space-y-5">
+              {error && (
+                <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.76))] px-4 py-3 text-sm text-red-700">
+                  {error}
                 </div>
-                <div className="text-xs text-muted">CSV o XLSX con resumen</div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => !exporting && onClose()}
-              className="h-10 w-10 rounded-2xl border border-border bg-surface hover:bg-surface2 transition flex items-center justify-center text-muted hover:text-ink"
-              aria-label="Cerrar"
-              disabled={exporting}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <ModalHeader
-            icon={<Download className="w-5 h-5 text-brand" />}
-            title="Exportar reporte de campaña"
-            description="CSV o XLSX con resumen"
-            onClose={() => !exporting && onClose()}
-            closeDisabled={exporting}
-          />
-
-          <ModalBody className="space-y-5">
-            {error && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <div className="block text-sm font-semibold text-ink/80 mb-2">
-                Campaña
-              </div>
-              <Select
-                value={exportCampaignId}
-                onValueChange={(v) => setExportCampaignId(v)}
-                disabled={exporting}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una campaña" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  {campaigns.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.prefix} — {c.name} ({c.total} total / {c.available} disp.)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2 text-sm font-semibold text-ink/80 mb-2">
-                <Filter className="w-4 h-4" />
-                Alcance
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={exporting}
-                  onClick={() => setExportScope("all")}
-                  className={segBtn(exportScope === "all")}
-                >
-                  Todos
-                </button>
-                <button
-                  type="button"
-                  disabled={exporting}
-                  onClick={() => setExportScope("available")}
-                  className={segBtn(exportScope === "available")}
-                >
-                  Disponibles
-                </button>
-                <button
-                  type="button"
-                  disabled={exporting}
-                  onClick={() => setExportScope("assigned")}
-                  className={segBtn(exportScope === "assigned")}
-                >
-                  Asignados
-                </button>
-              </div>
-
-              <br />
-
-              <div className="rounded-2xl border border-border bg-surface2 px-4 py-3 text-xs text-muted leading-relaxed">
-                <span className="font-semibold text-ink/70">Todos</span>:
-                incluye clientes{" "}
-                <span className="font-semibold text-ink/70">asignados</span> y{" "}
-                <span className="font-semibold text-ink/70">disponibles</span>.
-                <br />
-                <span className="font-semibold text-ink/70">Disponibles</span>:
-                aún{" "}
-                <span className="font-semibold text-ink/70">
-                  sin agente asignado
-                </span>
-                .
-                <br />
-                <span className="font-semibold text-ink/70">Asignados</span>:{" "}
-                <span className="font-semibold text-ink/70">
-                  con agente asignado
-                </span>
-                .
-              </div>
-            </div>
-
-            <div>
-              <div className="block text-sm font-semibold text-ink/80 mb-2">
-                Formato
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  disabled={exporting}
-                  onClick={() => setExportFormat("csv")}
-                  className={cn(
-                    pillBtn,
-                    "justify-center",
-                    exportFormat === "csv" &&
-                      "ring-4 ring-brand/10 border-brand/20",
-                  )}
-                >
-                  <FileText className="w-4 h-4" />
-                  CSV
-                </button>
-
-                <button
-                  type="button"
-                  disabled={exporting}
-                  onClick={() => setExportFormat("xlsx")}
-                  className={cn(
-                    pillBtn,
-                    "justify-center",
-                    exportFormat === "xlsx" &&
-                      "ring-4 ring-brand/10 border-brand/20",
-                  )}
-                >
-                  <FileSpreadsheet className="w-4 h-4" />
-                  XLSX (con resumen)
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-surface2 px-4 py-3 text-xs text-muted">
-              Consejo: el XLSX incluye resumen por tipificación, por código de
-              tipificación y por agente, además de columnas dinámicas para
-              comentarios.
-            </div>
-          </ModalBody>
-
-          <ModalFooter className="justify-end gap-2">
-            <button
-              className={pillBtn}
-              onClick={onClose}
-              disabled={exporting}
-              type="button"
-            >
-              Cancelar
-            </button>
-
-            <button
-              className={pillPrimary}
-              onClick={exportNow}
-              disabled={exporting || !canExport}
-              type="button"
-            >
-              {exporting ? (
-                <LoadingSpinner
-                  size="sm"
-                  text="Exportando..."
-                  fullScreen={false}
-                />
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  Exportar
-                </>
               )}
-            </button>
-          </ModalFooter>
+
+              <div className={cn(campaignInsetClass, "p-4")}>
+                <div className="block text-sm font-semibold text-ink/80 mb-2">
+                  Campaña
+                </div>
+                <Select
+                  value={exportCampaignId}
+                  onValueChange={(v) => setExportCampaignId(v)}
+                  disabled={exporting}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una campaña" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {campaigns.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.prefix} — {c.name} ({c.total} total / {c.available} disp.)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className={cn(campaignInsetClass, "p-4")}>
+                <div className="flex items-center gap-2 text-sm font-semibold text-ink/80 mb-2">
+                  <Filter className="w-4 h-4" />
+                  Alcance
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={exporting}
+                    onClick={() => setExportScope("all")}
+                    className={segBtn(exportScope === "all")}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    type="button"
+                    disabled={exporting}
+                    onClick={() => setExportScope("available")}
+                    className={segBtn(exportScope === "available")}
+                  >
+                    Disponibles
+                  </button>
+                  <button
+                    type="button"
+                    disabled={exporting}
+                    onClick={() => setExportScope("assigned")}
+                    className={segBtn(exportScope === "assigned")}
+                  >
+                    Asignados
+                  </button>
+                </div>
+
+                <div className="mt-4 rounded-[1rem] border border-white/74 bg-white/54 px-4 py-3 text-xs leading-relaxed text-muted">
+                  <span className="font-semibold text-ink/70">Todos</span>:
+                  incluye clientes{" "}
+                  <span className="font-semibold text-ink/70">asignados</span> y{" "}
+                  <span className="font-semibold text-ink/70">disponibles</span>.
+                  <br />
+                  <span className="font-semibold text-ink/70">Disponibles</span>:
+                  aun{" "}
+                  <span className="font-semibold text-ink/70">
+                    sin agente asignado
+                  </span>
+                  .
+                  <br />
+                  <span className="font-semibold text-ink/70">Asignados</span>:{" "}
+                  <span className="font-semibold text-ink/70">
+                    con agente asignado
+                  </span>
+                  .
+                </div>
+              </div>
+
+              <div className={cn(campaignInsetClass, "p-4")}>
+                <div className="block text-sm font-semibold text-ink/80 mb-2">
+                  Formato
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={exporting}
+                    onClick={() => setExportFormat("csv")}
+                    className={cn(
+                      campaignGhostButtonClass,
+                      "justify-center",
+                      exportFormat === "csv" &&
+                        "border-brand/24 bg-brand/[0.08] ring-4 ring-brand/10",
+                    )}
+                  >
+                    <FileText className="w-4 h-4" />
+                    CSV
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={exporting}
+                    onClick={() => setExportFormat("xlsx")}
+                    className={cn(
+                      campaignGhostButtonClass,
+                      "justify-center",
+                      exportFormat === "xlsx" &&
+                        "border-brand/24 bg-brand/[0.08] ring-4 ring-brand/10",
+                    )}
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    XLSX (con resumen)
+                  </button>
+                </div>
+              </div>
+              <div className="rounded-[1.2rem] border border-white/74 bg-white/54 px-4 py-3 text-xs text-muted">
+                Consejo: el XLSX incluye resumen por tipificacion, por codigo de
+                tipificacion y por agente, ademas de columnas dinamicas para
+                comentarios.
+              </div>
+            </ModalBody>
+
+            <ModalFooter className={cn("justify-end gap-2", campaignModalFooterClass)}>
+              <button
+                className={modalSecondaryActionClassName}
+                onClick={onClose}
+                disabled={exporting}
+                type="button"
+              >
+                Cancelar
+              </button>
+
+              <button
+                className={modalPrimaryActionClassName}
+                onClick={exportNow}
+                disabled={exporting || !canExport}
+                type="button"
+              >
+                {exporting ? (
+                  <LoadingSpinner
+                    size="sm"
+                    text="Exportando..."
+                    fullScreen={false}
+                  />
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Exportar
+                  </>
+                )}
+              </button>
+            </ModalFooter>
           </m.div>
         </m.div>
       </AnimatePresence>

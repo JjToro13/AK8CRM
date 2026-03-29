@@ -27,7 +27,7 @@ export default function CampaignBadge({ prefix, available, title, name }: Props)
           "inline-flex select-none items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold backdrop-blur-xl",
           "border shadow-[0_14px_28px_rgba(30,41,59,0.08)] transition hover:-translate-y-[1px] hover:shadow-[0_18px_36px_rgba(30,41,59,0.12)]",
           isEmpty
-            ? "border-border bg-surface text-muted"
+            ? "border-white/76 bg-white/72 text-muted"
             : "border-brand/18 bg-[linear-gradient(180deg,rgb(var(--color-brand-100)/0.5),rgb(var(--color-surface)/0.72))] text-ink/86",
         )}
       >
@@ -49,7 +49,7 @@ export default function CampaignBadge({ prefix, available, title, name }: Props)
             "translate-y-1 opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100",
           )}
         >
-          <div className="whitespace-nowrap rounded-2xl border border-border bg-surface/92 px-4 py-2 text-xs text-ink/80 shadow-[0_18px_40px_rgba(30,41,59,0.12)] backdrop-blur-xl">
+          <div className="whitespace-nowrap rounded-2xl border border-white/82 bg-white/88 px-4 py-2 text-xs text-ink/80 shadow-[0_18px_40px_rgba(30,41,59,0.12)] backdrop-blur-xl">
             {tooltipText}
           </div>
         </div>

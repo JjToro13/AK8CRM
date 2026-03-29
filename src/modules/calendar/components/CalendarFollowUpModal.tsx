@@ -26,6 +26,12 @@ import Field from "../../../shared/components/ui/Field";
 import Textarea from "../../../shared/components/ui/Textarea";
 import { formatTimeZoneLabel } from "../../../shared/constants/timezones";
 import {
+  calendarInsetClass,
+  calendarModalFooterClass,
+  calendarModalHeaderClass,
+  calendarModalPanelClass,
+} from "./calendarUi";
+import {
   formatDateTimeLabel,
   fromLocalDateTimeParts,
   toLocalDateInputValue,
@@ -273,31 +279,32 @@ export default function CalendarFollowUpModal({
         }
       }}
     >
-      <ModalPanel className="max-w-[56rem]">
+      <ModalPanel className={cn(calendarModalPanelClass, "max-w-[56rem]")}>
         <ModalHeader
           icon={<Clock3 className="h-5 w-5 text-brand" />}
           title="Seguimiento de cita"
           description={`${clientLabel || event.client?.serial || "Cliente"} · ${event.client?.serial ?? ""}`}
           onClose={onClose}
           closeDisabled={saving}
+          className={calendarModalHeaderClass}
         />
 
         <ModalBody className="space-y-5">
           {submitError ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-red-700">
               {submitError}
             </div>
           ) : null}
 
           {isOverdue ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="rounded-[1.2rem] border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.94),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-amber-800">
               Esta cita ya venció en calendario. Define el resultado o reagéndala
               para sacarla del bloque pendiente.
             </div>
           ) : null}
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-[1.25rem] border border-border bg-surface2/65 p-4">
+            <div className={cn(calendarInsetClass, "p-4")}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                 Cliente
               </p>
@@ -331,7 +338,7 @@ export default function CalendarFollowUpModal({
               </div>
             </div>
 
-            <div className="rounded-[1.25rem] border border-border bg-surface2/65 p-4">
+            <div className={cn(calendarInsetClass, "p-4")}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                 Base / campaña
               </p>
@@ -345,7 +352,7 @@ export default function CalendarFollowUpModal({
               </p>
             </div>
 
-            <div className="rounded-[1.25rem] border border-border bg-surface2/65 p-4">
+            <div className={cn(calendarInsetClass, "p-4")}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                 Agente
               </p>
@@ -358,7 +365,7 @@ export default function CalendarFollowUpModal({
               </p>
             </div>
 
-            <div className="rounded-[1.25rem] border border-border bg-surface2/65 p-4">
+            <div className={cn(calendarInsetClass, "p-4")}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                 Fecha pactada
               </p>
@@ -372,16 +379,16 @@ export default function CalendarFollowUpModal({
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-            <div className="rounded-[1.35rem] border border-border bg-surface2/60 p-4">
+            <div className={cn(calendarInsetClass, "p-4")}>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-ink/80">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/74 bg-white/68 px-3 py-1 text-xs font-semibold text-ink/80">
                   <span
                     className={cn("h-2.5 w-2.5 rounded-full", currentStatus?.dotClass)}
                   />
                   {currentStatus?.label ?? "Agendada"}
                 </span>
                 {isOverdue ? (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
                     <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
                     Vencida
                   </span>
@@ -399,7 +406,7 @@ export default function CalendarFollowUpModal({
               </div>
             </div>
 
-            <div className="rounded-[1.35rem] border border-border bg-surface p-4">
+            <div className={cn(calendarInsetClass, "p-4")}>
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 <CheckCheck className="h-3.5 w-3.5" />
                 Resultado del seguimiento
@@ -419,7 +426,7 @@ export default function CalendarFollowUpModal({
                         "rounded-[1.15rem] border px-4 py-3 text-left transition",
                         isActive
                           ? action.activeClassName
-                          : "border-border bg-surface2 text-ink/80 hover:border-brand/20 hover:bg-surface",
+                          : "border-white/72 bg-white/62 text-ink/80 hover:border-brand/20 hover:bg-white/82",
                       )}
                     >
                       <div className="flex items-start gap-3">
@@ -428,7 +435,7 @@ export default function CalendarFollowUpModal({
                             "mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border",
                             isActive
                               ? "border-current/20 bg-white/70"
-                              : "border-border bg-surface text-muted",
+                              : "border-white/74 bg-white/72 text-muted",
                           )}
                         >
                           <Icon className="h-4 w-4" />
@@ -481,7 +488,7 @@ export default function CalendarFollowUpModal({
           </Field>
         </ModalBody>
 
-        <ModalFooter className="justify-between">
+        <ModalFooter className={cn("justify-between", calendarModalFooterClass)}>
           <button
             type="button"
             onClick={() => onOpenEdit(event)}

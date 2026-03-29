@@ -6,6 +6,7 @@ import PageStage from "../../../shared/components/layout/PageStage";
 import PageHeader, {
   pageHeaderActionClassName,
 } from "../../../shared/components/layout/PageHeader";
+import { campaignEyebrowClass } from "../components/campaignUi";
 import CampaignManagementView from "../components/CampaignManagementView";
 
 export default function CampaignManagementPage() {
@@ -40,7 +41,11 @@ export default function CampaignManagementPage() {
             Volver
           </Link>
         }
-        meta={<div className="text-xs text-muted">{scopeLabel}</div>}
+        meta={
+          <div className={`${campaignEyebrowClass} max-w-full text-[10px] text-muted`}>
+            {scopeLabel}
+          </div>
+        }
       />
 
       <main className="flex-1 w-full">
