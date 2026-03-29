@@ -1,5 +1,13 @@
 import { Plus, RefreshCw, Users } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import { useBranding } from "../../../shared/branding/BrandingProvider";
+import { pageHeaderActionClassName } from "../../../shared/components/layout/PageHeader";
+import {
+  dashboardCardClass,
+  dashboardPrimaryActionClass,
+  dashboardSubTextClass,
+  dashboardTitleClass,
+} from "../../dashboard/components/dashboardUi";
 
 type AgentManagementHeaderProps = {
   canCreateAgent: boolean;
@@ -8,49 +16,55 @@ type AgentManagementHeaderProps = {
 };
 
 const cardClass =
-  "rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-7";
-const titleClass = "text-base sm:text-lg font-semibold tracking-tight text-ink";
-const subTextClass = "text-sm text-muted";
-const pillButtonClass =
-  "inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 " +
-  "shadow-[0_8px_20px_rgba(17,24,39,0.06)] hover:shadow-[0_12px_26px_rgba(17,24,39,0.09)] " +
-  "hover:bg-surface2 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 " +
-  "disabled:opacity-50 disabled:cursor-not-allowed";
-const pillPrimaryClass =
-  "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-soft " +
-  "bg-gradient-to-r from-brand via-brand-600 to-brand-700 hover:brightness-105 active:brightness-95 " +
-  "transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 " +
-  "disabled:opacity-50 disabled:cursor-not-allowed";
+  "relative overflow-hidden border-brand/15 bg-[linear-gradient(135deg,rgb(var(--color-brand-100)/0.24),rgb(var(--color-surface)/0.96)_38%,rgb(var(--color-shell-accent)/0.18)_100%)] py-5 sm:py-6";
 
 export default function AgentManagementHeader({
   canCreateAgent,
   onCreateAgent,
   onRefresh,
 }: AgentManagementHeaderProps) {
+  const { branding } = useBranding();
+
   return (
     <div
       className={cn(
+        dashboardCardClass,
         cardClass,
-        "overflow-hidden border-brand/15 bg-[linear-gradient(135deg,rgba(37,99,235,0.09),rgba(255,255,255,0.98)_38%,rgba(37,99,235,0.03)_100%)] py-5 sm:py-6",
       )}
     >
-      <div className="flex items-start justify-between gap-5 flex-wrap">
-        <div className="flex items-start gap-4">
-          <div className="h-12 w-12 rounded-[1.35rem] bg-gradient-to-br from-brand/20 to-brand/5 flex items-center justify-center mt-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-300)/0.18),transparent_22%),linear-gradient(180deg,rgba(255,255,255,0.18),transparent_32%)]" />
+      <div className="pointer-events-none absolute right-[-1rem] top-[-2rem] h-36 w-36 rounded-full bg-brand/10 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-[-2rem] right-[-1rem] h-28 w-56 rotate-[7deg] rounded-[50%] border-[14px] border-brand/18 bg-surface/80 opacity-75" />
+      <div className="pointer-events-none absolute bottom-[-1rem] right-10 h-20 w-44 rotate-[7deg] rounded-[50%] border-[12px] border-brand/12 bg-surface/65 opacity-85" />
+
+      <div className="relative flex flex-wrap items-start justify-between gap-6">
+        <div className="flex max-w-2xl items-start gap-4">
+          <div className="mt-0.5 flex h-12 w-12 items-center justify-center rounded-[1.35rem] border border-white/70 bg-white/58 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
             <Users className="h-5 w-5 text-brand" />
           </div>
 
           <div className="min-w-0">
-            <div className="inline-flex items-center rounded-full border border-brand/15 bg-white/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-brand/80">
+            <div className="inline-flex items-center rounded-full border border-brand/15 bg-white/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-brand/80">
               Centro operativo
             </div>
-            <h2 className={cn(titleClass, "mt-3 text-xl sm:text-2xl")}>
+            <h2 className={cn(dashboardTitleClass, "mt-4 text-xl sm:text-2xl")}>
               Gestion de usuarios operativos
             </h2>
-            <p className={cn(subTextClass, "mt-2 max-w-2xl leading-6")}>
-              Revisa roles, carga operativa y asignaciones desde una vista mas clara,
-              alineada con tenant, operacion y permisos reales.
+            <p className={cn(dashboardSubTextClass, "mt-2 max-w-2xl leading-6")}>
+              Mismo sistema visual del producto, con presencia, carga operativa y
+              asignaciones usando el branding activo de {branding.productName}.
             </p>
+
+            <div className="mt-5 flex flex-wrap gap-2 text-xs">
+              {["Presencia", "Asignacion", branding.displayName].map((label) => (
+                <span
+                  key={label}
+                  className="rounded-full border border-white/72 bg-white/55 px-3 py-1.5 text-ink/78 shadow-[0_12px_24px_rgba(30,41,59,0.06)]"
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -58,10 +72,10 @@ export default function AgentManagementHeader({
           <button
             type="button"
             onClick={onRefresh}
-            className={pillButtonClass}
+            className={pageHeaderActionClassName}
             title="Recargar agentes"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="h-4 w-4" />
             Recargar
           </button>
 
@@ -69,10 +83,10 @@ export default function AgentManagementHeader({
             <button
               type="button"
               onClick={onCreateAgent}
-              className={pillPrimaryClass}
+              className={dashboardPrimaryActionClass}
               title="Crear un nuevo usuario"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="h-4 w-4" />
               Nuevo usuario
             </button>
           ) : null}

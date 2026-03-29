@@ -21,22 +21,20 @@ export default function CampaignBadge({ prefix, available, title, name }: Props)
     (label ? `${prefix} - ${label} · Disponibles: ${n}` : `Disponibles en ${prefix}: ${n}`);
 
   return (
-    <div className="relative group">
+    <div className="group relative">
       <span
         className={cn(
-          "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold",
-          "border shadow-[0_10px_28px_rgba(17,24,39,0.06)] select-none",
-          "transition hover:shadow-[0_14px_34px_rgba(17,24,39,0.09)]",
+          "inline-flex select-none items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold backdrop-blur-xl",
+          "border shadow-[0_14px_28px_rgba(30,41,59,0.08)] transition hover:-translate-y-[1px] hover:shadow-[0_18px_36px_rgba(30,41,59,0.12)]",
           isEmpty
-            ? "bg-surface2 text-muted border-border"
-            : "bg-brand/10 text-ink/80 border-brand/20 hover:bg-brand/15",
+            ? "border-border bg-surface text-muted"
+            : "border-brand/18 bg-[linear-gradient(180deg,rgb(var(--color-brand-100)/0.5),rgb(var(--color-surface)/0.72))] text-ink/86",
         )}
       >
         <Tag
           className={cn(
-            "h-4 w-4 shrink-0",
-            "relative top-[0.5px]",
-            isEmpty ? "opacity-60" : "text-ink/70",
+            "relative top-[0.5px] h-4 w-4 shrink-0",
+            isEmpty ? "opacity-60" : "text-brand/80",
           )}
         />
         <span className="font-mono tabular-nums">{prefix}</span>
@@ -44,19 +42,18 @@ export default function CampaignBadge({ prefix, available, title, name }: Props)
         <span className="tabular-nums">{n.toLocaleString()}</span>
       </span>
 
-      {tooltipText && (
+      {tooltipText ? (
         <div
           className={cn(
-            "pointer-events-none absolute right-0 top-full mt-2 z-[200]",
-            "opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0",
-            "transition-all duration-150",
+            "pointer-events-none absolute right-0 top-full z-[200] mt-2",
+            "translate-y-1 opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100",
           )}
         >
-          <div className="rounded-2xl border border-border bg-surface2/95 backdrop-blur text-xs text-ink/80 px-4 py-2 shadow-soft2 whitespace-nowrap">
+          <div className="whitespace-nowrap rounded-2xl border border-border bg-surface/92 px-4 py-2 text-xs text-ink/80 shadow-[0_18px_40px_rgba(30,41,59,0.12)] backdrop-blur-xl">
             {tooltipText}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

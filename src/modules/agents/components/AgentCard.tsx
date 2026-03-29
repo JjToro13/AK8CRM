@@ -1,6 +1,11 @@
 import { Eye, Pencil, Plus } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import type { Agent } from "../../../lib/supabase";
+import { pageHeaderActionClassName } from "../../../shared/components/layout/PageHeader";
+import {
+  dashboardCardClass,
+  dashboardPrimaryActionClass,
+} from "../../dashboard/components/dashboardUi";
 import { getAgentPresenceCopy } from "../domain/agent-presence";
 
 type AgentCardProps = {
@@ -19,16 +24,8 @@ type AgentCardProps = {
 
 const badgeBaseClass =
   "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold";
-const pillButtonClass =
-  "inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 " +
-  "shadow-[0_8px_20px_rgba(17,24,39,0.06)] hover:shadow-[0_12px_26px_rgba(17,24,39,0.09)] " +
-  "hover:bg-surface2 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 " +
-  "disabled:opacity-50 disabled:cursor-not-allowed";
-const pillPrimaryClass =
-  "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-soft " +
-  "bg-gradient-to-r from-brand via-brand-600 to-brand-700 hover:brightness-105 active:brightness-95 " +
-  "transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 " +
-  "disabled:opacity-50 disabled:cursor-not-allowed";
+const cardClass =
+  "relative overflow-hidden border-white/68 bg-[linear-gradient(180deg,rgb(var(--color-surface)/0.97),rgb(var(--color-surface-elevated)/0.9))]";
 
 export default function AgentCard({
   agent,
@@ -50,31 +47,35 @@ export default function AgentCard({
   const assignTitle = !isActive
     ? "El usuario esta inactivo"
     : !canAssignClients
-    ? "No tienes permisos para asignar clientes"
-    : !canReceiveAssignments
-    ? `${roleLabel} no recibe asignaciones de clientes`
-    : totalAvailable <= 0
-      ? "No hay clientes disponibles para asignar"
-      : "Asignar clientes";
+      ? "No tienes permisos para asignar clientes"
+      : !canReceiveAssignments
+        ? `${roleLabel} no recibe asignaciones de clientes`
+        : totalAvailable <= 0
+          ? "No hay clientes disponibles para asignar"
+          : "Asignar clientes";
 
   return (
     <div
       className={cn(
-        "rounded-[1.5rem] border border-border bg-surface shadow-soft p-6",
-        "hover:shadow-soft2 transition-shadow",
+        dashboardCardClass,
+        cardClass,
+        "p-6 transition-all hover:-translate-y-[2px] hover:shadow-[0_28px_60px_rgba(30,41,59,0.14)]",
       )}
     >
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex items-center min-w-0 flex-1">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-300)/0.14),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.18),transparent_30%)]" />
+
+      <div className="relative mb-4 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center">
           <span
             className={cn(
-              "w-3 h-3 rounded-full mr-3 flex-shrink-0",
+              "mr-3 h-3 w-3 flex-shrink-0 rounded-full",
               presence.dotClass,
             )}
           />
           <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-ink truncate">{agent.name}</h3>
-            <p className="text-sm text-muted truncate break-all">{agent.email}</p>
+            <h3 className="truncate font-semibold text-ink">{agent.name}</h3>
+            <p className="truncate break-all text-sm text-muted">{agent.email}</p>
+
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
               <span
                 className={cn(
@@ -100,18 +101,18 @@ export default function AgentCard({
             type="button"
             onClick={() => onEdit(agent)}
             className={cn(
-              "h-10 w-10 rounded-2xl border border-border bg-surface hover:bg-surface2 transition",
-              "flex items-center justify-center text-muted hover:text-ink",
+              "flex h-10 w-10 items-center justify-center rounded-2xl border border-white/70 bg-surface/80 text-muted shadow-[0_12px_26px_rgba(30,41,59,0.08)] transition",
+              "hover:-translate-y-[1px] hover:bg-surface hover:text-ink",
             )}
             title="Editar usuario"
             aria-label="Editar usuario"
           >
-            <Pencil className="w-4 h-4" />
+            <Pencil className="h-4 w-4" />
           </button>
         ) : null}
       </div>
 
-      <div className="rounded-2xl border border-border bg-surface2 px-4 py-3 mb-4">
+      <div className="crm-shell-soft-row relative mb-4 rounded-[1.4rem] border border-border bg-surface2 px-4 py-3">
         <div className="text-xs text-muted">
           {canReceiveAssignments ? "Clientes asignados" : "Asignacion de clientes"}
         </div>
@@ -129,11 +130,11 @@ export default function AgentCard({
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="relative flex gap-2">
         <button
           type="button"
           onClick={() => onViewDetails(agent)}
-          className={cn(pillButtonClass, "flex-1 justify-center")}
+          className={cn(pageHeaderActionClassName, "flex-1 justify-center")}
         >
           <Eye className="h-4 w-4" />
           Ver detalles
@@ -142,7 +143,7 @@ export default function AgentCard({
         <button
           type="button"
           onClick={() => onAssign(agent)}
-          className={cn(pillPrimaryClass, "flex-1 justify-center")}
+          className={cn(dashboardPrimaryActionClass, "flex-1 justify-center")}
           disabled={disabledAssign}
           title={assignTitle}
         >
@@ -150,10 +151,10 @@ export default function AgentCard({
           {!isActive
             ? "Inactivo"
             : !canAssignClients
-            ? "Sin permiso"
-            : canReceiveAssignments
-              ? "Asignar"
-              : "No aplica"}
+              ? "Sin permiso"
+              : canReceiveAssignments
+                ? "Asignar"
+                : "No aplica"}
         </button>
       </div>
     </div>

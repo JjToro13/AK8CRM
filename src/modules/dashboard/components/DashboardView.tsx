@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { LogOut, Phone } from "lucide-react";
+import { Phone } from "lucide-react";
 import {
   canUseCalendarWorkspace,
   canUseCallHistory,
@@ -9,11 +9,8 @@ import EditClientModal from "../../../shared/components/client/EditClientModal";
 import SecurityInfo from "./SecurityInfo";
 import AppFooter from "../../../shared/components/layout/AppFooter";
 import PageStage from "../../../shared/components/layout/PageStage";
-import BrandPresetSelector from "../../../shared/components/layout/BrandPresetSelector";
 import { useBranding } from "../../../shared/branding/BrandingProvider";
-import PageHeader, {
-  pageHeaderActionClassName,
-} from "../../../shared/components/layout/PageHeader";
+import PageHeader from "../../../shared/components/layout/PageHeader";
 import { useDashboard } from "../hooks/useDashboard";
 import type { DashboardProps } from "../types/dashboard.types";
 import DashboardQuickActionsPanel from "./DashboardQuickActionsPanel";
@@ -21,9 +18,8 @@ import DashboardCalendarPanel from "../../calendar/components/DashboardCalendarP
 import DashboardRecentCallsPanel from "./DashboardRecentCallsPanel";
 import DashboardSearchPanel from "./DashboardSearchPanel";
 import DashboardStatsPanel from "./DashboardStatsPanel";
-import DashboardOperationSelect from "./DashboardOperationSelect";
-import DashboardTenantSelect from "./DashboardTenantSelect";
 import { dashboardFadeUp } from "./dashboardUi";
+import DashboardHeaderMenu from "./DashboardHeaderMenu";
 
 export default function DashboardView(props: DashboardProps) {
   const { branding } = useBranding();
@@ -66,7 +62,7 @@ export default function DashboardView(props: DashboardProps) {
       : role === "owner"
         ? "Panel de owner"
         : role === "manager"
-          ? "Panel de gestión"
+          ? "Panel de gestion"
           : role === "loader"
             ? "Panel de carga"
             : "Panel del agente";
@@ -74,63 +70,27 @@ export default function DashboardView(props: DashboardProps) {
   return (
     <div className="min-h-screen bg-bg flex flex-col">
       <PageHeader
+        allowOverflow
         icon={<Phone className="h-5 w-5 text-brand" />}
         title={branding.productName}
-        subtitle={
-          <span className="text-xs text-muted">
-            {panelSubtitle}
-          </span>
-        }
-        supportingContent={
-          <motion.div
-            initial={{ opacity: 0, y: 6, filter: "blur(6px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{
-              type: "spring",
-              stiffness: 260,
-              damping: 22,
-              delay: 0.05,
-            }}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-[11px] text-muted shadow-[0_10px_28px_rgba(17,24,39,0.06)]"
-          >
-            <span className="relative inline-flex h-2.5 w-2.5">
-              <span className="absolute inset-0 rounded-full bg-emerald-400/25 blur-[6px] animate-blink-glow" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.65)] animate-blink-glow" />
-            </span>
-            <span className="font-semibold text-ink/80">{branding.productName}</span>
-            <span className="text-muted">•</span>
-            <span className="font-semibold text-emerald-700">ONLINE</span>
-          </motion.div>
-        }
+        subtitle={<span className="text-xs text-muted">{panelSubtitle}</span>}
+        supportingContent={<SecurityInfo isAdmin={isAdmin} mode="inline" />}
         meta={
-          <div className="flex items-center gap-2 sm:gap-3">
-            <BrandPresetSelector enabled={role === "dev"} />
-
-            <DashboardTenantSelect
-              enabled={canSeeAllOperations}
-              loading={opsLoading}
-              tenants={tenants}
-              selectedTenantId={selectedTenantId}
-              onSelect={selectTenant}
-            />
-
-            <DashboardOperationSelect
-              enabled={canSeeAllOperations}
-              loading={opsLoading}
-              operations={operations}
-              selectedOperationId={selectedOperationId}
-              onSelect={selectOperation}
-            />
-
-            <button
-              onClick={handleSignOut}
-              className={pageHeaderActionClassName}
-              type="button"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Cerrar Sesion</span>
-            </button>
-          </div>
+          <DashboardHeaderMenu
+            canSeeAllOperations={canSeeAllOperations}
+            inProgress={statInProgress}
+            loading={opsLoading}
+            operations={operations}
+            recentCount={recentCalls.length}
+            role={role}
+            selectedOperationId={selectedOperationId}
+            selectedTenantId={selectedTenantId}
+            tenants={tenants}
+            today={statToday}
+            onSelectOperation={selectOperation}
+            onSelectTenant={selectTenant}
+            onSignOut={handleSignOut}
+          />
         }
       />
 
@@ -164,89 +124,83 @@ export default function DashboardView(props: DashboardProps) {
             ) : null}
           </AnimatePresence>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <motion.div
-                variants={dashboardFadeUp}
-                initial="initial"
-                animate="animate"
-              >
-                {canUseSearch ? (
-                  <DashboardSearchPanel
-                    loading={loading}
-                    onCallStarted={handleCallStarted}
-                    onEditClient={handleEditClient}
-                    onSearchChange={handleSearchInput}
-                    opLocked={opLocked}
-                    searchQuery={searchQuery}
-                    searchResults={searchResults}
-                  />
-                ) : (
-                  <section className="rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-7">
-                    <h2 className="text-base font-semibold tracking-tight text-ink">
-                      Acceso de carga
-                    </h2>
-                    <p className="mt-2 text-sm text-muted">
-                      Este perfil esta orientado a carga y preparacion de datos.
-                      Las acciones comerciales y de contacto no se muestran aqui.
-                    </p>
-                  </section>
-                )}
-              </motion.div>
+          <div className="space-y-6">
+            <motion.div
+              variants={dashboardFadeUp}
+              initial="initial"
+              animate="animate"
+            >
+              <DashboardQuickActionsPanel role={role ?? null} mode="rail" />
+            </motion.div>
 
-              {canUseCalendar ? (
+            <motion.div
+              variants={dashboardFadeUp}
+              initial="initial"
+              animate="animate"
+            >
+              <DashboardStatsPanel
+                completed={statCompleted}
+                inProgress={statInProgress}
+                noAnswer={statNoAnswer}
+                today={statToday}
+              />
+            </motion.div>
+
+            <div className="grid grid-cols-1 gap-6 lg:gap-8 xl:grid-cols-12">
+              <div className={canUseCalls ? "space-y-6 xl:col-span-8" : "space-y-6 xl:col-span-12"}>
                 <motion.div
                   variants={dashboardFadeUp}
                   initial="initial"
                   animate="animate"
                 >
-                  <DashboardCalendarPanel />
+                  {canUseSearch ? (
+                    <DashboardSearchPanel
+                      loading={loading}
+                      onCallStarted={handleCallStarted}
+                      onEditClient={handleEditClient}
+                      onSearchChange={handleSearchInput}
+                      opLocked={opLocked}
+                      searchQuery={searchQuery}
+                      searchResults={searchResults}
+                    />
+                  ) : (
+                    <section className="rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-7">
+                      <h2 className="text-base font-semibold tracking-tight text-ink">
+                        Acceso de carga
+                      </h2>
+                      <p className="mt-2 text-sm text-muted">
+                        Este perfil esta orientado a carga y preparacion de datos.
+                        Las acciones comerciales y de contacto no se muestran aqui.
+                      </p>
+                    </section>
+                  )}
                 </motion.div>
-              ) : null}
+
+                {canUseCalendar ? (
+                  <motion.div
+                    variants={dashboardFadeUp}
+                    initial="initial"
+                    animate="animate"
+                  >
+                    <DashboardCalendarPanel />
+                  </motion.div>
+                ) : null}
+              </div>
 
               {canUseCalls ? (
-                <motion.div
-                  variants={dashboardFadeUp}
-                  initial="initial"
-                  animate="animate"
-                >
-                  <DashboardRecentCallsPanel
-                    callsLoading={callsLoading}
-                    recentCalls={recentCalls}
-                  />
-                </motion.div>
+                <div className="space-y-6 xl:col-span-4">
+                  <motion.div
+                    variants={dashboardFadeUp}
+                    initial="initial"
+                    animate="animate"
+                  >
+                    <DashboardRecentCallsPanel
+                      callsLoading={callsLoading}
+                      recentCalls={recentCalls}
+                    />
+                  </motion.div>
+                </div>
               ) : null}
-            </div>
-
-            <div className="space-y-6">
-              <motion.div
-                variants={dashboardFadeUp}
-                initial="initial"
-                animate="animate"
-              >
-                <DashboardStatsPanel
-                  completed={statCompleted}
-                  inProgress={statInProgress}
-                  noAnswer={statNoAnswer}
-                  today={statToday}
-                />
-              </motion.div>
-
-              <motion.div
-                variants={dashboardFadeUp}
-                initial="initial"
-                animate="animate"
-              >
-                <SecurityInfo isAdmin={isAdmin} />
-              </motion.div>
-
-              <motion.div
-                variants={dashboardFadeUp}
-                initial="initial"
-                animate="animate"
-              >
-                <DashboardQuickActionsPanel role={role ?? null} />
-              </motion.div>
             </div>
           </div>
         </PageStage>

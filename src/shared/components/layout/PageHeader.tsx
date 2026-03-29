@@ -15,6 +15,7 @@ type PageHeaderProps = {
   actions?: ReactNode;
   meta?: ReactNode;
   containerClassName?: string;
+  allowOverflow?: boolean;
 };
 
 export default function PageHeader({
@@ -25,9 +26,15 @@ export default function PageHeader({
   actions,
   meta,
   containerClassName,
+  allowOverflow = false,
 }: PageHeaderProps) {
   return (
-    <header className="relative overflow-hidden border-b border-white/45 bg-surface/74 backdrop-blur-2xl supports-[backdrop-filter]:bg-surface/68">
+    <header
+      className={cn(
+        "relative border-b border-white/45 bg-surface/74 backdrop-blur-2xl supports-[backdrop-filter]:bg-surface/68",
+        allowOverflow ? "overflow-visible z-40" : "overflow-hidden",
+      )}
+    >
       <div className="pointer-events-none absolute inset-x-[18%] top-[-4.5rem] h-36 rounded-full bg-brand/14 blur-3xl" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand/28 to-transparent" />
       <div
