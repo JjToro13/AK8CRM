@@ -19,7 +19,7 @@ export default function AppFooter({
   const version = "1.0.15";
 
   return (
-    <footer className="relative overflow-hidden border-t border-white/45 bg-surface/74 backdrop-blur-2xl supports-[backdrop-filter]:bg-surface/68">
+    <footer className="crm-app-footer relative overflow-hidden border-t border-white/45 bg-surface/74 backdrop-blur-2xl supports-[backdrop-filter]:bg-surface/68">
       <div className="pointer-events-none absolute inset-x-[24%] top-0 h-px bg-gradient-to-r from-transparent via-brand/28 to-transparent" />
       <div
         className={cn(

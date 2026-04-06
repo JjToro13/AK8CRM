@@ -120,7 +120,7 @@ export default function SecurityInfo({
         <span className="font-semibold text-ink/85">{userName || "Usuario"}</span>
         <span className="text-muted">/</span>
         <span className="font-medium text-muted">{label}</span>
-        <span className="rounded-full border border-white/72 bg-white/60 px-2.5 py-1 font-semibold text-brand/80">
+        <span className="crm-security-chip rounded-full border border-white/72 bg-white/60 px-2.5 py-1 font-semibold text-brand/80">
           {scope}
         </span>
       </div>
@@ -129,7 +129,7 @@ export default function SecurityInfo({
 
   if (mode === "menu") {
     return (
-      <div className="rounded-[1.25rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,255,255,0.68))] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
+      <div className="crm-security-menu-card rounded-[1.25rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,255,255,0.68))] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
         <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
           Sesion activa
         </div>
@@ -147,7 +147,7 @@ export default function SecurityInfo({
         </div>
 
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <div className="rounded-[1rem] border border-white/84 bg-white/82 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+          <div className="crm-security-menu-stat rounded-[1rem] border border-white/84 bg-white/82 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
             <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
               Hoy
             </div>
@@ -156,7 +156,7 @@ export default function SecurityInfo({
             </div>
           </div>
 
-          <div className="rounded-[1rem] border border-white/84 bg-white/82 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+          <div className="crm-security-menu-stat rounded-[1rem] border border-white/84 bg-white/82 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
             <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
               En curso
             </div>
@@ -165,7 +165,7 @@ export default function SecurityInfo({
             </div>
           </div>
 
-          <div className="rounded-[1rem] border border-white/84 bg-white/82 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+          <div className="crm-security-menu-stat rounded-[1rem] border border-white/84 bg-white/82 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
             <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
               Reciente
             </div>
@@ -176,7 +176,7 @@ export default function SecurityInfo({
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <span className="rounded-full border border-white/84 bg-white/78 px-2.5 py-1 text-[11px] text-ink/78">
+          <span className="crm-security-chip rounded-full border border-white/84 bg-white/78 px-2.5 py-1 text-[11px] text-ink/78">
             {permissionItems[0]}
           </span>
         </div>
@@ -223,7 +223,7 @@ export default function SecurityInfo({
           {permissionItems.map((item) => (
             <span
               key={item}
-              className="rounded-full border border-white/72 bg-white/58 px-3 py-1.5 text-xs text-ink/78"
+              className="crm-security-chip rounded-full border border-white/72 bg-white/58 px-3 py-1.5 text-xs text-ink/78"
             >
               {item}
             </span>

@@ -204,7 +204,7 @@ export default function AgentDetailsModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] p-4 sm:p-6 flex items-center justify-center"
+      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto p-3 sm:items-center sm:p-6"
       onMouseDown={handleBackdropMouseDown}
       role="dialog"
       aria-modal="true"
@@ -214,8 +214,8 @@ export default function AgentDetailsModal({
       <ModalPanel
         className={cn(
           agentModalPanelClass,
-          "max-w-6xl",
-          "max-h-[90vh] flex flex-col",
+          "my-auto max-w-6xl",
+          "flex max-h-[min(92vh,960px)] w-full flex-col",
         )}
       >
         <ModalHeader
@@ -226,7 +226,7 @@ export default function AgentDetailsModal({
           className={agentModalHeaderClass}
         />
 
-        <ModalBody className="space-y-6 overflow-y-auto max-h-[calc(90vh-86px-78px)]">
+        <ModalBody className="min-h-0 space-y-6 overflow-y-auto">
           {error && (
             <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-red-700 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 mt-0.5" />
@@ -439,7 +439,7 @@ export default function AgentDetailsModal({
 
         </ModalBody>
 
-        <ModalFooter className={cn("justify-end", agentModalFooterClass)}>
+        <ModalFooter className={cn("justify-end max-sm:flex-wrap", agentModalFooterClass)}>
           <button type="button" onClick={onClose} className={modalSecondaryActionClassName}>
               Cerrar
           </button>

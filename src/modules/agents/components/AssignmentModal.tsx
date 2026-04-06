@@ -337,7 +337,7 @@ export default function AssignmentModal({
   return createPortal(
     <AnimatePresence mode="wait">
       <motion.div
-        className="fixed inset-0 z-[120] p-4 sm:p-6 flex items-center justify-center"
+        className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto p-3 sm:items-center sm:p-6"
         variants={overlayV}
         initial="initial"
         animate="animate"
@@ -352,7 +352,10 @@ export default function AssignmentModal({
         <div className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm" />
 
         <motion.div
-          className={cn(agentModalPanelClass, "max-w-2xl")}
+          className={cn(
+            agentModalPanelClass,
+            "my-auto flex max-h-[min(92vh,880px)] w-full max-w-2xl flex-col",
+          )}
           variants={panelV}
           initial="initial"
           animate="animate"
@@ -377,7 +380,7 @@ export default function AssignmentModal({
             className={agentModalHeaderClass}
           />
 
-          <ModalBody className="space-y-5">
+          <ModalBody className="min-h-0 space-y-5 overflow-y-auto">
             {error && (
               <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-red-700 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 mt-0.5" />
@@ -498,7 +501,7 @@ export default function AssignmentModal({
             </div>
           </ModalBody>
 
-          <ModalFooter className={cn("justify-end gap-2", agentModalFooterClass)}>
+          <ModalFooter className={cn("justify-end gap-2 max-sm:flex-wrap", agentModalFooterClass)}>
             <button
               type="button"
               onClick={onClose}

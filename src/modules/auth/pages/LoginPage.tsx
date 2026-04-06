@@ -23,6 +23,7 @@ type TenantTheme = {
   buttonFrom: string;
   buttonTo: string;
   buttonGlow: string;
+  gridLine: string;
   skyTop: string;
   skyBottom: string;
   mountainBack: string;
@@ -31,6 +32,8 @@ type TenantTheme = {
   riverBorder: string;
   cloud: string;
   panelChip: string;
+  panelFrom: string;
+  panelTo: string;
 };
 
 type RoleCopy = {
@@ -167,22 +170,25 @@ function collapseAutofillSelection(event: FocusEvent<HTMLInputElement>) {
 function getTenantTheme(tenant: TenantFlavor): TenantTheme {
   if (tenant === "light") {
     return {
-      pageBg1: "#eef4ea",
-      pageBg2: "#dcead8",
-      pageGlow: "rgba(140, 201, 152, 0.26)",
-      cardBg: "#07110d",
-      cardShadow: "rgba(22, 53, 29, 0.18)",
-      buttonFrom: "#6fcf97",
-      buttonTo: "#8ee4af",
-      buttonGlow: "rgba(126, 226, 169, 0.3)",
-      skyTop: "#dff3e6",
-      skyBottom: "#c8e4d0",
-      mountainBack: "#b9d9a8",
-      mountainFront: "#6ea28a",
-      riverFill: "#f0f4ea",
-      riverBorder: "#9cc58f",
-      cloud: "#f5f7fb",
-      panelChip: "#7fd49f",
+      pageBg1: "#070d18",
+      pageBg2: "#040913",
+      pageGlow: "rgba(112, 153, 211, 0.18)",
+      cardBg: "#0b1322",
+      cardShadow: "rgba(4, 8, 18, 0.44)",
+      buttonFrom: "#4b7bec",
+      buttonTo: "#6fa8ff",
+      buttonGlow: "rgba(88, 147, 255, 0.24)",
+      gridLine: "rgba(126, 157, 209, 0.08)",
+      skyTop: "#18273f",
+      skyBottom: "#0c1526",
+      mountainBack: "#243c63",
+      mountainFront: "#11223f",
+      riverFill: "#0f1d34",
+      riverBorder: "#46678f",
+      cloud: "rgba(218, 229, 248, 0.12)",
+      panelChip: "#78a8ff",
+      panelFrom: "rgba(18,31,56,0.84)",
+      panelTo: "rgba(9,16,31,0.94)",
     };
   }
 
@@ -196,6 +202,7 @@ function getTenantTheme(tenant: TenantFlavor): TenantTheme {
       buttonFrom: "#4b7bec",
       buttonTo: "#6fa8ff",
       buttonGlow: "rgba(88, 147, 255, 0.3)",
+      gridLine: "rgba(18,27,43,0.055)",
       skyTop: "#dce9f7",
       skyBottom: "#bfd3eb",
       mountainBack: "#7e9acb",
@@ -204,6 +211,8 @@ function getTenantTheme(tenant: TenantFlavor): TenantTheme {
       riverBorder: "#87a4cf",
       cloud: "#f5f7fb",
       panelChip: "#6e95eb",
+      panelFrom: "rgba(34,48,78,0.82)",
+      panelTo: "rgba(18,27,43,0.9)",
     };
   }
 
@@ -216,6 +225,7 @@ function getTenantTheme(tenant: TenantFlavor): TenantTheme {
     buttonFrom: "#5a67d8",
     buttonTo: "#6f7cf0",
     buttonGlow: "rgba(101, 116, 255, 0.28)",
+    gridLine: "rgba(18,27,43,0.055)",
     skyTop: "#d9dfeb",
     skyBottom: "#bec9dd",
     mountainBack: "#7b8ea8",
@@ -224,6 +234,8 @@ function getTenantTheme(tenant: TenantFlavor): TenantTheme {
     riverBorder: "#7d92ad",
     cloud: "#f5f7fb",
     panelChip: "#8d82de",
+    panelFrom: "rgba(34,48,78,0.82)",
+    panelTo: "rgba(18,27,43,0.9)",
   };
 }
 
@@ -330,8 +342,7 @@ function LandscapePanel({
           transition={{ duration: 0.28, delay: 0.08, ease: "easeOut" }}
           className="absolute bottom-5 left-5 w-[292px] max-w-[calc(100%-40px)] rounded-[28px] border border-white/18 p-5 text-white shadow-[0_22px_46px_rgba(0,0,0,0.22)] backdrop-blur-2xl"
           style={{
-            background:
-              "linear-gradient(180deg, rgba(34,48,78,0.82) 0%, rgba(18,27,43,0.9) 100%)",
+            background: `linear-gradient(180deg, ${theme.panelFrom} 0%, ${theme.panelTo} 100%)`,
           }}
         >
           <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/86">
@@ -574,7 +585,7 @@ export default function LoginPage() {
         style={{
           opacity: 0.18,
           backgroundImage:
-            "linear-gradient(rgba(18,27,43,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(18,27,43,0.055) 1px, transparent 1px)",
+            `linear-gradient(${theme.gridLine} 1px, transparent 1px), linear-gradient(90deg, ${theme.gridLine} 1px, transparent 1px)`,
           backgroundSize: "72px 72px",
           maskImage: "radial-gradient(circle at center, black 38%, transparent 88%)",
         }}

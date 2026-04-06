@@ -48,10 +48,10 @@ export default function PageStage({
         className="pointer-events-none absolute inset-x-8 top-8 h-48 rounded-[3rem] blur-3xl"
         style={{ background: toneStyle.glow }}
       />
-      <div className="pointer-events-none absolute bottom-3 top-3 inset-x-0 rounded-[2.75rem] border border-white/32 bg-white/[0.18] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]" />
-      <div className="pointer-events-none absolute inset-x-6 bottom-6 top-8 overflow-hidden rounded-[2.5rem] opacity-60">
+      <div className="crm-page-stage-frame pointer-events-none absolute bottom-3 top-3 inset-x-0 rounded-[2.75rem] border border-white/32 bg-white/[0.18] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]" />
+      <div className="crm-page-stage-grid pointer-events-none absolute inset-x-6 bottom-6 top-8 overflow-hidden rounded-[2.5rem] opacity-60">
         <div
-          className="absolute inset-0"
+          className="crm-page-stage-grid-pattern absolute inset-0"
           style={{
             backgroundImage:
               "linear-gradient(rgba(18,27,43,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(18,27,43,0.05) 1px, transparent 1px)",

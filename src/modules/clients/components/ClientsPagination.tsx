@@ -152,7 +152,7 @@ export default function ClientsPagination({
               className={cn(
                 actionBtnClass,
                 hasSelectedClient && canExecuteClientActions
-                  ? "border-brand/18 bg-brand/[0.08] text-brand-800 hover:bg-brand/[0.12]"
+                  ? "border-brand/18 bg-brand/[0.08] text-brand hover:bg-brand/[0.12]"
                   : inactiveActionBtnClass,
               )}
             >

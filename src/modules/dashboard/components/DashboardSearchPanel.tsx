@@ -43,7 +43,7 @@ export default function DashboardSearchPanel({
 
   return (
     <section className={cn(dashboardCardClass, "relative overflow-hidden")}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-300)/0.16),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.2),transparent_32%)]" />
+      <div className="crm-dashboard-card-highlight pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-300)/0.16),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.2),transparent_32%)]" />
 
       <div className="relative">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
@@ -72,7 +72,7 @@ export default function DashboardSearchPanel({
           </div>
         </div>
 
-        <div className="mt-6 rounded-[1.65rem] border border-border bg-surface/82 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+        <div className="crm-dashboard-search-well mt-6 rounded-[1.65rem] border border-border bg-surface/82 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
             <input
@@ -82,7 +82,7 @@ export default function DashboardSearchPanel({
               onChange={(event) => onSearchChange(event.target.value)}
               disabled={opLocked}
               className={cn(
-                "w-full rounded-[1.2rem] border border-border bg-white/70 px-4 py-4 pl-12 text-sm outline-none transition",
+                "crm-dashboard-search-input w-full rounded-[1.2rem] border border-border bg-white/70 px-4 py-4 pl-12 text-sm outline-none transition",
                 "shadow-[0_1px_0_rgba(255,255,255,0.7)]",
                 "hover:border-brand/20 focus-visible:border-brand/40 focus-visible:ring-4 focus-visible:ring-brand/15",
                 opLocked && "cursor-not-allowed opacity-60",

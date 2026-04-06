@@ -117,7 +117,7 @@ export default function AgentUpsertModal({
   );
 
   const [name, setName] = useState("");
-  const [role, setRole] = useState<RoleOption>("agent");
+  const [role, setRole] = useState<RoleOption | "">("");
   const [isActive, setIsActive] = useState(true);
   const [username, setUsername] = useState("");
   const [tempPassword, setTempPassword] = useState("");
@@ -178,7 +178,7 @@ export default function AgentUpsertModal({
 
     if (isEdit && agent) {
       setName(agent.name ?? "");
-      setRole(agent.role ?? "agent");
+      setRole(agent.role ?? "");
       setIsActive(agent.is_active !== false);
       setUsername("");
       setTempPassword("");
@@ -186,23 +186,25 @@ export default function AgentUpsertModal({
     }
 
     setName("");
-    setRole(assignableRoles[0] ?? "agent");
+    setRole("");
     setIsActive(true);
     setUsername("");
     setTempPassword("");
   }, [agent, assignableRoles, isEdit, isOpen]);
 
   useEffect(() => {
-    if (!assignableRoles.includes(role)) {
-      setRole(assignableRoles[0] ?? "agent");
+    if (!role) return;
+    if (!assignableRoles.includes(role as RoleOption)) {
+      setRole(isEdit ? assignableRoles[0] ?? "" : "");
     }
-  }, [assignableRoles, role]);
+  }, [assignableRoles, isEdit, role]);
 
   const usernameNorm = useMemo(() => normUsername(username), [username]);
-  const requiresOperationContext = role !== "dev";
+  const requiresOperationContext = !!role && role !== "dev";
 
   const emailPreview = useMemo(() => {
     if (isEdit) return agent?.email ?? "";
+    if (!role) return "";
     if (!usernameNorm || usernameNorm.length < 3) return "";
     if (!requiresOperationContext || !tenantSlug.trim()) return "";
     return `${usernameNorm}.${role}@${tenantSlug.trim()}.ak8crm.com`;
@@ -211,6 +213,7 @@ export default function AgentUpsertModal({
   const canSubmit = () => {
     if (!name.trim()) return false;
     if (assignableRoles.length === 0) return false;
+    if (!role) return false;
 
     if (!isEdit) {
       if (usernameNorm.length < 3) return false;
@@ -238,6 +241,11 @@ export default function AgentUpsertModal({
 
   const save = async () => {
     setError("");
+
+    if (!role) {
+      setError("Selecciona un rol antes de guardar.");
+      return;
+    }
 
     if (!canSubmit()) {
       if (!isEdit && tempPassword.trim().length > 0 && tempPassword.trim().length < 6) {
@@ -316,7 +324,13 @@ export default function AgentUpsertModal({
       onSaved();
     } catch (saveError: any) {
       console.error(saveError);
-      setError(saveError?.message || "Error guardando usuario");
+      if (saveError instanceof TypeError && /failed to fetch/i.test(saveError.message)) {
+        setError(
+          "No se pudo conectar con el servicio de creacion de usuarios. En el dominio productivo esto apunta a un problema de CORS o despliegue en la funcion create-agent.",
+        );
+      } else {
+        setError(saveError?.message || "Error guardando usuario");
+      }
     } finally {
       setSaving(false);
     }
@@ -386,14 +400,19 @@ export default function AgentUpsertModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto p-3 sm:items-center sm:p-6"
       onMouseDown={onBackdropMouseDown}
       role="dialog"
       aria-modal="true"
     >
       <div className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm" />
 
-      <ModalPanel className={cn(agentModalPanelClass, "max-w-xl rounded-[1.5rem]")}>
+      <ModalPanel
+        className={cn(
+          agentModalPanelClass,
+          "my-auto flex max-h-[min(92vh,860px)] w-full max-w-xl flex-col rounded-[1.5rem]",
+        )}
+      >
         <ModalHeader
           icon={
             isEdit ? (
@@ -413,7 +432,7 @@ export default function AgentUpsertModal({
           className={agentModalHeaderClass}
         />
 
-        <ModalBody className="space-y-5">
+        <ModalBody className="min-h-0 space-y-5 overflow-y-auto">
           {error ? (
             <div className="flex items-start gap-2 rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-red-700">
               <AlertCircle className="mt-0.5 h-4 w-4" />
@@ -458,7 +477,7 @@ export default function AgentUpsertModal({
               </p>
 
               <div className="rounded-[1.1rem] border border-white/74 bg-white/58 p-4">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="mb-1 text-[11px] text-muted">
                       Correo generado
@@ -485,13 +504,13 @@ export default function AgentUpsertModal({
 
           <div className={cn(agentInsetClass, "p-4")}>
             <Field label="Rol" required>
-              <Select
-                value={role}
-                onValueChange={(value) => setRole(value as RoleOption)}
-                disabled={saving || deleting || assignableRoles.length === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un rol" />
+                  <Select
+                    value={role || undefined}
+                    onValueChange={(value) => setRole(value as RoleOption)}
+                    disabled={saving || deleting || assignableRoles.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un rol" />
                 </SelectTrigger>
 
                 <SelectContent>
@@ -501,8 +520,13 @@ export default function AgentUpsertModal({
                     </SelectItem>
                   ))}
                 </SelectContent>
-              </Select>
-            </Field>
+                </Select>
+              </Field>
+              {!role && !isEdit ? (
+                <p className="mt-2 text-xs text-muted">
+                  Debes elegir el rol manualmente para evitar altas con permisos incorrectos.
+                </p>
+              ) : null}
           </div>
 
           {!isEdit ? (
@@ -553,7 +577,7 @@ export default function AgentUpsertModal({
           </div>
         </ModalBody>
 
-        <ModalFooter className={cn("gap-2", agentModalFooterClass)}>
+        <ModalFooter className={cn("gap-2 max-sm:flex-wrap", agentModalFooterClass)}>
           {canDelete ? (
             <button
               type="button"
