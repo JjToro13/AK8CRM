@@ -65,7 +65,7 @@ export default function DashboardHeaderMenu({
         </div>
       </summary>
 
-      <div className="absolute right-0 top-full z-[120] mt-3 w-[min(25rem,calc(100vw-2rem))] rounded-[1.5rem] border border-white/72 bg-surface/96 p-4 shadow-[0_26px_70px_rgba(30,41,59,0.18),inset_0_1px_0_rgba(255,255,255,0.82)] backdrop-blur-2xl">
+      <div className="crm-dashboard-menu absolute right-0 top-full z-[120] mt-3 w-[min(25rem,calc(100vw-2rem))] rounded-[1.5rem] border border-white/72 bg-surface/96 p-4 shadow-[0_26px_70px_rgba(30,41,59,0.18),inset_0_1px_0_rgba(255,255,255,0.82)] backdrop-blur-2xl">
         <div className="mb-4">
           <SecurityInfo
             isAdmin={role === "dev" || role === "owner" || role === "manager"}

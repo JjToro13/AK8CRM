@@ -75,7 +75,7 @@ function ProtectedRoute({
 }
 
 export default function App() {
-  const { clearBrandPresetOverride, setAutoBranding } = useBranding();
+  const { branding, clearBrandPresetOverride, setAutoBranding } = useBranding();
   const [brandingReady, setBrandingReady] = useState(true);
   const {
     user,
@@ -184,7 +184,7 @@ export default function App() {
           <div className="min-h-screen bg-bg">
           <Toaster
             position="top-center"
-            theme="light"
+            theme={branding.id === "atlas-finance" ? "dark" : "light"}
             offset={{ top: 20 }}
             options={{ duration: 2600, roundness: 28 }}
           />

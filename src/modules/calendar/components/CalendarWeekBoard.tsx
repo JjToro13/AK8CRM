@@ -60,7 +60,7 @@ export default function CalendarWeekBoard({
                 "rounded-[1.35rem] shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition",
                 compact ? "min-h-[9.75rem]" : "min-h-[18rem]",
                 onSelectDay &&
-                  "cursor-pointer hover:border-brand/20 hover:bg-white/72",
+                  "cursor-pointer hover:border-brand/20 hover:bg-surface/72",
                 selectedDayKey === day.key &&
                   "border-brand/30 bg-brand/[0.05] shadow-[0_16px_30px_rgba(59,130,246,0.10)]",
               )}
@@ -113,7 +113,7 @@ export default function CalendarWeekBoard({
                 {day.events.length === 0 ? (
                   <div
                     className={cn(
-                      "flex items-center justify-center rounded-2xl border border-dashed border-white/70 bg-white/42 text-center text-xs text-muted",
+                      "crm-empty-state flex items-center justify-center rounded-2xl border border-dashed border-white/70 bg-white/42 text-center text-xs text-muted",
                       compact ? "min-h-[5.25rem]" : "min-h-[12rem]",
                     )}
                 >

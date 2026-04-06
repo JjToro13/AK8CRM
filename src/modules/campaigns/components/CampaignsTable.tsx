@@ -68,7 +68,7 @@ export default function CampaignsTable({
 
       {campaigns.length === 0 ? (
         <div className={cn(campaignInsetClass, "py-12 text-center")}>
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[1.35rem] border border-white/78 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
+          <div className="crm-shell-pill mx-auto flex h-14 w-14 items-center justify-center rounded-[1.35rem] border border-white/78 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
             <Users className="h-6 w-6 text-brand" />
           </div>
           <div className="mt-3 text-sm font-semibold text-ink">
@@ -82,7 +82,7 @@ export default function CampaignsTable({
         <div className={cn(campaignInsetClass, "overflow-hidden")}>
           <div className="overflow-x-auto">
             <table className="min-w-full">
-              <thead className="border-b border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.68),rgba(255,255,255,0.46))]">
+              <thead className="crm-table-header border-b border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.68),rgba(255,255,255,0.46))]">
                 <tr className="text-[11px] uppercase tracking-wider text-muted">
                   <th className="px-6 py-3 text-left">
                     <button
@@ -159,7 +159,7 @@ export default function CampaignsTable({
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-white/60">
+              <tbody className="crm-table-body divide-y divide-white/60">
                 {campaigns.map((campaign) => (
                   <CampaignsTableRow
                     key={campaign.id}
@@ -176,7 +176,7 @@ export default function CampaignsTable({
             </table>
           </div>
 
-          <div className="border-t border-white/72 bg-white/42 px-4 py-3 text-xs text-muted">
+          <div className="crm-table-footer border-t border-white/72 bg-white/42 px-4 py-3 text-xs text-muted">
             Tip: puedes hacer scroll horizontal si la tabla no cabe completa.
           </div>
         </div>

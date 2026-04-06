@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   CalendarDays,
   CheckCheck,
@@ -213,6 +214,24 @@ export default function CalendarFollowUpModal({
     }
   };
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) {
+        onClose();
+      }
+    };
+
+    if (!isOpen) return;
+
+    window.addEventListener("keydown", onKeyDown);
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [isOpen, onClose, saving]);
+
   if (!isOpen || !event) return null;
 
   const eventTimeZone = event.scheduled_timezone || "America/Bogota";
@@ -269,16 +288,20 @@ export default function CalendarFollowUpModal({
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-[rgba(15,23,42,0.42)] p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto p-3 sm:items-center sm:p-6"
       onMouseDown={(overlayEvent) => {
         if (saving) return;
         if (overlayEvent.target === overlayEvent.currentTarget) {
           onClose();
         }
       }}
+      role="dialog"
+      aria-modal="true"
     >
+      <div className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm" />
+
       <ModalPanel className={cn(calendarModalPanelClass, "max-w-[56rem]")}>
         <ModalHeader
           icon={<Clock3 className="h-5 w-5 text-brand" />}
@@ -533,6 +556,7 @@ export default function CalendarFollowUpModal({
           </div>
         </ModalFooter>
       </ModalPanel>
-    </div>
+    </div>,
+    document.body,
   );
 }

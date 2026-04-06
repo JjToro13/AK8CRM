@@ -19,7 +19,7 @@ export const SelectTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       "crm-select-trigger w-full rounded-[1.25rem] border border-white/70 bg-surface/86 px-4 py-3 text-sm text-ink",
-      "outline-none transition backdrop-blur-xl shadow-[0_18px_40px_rgba(30,41,59,0.08),inset_0_1px_0_rgba(255,255,255,0.78)]",
+      "outline-none transition backdrop-blur-xl shadow-[0_18px_40px_rgba(30,41,59,0.08),inset_0_1px_0_rgba(255,255,255,0.18)]",
       "hover:-translate-y-[1px] hover:border-brand/24 hover:bg-surface focus-visible:ring-4 focus-visible:ring-brand/15 focus-visible:border-brand/40",
       "inline-flex items-center justify-between gap-3",
       "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -50,7 +50,7 @@ export const SelectContent = React.forwardRef<
       sideOffset={8}
       className={cn(
         "crm-select-content z-[9999] overflow-hidden",
-        "rounded-[1.25rem] border border-white/72 bg-surface/96 backdrop-blur-2xl shadow-[0_26px_70px_rgba(30,41,59,0.18),inset_0_1px_0_rgba(255,255,255,0.82)]",
+        "rounded-[1.25rem] border border-white/72 bg-surface/96 backdrop-blur-2xl shadow-[0_26px_70px_rgba(30,41,59,0.18),inset_0_1px_0_rgba(255,255,255,0.16)]",
         "w-auto min-w-[max(var(--radix-select-trigger-width),280px)]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",

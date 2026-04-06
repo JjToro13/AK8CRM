@@ -28,14 +28,14 @@ export default function AgentManagementHeader({
 
   return (
     <div className={cn(agentCardClass, cardClass)}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-300)/0.18),transparent_22%),linear-gradient(180deg,rgba(255,255,255,0.18),transparent_32%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-300)/0.16),transparent_22%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_32%)]" />
       <div className="pointer-events-none absolute right-[-1rem] top-[-2rem] h-36 w-36 rounded-full bg-brand/10 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-[-2rem] right-[-1rem] h-28 w-56 rotate-[7deg] rounded-[50%] border-[14px] border-brand/18 bg-surface/80 opacity-75" />
-      <div className="pointer-events-none absolute bottom-[-1rem] right-10 h-20 w-44 rotate-[7deg] rounded-[50%] border-[12px] border-brand/12 bg-surface/65 opacity-85" />
+      <div className="pointer-events-none absolute bottom-[-1.5rem] right-2 h-24 w-44 rotate-[7deg] rounded-[50%] border-[10px] border-brand/14 bg-surface/30 opacity-55" />
+      <div className="pointer-events-none absolute bottom-[-0.75rem] right-10 h-16 w-32 rotate-[7deg] rounded-[50%] border-[8px] border-brand/10 bg-surface/20 opacity-48" />
 
       <div className="relative flex flex-wrap items-start justify-between gap-6">
         <div className="flex max-w-2xl items-start gap-4">
-          <div className="mt-0.5 flex h-12 w-12 items-center justify-center rounded-[1.35rem] border border-white/70 bg-white/58 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+          <div className="crm-shell-pill mt-0.5 flex h-12 w-12 items-center justify-center rounded-[1.35rem] border border-white/70 bg-white/58 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
             <Users className="h-5 w-5 text-brand" />
           </div>
 
@@ -55,7 +55,7 @@ export default function AgentManagementHeader({
               {["Presencia", "Asignacion", branding.displayName].map((label) => (
                 <span
                   key={label}
-                  className="rounded-full border border-white/76 bg-white/72 px-3 py-1.5 text-ink/78 shadow-[0_12px_24px_rgba(30,41,59,0.06)]"
+                  className="crm-shell-pill rounded-full border border-white/76 bg-white/72 px-3 py-1.5 text-ink/78 shadow-[0_12px_24px_rgba(30,41,59,0.06)]"
                 >
                   {label}
                 </span>

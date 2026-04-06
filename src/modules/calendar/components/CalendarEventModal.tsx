@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   CalendarDays,
   Search,
@@ -263,6 +264,24 @@ export default function CalendarEventModal({
     event?.scheduled_timezone ?? viewerTimeZone ?? null;
   const isOverdueEvent = event ? isScheduledCallOverdue(event) : false;
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) {
+        onClose();
+      }
+    };
+
+    if (!isOpen) return;
+
+    window.addEventListener("keydown", onKeyDown);
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [isOpen, onClose, saving]);
+
   if (!isOpen) return null;
 
   const canSubmit =
@@ -338,8 +357,20 @@ export default function CalendarEventModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[rgba(15,23,42,0.42)] p-4 backdrop-blur-sm">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto p-3 sm:items-center sm:p-6"
+      onMouseDown={(overlayEvent) => {
+        if (saving) return;
+        if (overlayEvent.target === overlayEvent.currentTarget) {
+          onClose();
+        }
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm" />
+
       <ModalPanel className={cn(calendarModalPanelClass, "max-w-[58rem]")}>
         <ModalHeader
           icon={<CalendarDays className="h-5 w-5 text-brand" />}
@@ -643,6 +674,7 @@ export default function CalendarEventModal({
           </div>
         </ModalFooter>
       </ModalPanel>
-    </div>
+    </div>,
+    document.body,
   );
 }

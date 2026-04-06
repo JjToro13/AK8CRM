@@ -517,7 +517,7 @@ export default function AgentUpsertModal({
                 Minimo 3 caracteres.
               </p>
 
-              <div className="rounded-[1.1rem] border border-white/74 bg-white/58 p-4">
+              <div className="crm-shell-soft-row rounded-[1.1rem] border border-white/74 bg-white/58 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="mb-1 text-[11px] text-muted">

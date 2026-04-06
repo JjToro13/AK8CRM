@@ -93,7 +93,7 @@ export default function ClientsTable({
           </div>
         ) : (
           <div className="min-w-max">
-            <div className="sticky top-0 z-30 border-b border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.82))] backdrop-blur-xl">
+            <div className="crm-table-header sticky top-0 z-30 border-b border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.82))] backdrop-blur-xl">
               <div
                 className="grid flex-none"
                 style={{ gridTemplateColumns: CLIENTS_GRID_TEMPLATE }}
@@ -112,7 +112,7 @@ export default function ClientsTable({
               </div>
             </div>
 
-            <div className="divide-y divide-white/55 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.66))]">
+            <div className="crm-table-body divide-y divide-white/55 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.66))]">
               {clients.map((client) => (
                 <ClientsTableRow
                   key={client.id}

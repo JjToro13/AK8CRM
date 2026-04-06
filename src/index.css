@@ -310,6 +310,46 @@
     border-color: rgb(var(--color-border) / 0.48);
   }
 
+  :root[data-brand-preset="atlas-finance"] .crm-table-shell,
+  :root[data-brand-preset="atlas-finance"] .crm-table-header,
+  :root[data-brand-preset="atlas-finance"] .crm-table-body,
+  :root[data-brand-preset="atlas-finance"] .crm-table-footer,
+  :root[data-brand-preset="atlas-finance"] .crm-modal-panel,
+  :root[data-brand-preset="atlas-finance"] .crm-modal-header,
+  :root[data-brand-preset="atlas-finance"] .crm-modal-footer,
+  :root[data-brand-preset="atlas-finance"] .crm-input,
+  :root[data-brand-preset="atlas-finance"] .crm-empty-state {
+    border-color: rgb(var(--color-border) / 0.48);
+    box-shadow:
+      0 18px 40px rgba(2, 8, 18, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-table-shell,
+  :root[data-brand-preset="atlas-finance"] .crm-table-body {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.9) 0%, rgb(var(--color-surface-elevated) / 0.82) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-table-header,
+  :root[data-brand-preset="atlas-finance"] .crm-modal-header,
+  :root[data-brand-preset="atlas-finance"] .crm-modal-footer {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface-elevated) / 0.94) 0%, rgb(var(--color-surface) / 0.82) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-table-footer,
+  :root[data-brand-preset="atlas-finance"] .crm-empty-state,
+  :root[data-brand-preset="atlas-finance"] .crm-input {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.82) 0%, rgb(var(--color-surface-elevated) / 0.76) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-modal-panel {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.98) 0%, rgb(var(--color-surface-elevated) / 0.94) 100%);
+  }
+
   :root[data-brand-preset="atlas-finance"] .crm-page-stage-frame {
     border-color: rgb(var(--color-border) / 0.32);
     background:
@@ -331,6 +371,76 @@
     background:
       radial-gradient(circle at top right, rgb(var(--color-brand-300) / 0.12), transparent 24%),
       linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 28%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat {
+    box-shadow:
+      0 16px 36px rgba(2, 8, 18, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-success {
+    border-color: rgb(110 231 183 / 0.44);
+    background:
+      linear-gradient(180deg, rgba(26, 52, 45, 0.92) 0%, rgba(16, 36, 33, 0.82) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-success .text-muted {
+    color: rgb(167 243 208 / 0.56);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-success .text-green-600 {
+    color: rgb(74 222 128 / 1);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-warning {
+    border-color: rgb(253 224 71 / 0.36);
+    background:
+      linear-gradient(180deg, rgba(56, 45, 24, 0.9) 0%, rgba(39, 31, 17, 0.82) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-warning .text-muted {
+    color: rgb(253 224 71 / 0.5);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-warning .text-yellow-600 {
+    color: rgb(245 158 11 / 1);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill {
+    box-shadow:
+      0 12px 28px rgba(2, 8, 18, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill.border-sky-200 {
+    border-color: rgb(56 189 248 / 0.32);
+    background: linear-gradient(180deg, rgba(16, 41, 56, 0.92) 0%, rgba(11, 29, 41, 0.84) 100%);
+    color: rgb(186 230 253 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill.border-amber-200 {
+    border-color: rgb(245 158 11 / 0.34);
+    background: linear-gradient(180deg, rgba(56, 41, 19, 0.92) 0%, rgba(39, 29, 14, 0.84) 100%);
+    color: rgb(253 230 138 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill.border-emerald-200 {
+    border-color: rgb(16 185 129 / 0.34);
+    background: linear-gradient(180deg, rgba(18, 54, 43, 0.92) 0%, rgba(13, 38, 31, 0.84) 100%);
+    color: rgb(167 243 208 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill.border-violet-200 {
+    border-color: rgb(139 92 246 / 0.34);
+    background: linear-gradient(180deg, rgba(40, 27, 63, 0.92) 0%, rgba(28, 19, 44, 0.84) 100%);
+    color: rgb(221 214 254 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill.border-rose-200 {
+    border-color: rgb(244 63 94 / 0.34);
+    background: linear-gradient(180deg, rgba(64, 27, 40, 0.92) 0%, rgba(45, 19, 29, 0.84) 100%);
+    color: rgb(254 205 211 / 0.96);
   }
 
   .status-indicator {
@@ -478,16 +588,16 @@
   overflow-x: auto;
   overflow-y: visible;
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e0 #f7fafc;
+  scrollbar-color: rgb(var(--color-border)) rgb(var(--color-surface));
   /* Efectos de sombra para indicar scroll */
   background:
-    linear-gradient(90deg, white 30%, transparent),
-    linear-gradient(90deg, transparent, white 70%) 0 100%,
+    linear-gradient(90deg, rgb(var(--color-surface)) 30%, transparent),
+    linear-gradient(90deg, transparent, rgb(var(--color-surface)) 70%) 0 100%,
     radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.2), transparent),
     radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.2), transparent)
       0 100%;
   background-repeat: no-repeat;
-  background-color: white;
+  background-color: rgb(var(--color-surface));
   background-size:
     40px 100%,
     40px 100%,
@@ -502,22 +612,22 @@
 }
 
 .table-scroll-container::-webkit-scrollbar-track {
-  background: #f7fafc;
+  background: rgb(var(--color-surface));
   border-radius: 4px;
 }
 
 .table-scroll-container::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
+  background: rgb(var(--color-border));
   border-radius: 4px;
   transition: background-color 0.2s ease;
 }
 
 .table-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
+  background: rgb(var(--color-brand-300));
 }
 
 .table-scroll-container::-webkit-scrollbar-thumb:active {
-  background: #718096;
+  background: rgb(var(--color-brand-400));
 }
 
 /* Scroll horizontal sticky - siempre visible */
@@ -525,7 +635,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: white;
+  background: rgb(var(--color-surface));
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 

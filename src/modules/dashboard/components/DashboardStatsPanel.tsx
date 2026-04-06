@@ -16,25 +16,25 @@ const metricCards = [
     key: "today",
     label: "Llamadas hoy",
     accent: "text-ink",
-    tone: "border-border bg-surface",
+    tone: "crm-dashboard-stat border-border bg-surface",
   },
   {
     key: "inProgress",
     label: "En progreso",
     accent: "text-brand",
-    tone: "border-brand/18 bg-brand/[0.06]",
+    tone: "crm-dashboard-stat border-brand/18 bg-brand/[0.06]",
   },
   {
     key: "completed",
     label: "Completadas",
     accent: "text-green-600",
-    tone: "border-emerald-200 bg-emerald-50/80",
+    tone: "crm-dashboard-stat crm-dashboard-stat-success border-emerald-200 bg-emerald-50/80",
   },
   {
     key: "noAnswer",
     label: "Sin respuesta",
     accent: "text-yellow-600",
-    tone: "border-amber-200 bg-amber-50/80",
+    tone: "crm-dashboard-stat crm-dashboard-stat-warning border-amber-200 bg-amber-50/80",
   },
 ] as const;
 

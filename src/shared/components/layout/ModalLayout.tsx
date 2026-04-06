@@ -30,7 +30,7 @@ type ModalFooterProps = {
 };
 
 export const modalSecondaryActionClassName =
-  "inline-flex items-center rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 hover:bg-surface2 transition disabled:opacity-50 disabled:cursor-not-allowed";
+  "inline-flex items-center rounded-full border border-border bg-surface/88 px-4 py-2 text-sm font-semibold text-ink/80 shadow-[0_16px_32px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-xl hover:bg-surface2 transition disabled:opacity-50 disabled:cursor-not-allowed";
 
 export const modalPrimaryActionClassName =
   "inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold text-white shadow-soft bg-gradient-to-r from-brand via-brand-600 to-brand-700 hover:brightness-105 active:brightness-95 transition disabled:opacity-50 disabled:cursor-not-allowed";
@@ -39,7 +39,7 @@ export function ModalPanel({ children, className }: ModalPanelProps) {
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-3xl border border-border bg-surface shadow-soft2",
+        "crm-modal-panel w-full overflow-hidden rounded-3xl border border-border bg-surface shadow-soft2",
         className,
       )}
     >
@@ -59,7 +59,7 @@ export function ModalHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 border-b border-border bg-surface2 px-6 py-5",
+        "crm-modal-header flex items-center justify-between gap-4 border-b border-border bg-surface2 px-6 py-5",
         className,
       )}
     >
@@ -103,8 +103,8 @@ export function ModalBody({ children, className }: ModalBodyProps) {
 export function ModalFooter({ children, className }: ModalFooterProps) {
   return (
     <div
-      className={cn(
-        "flex items-center justify-end gap-3 border-t border-border bg-surface2 px-6 py-5",
+        className={cn(
+        "crm-modal-footer flex items-center justify-end gap-3 border-t border-border bg-surface2 px-6 py-5",
         className,
       )}
     >
