@@ -9,7 +9,6 @@ import {
   Trash2,
   UserPlus,
 } from "lucide-react";
-import { appEnv, buildSupabaseFunctionUrl } from "../../../config/env";
 import { useAuth } from "../../../hooks/useAuth";
 import { Agent, agents, getAgentRoleLabel, supabase } from "../../../lib/supabase";
 import {
@@ -37,6 +36,7 @@ import {
   agentModalHeaderClass,
   agentModalPanelClass,
 } from "./agentUi";
+import { appEnv, buildSupabaseFunctionUrl } from "../../../config/env";
 
 type Mode = "create" | "edit";
 type Props = {
@@ -48,6 +48,7 @@ type Props = {
 };
 
 type RoleOption = Agent["role"];
+const ROLE_PLACEHOLDER_VALUE = "__role_placeholder__";
 
 function getAssignableRoles(
   viewerRole: Agent["role"] | null | undefined,
@@ -280,10 +281,6 @@ export default function AgentUpsertModal({
         return;
       }
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (!token) throw new Error("No hay una sesion activa.");
-
       const payload = {
         name: name.trim(),
         username: usernameNorm,
@@ -293,28 +290,72 @@ export default function AgentUpsertModal({
         operation_id: requiresOperationContext ? effectiveOperationId : null,
       };
 
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      const accessToken = session?.access_token ?? "";
+      if (!accessToken) {
+        throw new Error("No hay una sesion activa valida para crear usuarios.");
+      }
+
       const response = await fetch(buildSupabaseFunctionUrl("create-agent"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           apikey: appEnv.supabase.anonKey,
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
 
-      const raw = await response.text();
-      let json: any = null;
+      const rawText = await response.text();
+      let data: { success?: boolean; error?: string; details?: string; message?: string } | null = null;
 
-      try {
-        json = raw ? JSON.parse(raw) : null;
-      } catch {
-        json = null;
+      if (rawText) {
+        try {
+          data = JSON.parse(rawText) as {
+            success?: boolean;
+            error?: string;
+            details?: string;
+            message?: string;
+          };
+        } catch {
+          data = { error: rawText };
+        }
       }
 
-      if (!response.ok || json?.success === false) {
-        const details = json?.details ? ` - ${json.details}` : "";
-        throw new Error(json?.error ? `${json.error}${details}` : raw || `HTTP ${response.status}`);
+      if (!response.ok) {
+        const details = data?.details ? ` - ${data.details}` : "";
+        const message =
+          data?.error ||
+          data?.message ||
+          `La funcion create-agent devolvio HTTP ${response.status}.`;
+
+        throw new Error(`${message}${details}`);
+      }
+
+      if (!data) {
+        throw new Error("La funcion create-agent no devolvio respuesta.");
+      }
+
+      if (data.success !== undefined && data.success !== true) {
+        const details = data.details ? ` - ${data.details}` : "";
+        throw new Error(
+          data.error
+            ? `${data.error}${details}`
+            : "La funcion create-agent no pudo completar la solicitud.",
+        );
+      }
+
+      if (data.error) {
+        const details = data.details ? ` - ${data.details}` : "";
+        throw new Error(`${data.error}${details}`);
       }
 
       notify.success(
@@ -504,29 +545,35 @@ export default function AgentUpsertModal({
 
           <div className={cn(agentInsetClass, "p-4")}>
             <Field label="Rol" required>
-                  <Select
-                    value={role || undefined}
-                    onValueChange={(value) => setRole(value as RoleOption)}
-                    disabled={saving || deleting || assignableRoles.length === 0}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un rol" />
+              <Select
+                value={role || ROLE_PLACEHOLDER_VALUE}
+                onValueChange={(value) => {
+                  if (value === ROLE_PLACEHOLDER_VALUE) return;
+                  setRole(value as RoleOption);
+                }}
+                disabled={saving || deleting || assignableRoles.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un rol" />
                 </SelectTrigger>
 
                 <SelectContent>
+                  <SelectItem value={ROLE_PLACEHOLDER_VALUE} disabled>
+                    Selecciona un rol
+                  </SelectItem>
                   {assignableRoles.map((roleOption) => (
                     <SelectItem key={roleOption} value={roleOption}>
                       {getAgentRoleLabel(roleOption)}
                     </SelectItem>
                   ))}
                 </SelectContent>
-                </Select>
-              </Field>
-              {!role && !isEdit ? (
+              </Select>
+            </Field>
+            {!role && !isEdit ? (
                 <p className="mt-2 text-xs text-muted">
                   Debes elegir el rol manualmente para evitar altas con permisos incorrectos.
                 </p>
-              ) : null}
+            ) : null}
           </div>
 
           {!isEdit ? (

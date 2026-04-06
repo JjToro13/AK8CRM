@@ -1,5 +1,6 @@
 import { supabase } from "../../../integrations/supabase/client";
 import type { Agent } from "../../../shared/types/crm";
+import { appEnv, buildSupabaseFunctionUrl } from "../../../config/env";
 
 export const agents = {
   getAll: async () => {
@@ -30,11 +31,61 @@ export const agents = {
   },
 
   remove: async (id: string) => {
-    const { error } = await supabase.rpc("delete_agent", {
-      p_id: id,
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      return { error: sessionError };
+    }
+
+    const accessToken = session?.access_token ?? "";
+    if (!accessToken) {
+      return { error: new Error("No hay una sesion activa valida para eliminar usuarios.") };
+    }
+
+    const response = await fetch(buildSupabaseFunctionUrl("delete-agent"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: appEnv.supabase.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ id }),
     });
 
-    return { error };
+    const rawText = await response.text();
+    let payload: { error?: string; details?: string; message?: string } | null = null;
+
+    if (rawText) {
+      try {
+        payload = JSON.parse(rawText) as {
+          error?: string;
+          details?: string;
+          message?: string;
+        };
+      } catch {
+        payload = { error: rawText };
+      }
+    }
+
+    if (!response.ok) {
+      const details = payload?.details ? ` - ${payload.details}` : "";
+      const message =
+        payload?.error ||
+        payload?.message ||
+        `La funcion delete-agent devolvio HTTP ${response.status}.`;
+
+      return { error: new Error(`${message}${details}`) };
+    }
+
+    if (payload?.error) {
+      const details = payload.details ? ` - ${payload.details}` : "";
+      return { error: new Error(`${payload.error}${details}`) };
+    }
+
+    return { error: null };
   },
 
   create: async (params: {

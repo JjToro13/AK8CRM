@@ -258,6 +258,57 @@ export default function ImportClientsModal({
     const lower = message.toLowerCase();
 
     if (
+      lower.includes("clients_serial_key") ||
+      (lower.includes("duplicate key value") && lower.includes("serial"))
+    ) {
+      return [
+        "No se pudo crear el bloque de seriales para esta importación.",
+        "",
+        "Detalles detectados:",
+        `• ${message}`,
+        "",
+        "Qué revisar antes de volver a importar:",
+        "• La función import_clients_v1 todavía está generando seriales desde 0001 para un prefijo ya usado.",
+        "• Hay que aplicar la migración correctiva que calcula el siguiente consecutivo disponible por prefijo.",
+      ].join("\n");
+    }
+
+    if (
+      lower.includes("clients_normalized_email_uniq") ||
+      lower.includes("clients_normalized_phone_uniq") ||
+      lower.includes("clients_operation_normalized_email_uniq") ||
+      lower.includes("clients_operation_normalized_phone_uniq")
+    ) {
+      return [
+        "No se pudo insertar uno o más clientes porque ya existen con el mismo email o teléfono dentro del alcance validado por la base.",
+        "",
+        "Detalles detectados:",
+        `• ${message}`,
+        "",
+        "Qué revisar antes de volver a importar:",
+        "• Si el duplicado pertenece a otra operación, la base aún tiene índices globales viejos y debe aplicarse la migración de alcance por operación.",
+        "• Si el duplicado pertenece a esta misma operación, el archivo trae clientes ya existentes y serán omitidos.",
+      ].join("\n");
+    }
+
+    if (
+      lower.includes("campaigns_pkey") ||
+      (lower.includes("duplicate key value") && lower.includes("campaign"))
+    ) {
+      return [
+        "No se pudo crear la campaña de importación.",
+        "",
+        "Detalles detectados:",
+        `• ${message}`,
+        "",
+        "Qué revisar antes de volver a importar:",
+        "• La base productiva parece tener el esquema de campañas desactualizado.",
+        "• Falta aplicar la migración que mueve la llave primaria de campañas hacia campaigns.id.",
+        "• Después de aplicar esa migración, la importación debe volver a funcionar por operación.",
+      ].join("\n");
+    }
+
+    if (
       lower.includes("cabecera") ||
       lower.includes("encabezado") ||
       lower.includes("header")

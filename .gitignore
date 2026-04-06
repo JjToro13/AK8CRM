@@ -10,6 +10,13 @@ node_modules
 # Carpetas con información sensible o temporal
 documentacion
 supabase/functions
+!supabase/functions/
+!supabase/functions/_shared/
+!supabase/functions/_shared/cors.ts
+!supabase/functions/create-agent/
+!supabase/functions/create-agent/index.ts
+!supabase/functions/delete-agent/
+!supabase/functions/delete-agent/index.ts
 
 # Build
 dist
