@@ -7,17 +7,10 @@ import {
 import { MotionConfig } from "framer-motion";
 import { Toaster } from "sileo";
 import { useAuth } from "./hooks/useAuth";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 
 import LoadingSpinner from "./shared/components/feedback/LoadingSpinner";
 import MaintenanceGate from "./shared/components/guards/MaintenanceGate";
-import AgentManagementPage from "./modules/agents/pages/AgentManagementPage";
-import LoginPage from "./modules/auth/pages/LoginPage";
-import CalendarPage from "./modules/calendar/pages/CalendarPage";
-import CallHistoryPage from "./modules/calls/pages/CallHistoryPage";
-import CampaignManagementPage from "./modules/campaigns/pages/CampaignManagementPage";
-import ClientManagementPage from "./modules/clients/pages/ClientManagementPage";
-import DashboardPage from "./modules/dashboard/pages/DashboardPage";
 import {
   canAccessAgentWorkspace,
   canAccessCampaignWorkspace,
@@ -28,6 +21,16 @@ import { useBranding } from "./shared/branding/BrandingProvider";
 import { resolveTenantBranding } from "./shared/branding/tenant-branding";
 import { dashboard } from "./modules/dashboard/services/dashboard.service";
 import type { BrandPreset } from "./shared/branding/brand-presets";
+
+const AgentManagementPage = lazy(() => import("./modules/agents/pages/AgentManagementPage"));
+const LoginPage = lazy(() => import("./modules/auth/pages/LoginPage"));
+const CalendarPage = lazy(() => import("./modules/calendar/pages/CalendarPage"));
+const CallHistoryPage = lazy(() => import("./modules/calls/pages/CallHistoryPage"));
+const CampaignManagementPage = lazy(
+  () => import("./modules/campaigns/pages/CampaignManagementPage"),
+);
+const ClientManagementPage = lazy(() => import("./modules/clients/pages/ClientManagementPage"));
+const DashboardPage = lazy(() => import("./modules/dashboard/pages/DashboardPage"));
 
 const BRANDING_CACHE_KEY_PREFIX = "crm.branding-cache.";
 const BRANDING_MAX_WAIT_MS = 1500;
@@ -188,94 +191,96 @@ export default function App() {
             offset={{ top: 20 }}
             options={{ duration: 2600, roundness: 28 }}
           />
-          <Routes>
-            <Route
-              path="/login"
-              element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />}
-            />
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+              <Route
+                path="/login"
+                element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />}
+              />
 
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute isAllowed={!!user}>
-                  <DashboardPage
-                    isAdmin={isAdmin}
-                    canSeeAllOperations={canSeeAllOperations}
-                    operationReady={operationReady}
-                    role={role}
-                  />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute isAllowed={!!user}>
+                    <DashboardPage
+                      isAdmin={isAdmin}
+                      canSeeAllOperations={canSeeAllOperations}
+                      operationReady={operationReady}
+                      role={role}
+                    />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/calendar"
-              element={
-                <ProtectedRoute
-                  isAllowed={canAccessCalendar}
-                  redirectTo={user ? "/dashboard" : "/login"}
-                >
-                  <CalendarPage />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/calendar"
+                element={
+                  <ProtectedRoute
+                    isAllowed={canAccessCalendar}
+                    redirectTo={user ? "/dashboard" : "/login"}
+                  >
+                    <CalendarPage />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/calls"
-              element={
-                <ProtectedRoute
-                  isAllowed={canAccessCalls}
-                  redirectTo={user ? "/dashboard" : "/login"}
-                >
-                  <CallHistoryPage isAdmin={isAdmin} />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/calls"
+                element={
+                  <ProtectedRoute
+                    isAllowed={canAccessCalls}
+                    redirectTo={user ? "/dashboard" : "/login"}
+                  >
+                    <CallHistoryPage isAdmin={isAdmin} />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/clients"
-              element={
-                <ProtectedRoute isAllowed={!!user}>
-                  <ClientManagementPage
-                    isAdmin={isAdmin}
-                    canSeeAllOperations={canSeeAllOperations}
-                    operationReady={operationReady}
-                    activeOperationId={
-                      canSeeAllOperations ? activeOperationId : null
-                    }
-                  />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/clients"
+                element={
+                  <ProtectedRoute isAllowed={!!user}>
+                    <ClientManagementPage
+                      isAdmin={isAdmin}
+                      canSeeAllOperations={canSeeAllOperations}
+                      operationReady={operationReady}
+                      activeOperationId={
+                        canSeeAllOperations ? activeOperationId : null
+                      }
+                    />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/agents"
-              element={
-                <ProtectedRoute
-                  isAllowed={canAccessAgents}
-                  redirectTo={user ? "/dashboard" : "/login"}
-                >
-                  <AgentManagementPage />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/agents"
+                element={
+                  <ProtectedRoute
+                    isAllowed={canAccessAgents}
+                    redirectTo={user ? "/dashboard" : "/login"}
+                  >
+                    <AgentManagementPage />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/campaigns"
-              element={
-                <ProtectedRoute
-                  isAllowed={canAccessCampaigns}
-                  redirectTo={user ? "/dashboard" : "/login"}
-                >
-                  <CampaignManagementPage />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/campaigns"
+                element={
+                  <ProtectedRoute
+                    isAllowed={canAccessCampaigns}
+                    redirectTo={user ? "/dashboard" : "/login"}
+                  >
+                    <CampaignManagementPage />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </Suspense>
           </div>
         </MaintenanceGate>
       </Router>
