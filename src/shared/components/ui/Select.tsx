@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -42,36 +42,121 @@ SelectTrigger.displayName = "SelectTrigger";
 export const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
-    <SelectPrimitive.Content
-      ref={ref}
-      position={position}
-      sideOffset={8}
-      className={cn(
-        "crm-select-content z-[9999] overflow-hidden",
-        "rounded-[1.25rem] border border-white/72 bg-surface/96 backdrop-blur-2xl shadow-[0_26px_70px_rgba(30,41,59,0.18),inset_0_1px_0_rgba(255,255,255,0.16)]",
-        "w-auto min-w-[max(var(--radix-select-trigger-width),280px)]",
-        "data-[state=open]:animate-in data-[state=closed]:animate-out",
-        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-        "data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
-        className,
-      )}
-      {...props}
-    >
-      <SelectPrimitive.ScrollUpButton className="flex items-center justify-center py-1 text-muted">
-        <ChevronUp className="h-4 w-4" />
-      </SelectPrimitive.ScrollUpButton>
+>(({ className, children, position = "popper", style, ...props }, ref) => {
+  const viewportRef = React.useRef<React.ElementRef<
+    typeof SelectPrimitive.Viewport
+  > | null>(null);
+  const [scrollState, setScrollState] = React.useState({
+    canScroll: false,
+    thumbHeight: 0,
+    thumbTop: 0,
+  });
 
-      <SelectPrimitive.Viewport className="p-2">{children}</SelectPrimitive.Viewport>
+  const updateScrollIndicator = React.useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
 
-      <SelectPrimitive.ScrollDownButton className="flex items-center justify-center py-1 text-muted">
-        <ChevronDown className="h-4 w-4" />
-      </SelectPrimitive.ScrollDownButton>
-    </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
-));
+    const { clientHeight, scrollHeight, scrollTop } = viewport;
+    const canScroll = scrollHeight > clientHeight + 1;
+
+    if (!canScroll) {
+      setScrollState({ canScroll: false, thumbHeight: 0, thumbTop: 0 });
+      return;
+    }
+
+    const thumbHeight = Math.max(28, (clientHeight / scrollHeight) * clientHeight);
+    const maxThumbTop = clientHeight - thumbHeight;
+    const maxScrollTop = scrollHeight - clientHeight;
+    const thumbTop = maxScrollTop > 0 ? (scrollTop / maxScrollTop) * maxThumbTop : 0;
+
+    setScrollState({
+      canScroll: true,
+      thumbHeight,
+      thumbTop,
+    });
+  }, []);
+
+  React.useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    updateScrollIndicator();
+    const rafId = window.requestAnimationFrame(() => {
+      updateScrollIndicator();
+
+      window.requestAnimationFrame(updateScrollIndicator);
+    });
+    const timeoutId = window.setTimeout(updateScrollIndicator, 180);
+
+    const resizeObserver = new ResizeObserver(updateScrollIndicator);
+    resizeObserver.observe(viewport);
+
+    if (viewport.firstElementChild) {
+      resizeObserver.observe(viewport.firstElementChild);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(timeoutId);
+      resizeObserver.disconnect();
+    };
+  }, [children, updateScrollIndicator]);
+
+  return (
+    <SelectPrimitive.Portal>
+      <SelectPrimitive.Content
+        ref={ref}
+        position={position}
+        sideOffset={8}
+        collisionPadding={16}
+        className={cn(
+          "crm-select-content relative z-[9999] flex flex-col overflow-hidden",
+          "rounded-[1.25rem] border border-white/72 bg-surface/96 backdrop-blur-2xl shadow-[0_26px_70px_rgba(30,41,59,0.18),inset_0_1px_0_rgba(255,255,255,0.16)]",
+          "w-auto min-w-[max(var(--radix-select-trigger-width),280px)]",
+          "origin-[var(--radix-select-content-transform-origin)] will-change-[opacity,transform]",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out",
+          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          "data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
+          className,
+        )}
+        style={{
+          ...style,
+          maxHeight:
+            "min(calc(100dvh - 2rem), var(--radix-select-content-available-height, calc(100dvh - 2rem)))",
+        }}
+        {...props}
+      >
+        <SelectPrimitive.Viewport
+          ref={viewportRef}
+          className="crm-select-viewport min-h-0 overflow-y-auto overscroll-contain p-2 pr-4 touch-pan-y"
+          style={{
+            maxHeight:
+              "min(clamp(8rem, 24dvh, 12rem), calc(var(--radix-select-content-available-height, 12rem) - 2.5rem))",
+          }}
+          onScroll={updateScrollIndicator}
+        >
+          {children}
+        </SelectPrimitive.Viewport>
+
+        {scrollState.canScroll ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-3 right-2 top-3 z-20 w-1.5 rounded-full bg-ink/[0.06]"
+          >
+            <div
+              className="absolute left-0 w-full rounded-full bg-brand/55 shadow-[0_0_0_1px_rgba(255,255,255,0.34),0_6px_14px_rgba(75,123,236,0.18)] transition-[top,height] duration-150 ease-out"
+              style={{
+                height: `${scrollState.thumbHeight}px`,
+                top: `${scrollState.thumbTop}px`,
+              }}
+            />
+          </div>
+        ) : null}
+      </SelectPrimitive.Content>
+    </SelectPrimitive.Portal>
+  );
+});
 SelectContent.displayName = "SelectContent";
 
 export const SelectItem = React.forwardRef<

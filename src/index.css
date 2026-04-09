@@ -234,6 +234,46 @@
     border-color: rgb(var(--color-border) / 0.9);
   }
 
+  .crm-select-content::before,
+  .crm-select-content::after {
+    content: "";
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    z-index: 1;
+    height: 1.2rem;
+    pointer-events: none;
+    opacity: 0.78;
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  .crm-select-content::before {
+    top: 0;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--color-surface) / 0.96),
+      rgb(var(--color-surface) / 0)
+    );
+  }
+
+  .crm-select-content::after {
+    bottom: 0;
+    background: linear-gradient(
+      0deg,
+      rgb(var(--color-surface-elevated) / 0.96),
+      rgb(var(--color-surface-elevated) / 0)
+    );
+  }
+
+  .crm-select-viewport {
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+  }
+
+  .crm-select-viewport::-webkit-scrollbar {
+    display: none;
+  }
+
   :root[data-brand-preset="atlas-finance"] .crm-page-header,
   :root[data-brand-preset="atlas-finance"] .crm-app-footer {
     border-color: rgb(var(--color-border) / 0.32);

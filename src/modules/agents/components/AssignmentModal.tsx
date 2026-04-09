@@ -337,7 +337,7 @@ export default function AssignmentModal({
   return createPortal(
     <AnimatePresence mode="wait">
       <motion.div
-        className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto p-3 sm:items-center sm:p-6"
+        className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto overscroll-y-contain p-3 sm:items-center sm:p-6"
         variants={overlayV}
         initial="initial"
         animate="animate"
@@ -380,7 +380,7 @@ export default function AssignmentModal({
             className={agentModalHeaderClass}
           />
 
-          <ModalBody className="min-h-0 space-y-5 overflow-y-auto">
+          <ModalBody className="crm-scrollbar crm-scrollbar-shell min-h-0 space-y-5 overflow-y-auto overscroll-contain">
             {error && (
               <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-red-700 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 mt-0.5" />
