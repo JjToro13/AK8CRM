@@ -625,7 +625,6 @@ export default function ImportClientsModal({
             let repeatedHeaderRows = 0;
             let suspiciousRows = 0;
             let invalidRows = 0;
-            let emptyRows = 0;
 
             const parseNumber = (v: any) => {
               const s = v?.toString?.() ?? "";
@@ -677,7 +676,6 @@ export default function ImportClientsModal({
             for (let r = headerRowIndex + 1; r < jsonData.length; r++) {
               const row = jsonData[r];
               if (!row || row.length === 0) {
-                emptyRows++;
                 continue;
               }
 
@@ -747,7 +745,6 @@ export default function ImportClientsModal({
               const rowValidation = validateParsedClient(client);
 
               if (rowValidation.kind === "empty") {
-                emptyRows++;
                 continue;
               }
 

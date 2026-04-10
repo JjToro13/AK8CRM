@@ -162,6 +162,7 @@ export default function ClientCommentsCell({
     observer.observe(el);
 
     return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, commentCount]);
 
   const onBackdrop = (e: React.MouseEvent) => {

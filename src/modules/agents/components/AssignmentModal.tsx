@@ -155,7 +155,7 @@ export default function AssignmentModal({
         return;
       }
 
-      let campaignsQuery = supabase
+      const campaignsQuery = supabase
         .from("campaigns")
         .select("id, prefix, display_name, created_at, operation_id")
         .eq("operation_id", effectiveOperationId)
@@ -164,7 +164,7 @@ export default function AssignmentModal({
       const { data: campRows, error: campErr } = await campaignsQuery;
       if (campErr) throw campErr;
 
-      let clientsQuery = supabase
+      const clientsQuery = supabase
         .from("clients")
         .select("campaign_id, assigned_to, operation_id")
         .eq("operation_id", effectiveOperationId);

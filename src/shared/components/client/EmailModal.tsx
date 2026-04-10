@@ -68,7 +68,6 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
   // Cargar cuentas al abrir
   useEffect(() => {
     if (isOpen && user) loadEmailAccounts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, user]);
 
   const selectedAccount = useMemo(

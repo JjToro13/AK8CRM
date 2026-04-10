@@ -254,7 +254,7 @@ export default function CalendarEventModal({
         email: "Usuario actual",
       },
     ];
-  }, [agentsList, isAdmin, viewerAgentId, viewerTimeZone]);
+  }, [agentsList, isAdmin, viewerAgentId]);
 
   const selectedAgentOption = useMemo(
     () => agentOptions.find((agent) => agent.id === agentId) ?? null,
