@@ -153,4 +153,11 @@ export const notify = {
       "La cita fue retirada del calendario.",
     );
   },
+
+  clientAssignmentUpdated(description?: string) {
+    return this.success(
+      "Asignacion actualizada",
+      description || "El responsable del cliente se guardo correctamente.",
+    );
+  },
 };

@@ -61,7 +61,7 @@ export default function AgentsGrid({
             Lectura compacta del estado, la carga asignada y las acciones disponibles.
           </p>
         </div>
-        <div className="rounded-full border border-white/76 bg-white/72 px-4 py-2 text-sm font-semibold text-ink/80 shadow-[0_12px_26px_rgba(30,41,59,0.06)]">
+        <div className="crm-shell-pill rounded-full border border-white/76 bg-white/72 px-4 py-2 text-sm font-semibold text-ink/80 shadow-[0_12px_26px_rgba(30,41,59,0.06)]">
           {agentsList.length} usuario{agentsList.length === 1 ? "" : "s"}
         </div>
       </div>

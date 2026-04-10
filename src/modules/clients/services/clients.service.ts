@@ -1,6 +1,8 @@
 import { supabase } from "../../../integrations/supabase/client";
 import type { Client } from "../../../shared/types/crm";
 
+const UNASSIGNED_AGENT_FILTER = "__unassigned__";
+
 const CLIENT_LIST_SELECT = `
   id,
   tenant_id,
@@ -79,7 +81,10 @@ export const clients = {
     }
 
     if (params?.assignedAgentId) {
-      request = request.eq("assigned_to", params.assignedAgentId);
+      request =
+        params.assignedAgentId === UNASSIGNED_AGENT_FILTER
+          ? request.is("assigned_to", null)
+          : request.eq("assigned_to", params.assignedAgentId);
     }
 
     const { data, error, count } = await request
@@ -121,7 +126,10 @@ export const clients = {
     }
 
     if (assignedAgentId) {
-      request = request.eq("assigned_to", assignedAgentId);
+      request =
+        assignedAgentId === UNASSIGNED_AGENT_FILTER
+          ? request.is("assigned_to", null)
+          : request.eq("assigned_to", assignedAgentId);
     }
 
     const { data, error, count } = await request

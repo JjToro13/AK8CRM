@@ -89,6 +89,7 @@ export default function ClientsTableRow({
     (client.net_deposit ?? 0) >= 500 || (client.deposit_amount ?? 0) >= 500;
   const isManyAttempts = (client.attempts ?? 0) >= 3;
   const company = client.source || client.trading_company || "-";
+  const assignedAgentName = client.assigned_agent?.name?.trim() || "Sin asignar";
   const rowAccentClass = isManyAttempts
     ? "before:bg-red-400"
     : isHighValue
@@ -116,16 +117,15 @@ export default function ClientsTableRow({
         }
       }}
       className={cn(
-        "group relative grid min-w-max text-left transition-all hover:bg-white/58",
+        "crm-client-row group relative grid min-w-max text-left transition-all",
         "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1",
         rowAccentClass,
-        selected &&
-          "bg-[linear-gradient(90deg,rgba(var(--color-brand-50),0.72),rgba(255,255,255,0.72))] shadow-[inset_0_0_0_1px_rgba(37,99,235,0.16),0_18px_34px_rgba(15,23,42,0.05)]",
+        selected && "crm-client-row-selected",
       )}
       style={{ gridTemplateColumns: CLIENTS_GRID_TEMPLATE }}
       aria-selected={selected}
     >
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <div className="flex min-w-0 items-center gap-3">
           <div
             className={cn(
@@ -143,19 +143,19 @@ export default function ClientsTableRow({
         </div>
       </SheetCell>
 
-      <SheetCell className={cn("font-medium", selected && "bg-white/16")}>
+      <SheetCell className={cn("font-medium", selected && "crm-client-row-cell-selected")}>
         <div className="truncate">{client.first_name || client.name || "Sin nombre"}</div>
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <div className="truncate">{client.last_name || "-"}</div>
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <CopyableText label="Email" value={client.email} onCopy={onCopy} />
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <CopyableText
           label="Telefono"
           value={client.phone_number}
@@ -163,51 +163,63 @@ export default function ClientsTableRow({
         />
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <div className="truncate">{client.country || "-"}</div>
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <div className="truncate" title={company}>
           {company}
         </div>
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
+        <div
+          className={cn(
+            "truncate",
+            !client.assigned_agent?.name && "text-muted",
+          )}
+          title={assignedAgentName}
+        >
+          {assignedAgentName}
+        </div>
+      </SheetCell>
+
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <div className="truncate">{client.funnel || "-"}</div>
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <div className="truncate">
           {client.deposit_amount ? formatCurrency(client.deposit_amount) : "-"}
         </div>
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <div className="truncate">
           {client.net_deposit ? formatCurrency(client.net_deposit) : "-"}
         </div>
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <div className="truncate">
           {client.user_balance ? formatCurrency(client.user_balance) : "-"}
         </div>
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <div className="truncate">{client.investment_date || "-"}</div>
       </SheetCell>
 
-      <SheetCell className={cn("font-mono text-[13px]", selected && "bg-white/16")}>
+      <SheetCell className={cn("font-mono text-[13px]", selected && "crm-client-row-cell-selected")}>
         <div className="truncate">{client.serial}</div>
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <div>{client.attempts ?? 0}</div>
       </SheetCell>
 
-      <SheetCell className={cn("items-start py-2.5", selected && "bg-white/16")}>
+      <SheetCell className={cn("items-start py-2.5", selected && "crm-client-row-cell-selected")}>
         <div className="w-full min-w-0">
           <ClientCommentsCell
             clientId={client.id}
@@ -220,7 +232,7 @@ export default function ClientsTableRow({
         </div>
       </SheetCell>
 
-      <SheetCell className={cn(selected && "bg-white/16")}>
+      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
         <div className="truncate">{formatDate(client.created_at)}</div>
       </SheetCell>
     </div>

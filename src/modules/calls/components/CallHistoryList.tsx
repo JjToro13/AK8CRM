@@ -57,7 +57,7 @@ export default function CallHistoryList({
         onStatusFilterChange={onStatusFilterChange}
       />
 
-      <div className="max-h-[62vh] overflow-y-auto pr-1 space-y-2">
+      <div className="crm-scrollbar crm-scrollbar-shell max-h-[62vh] overflow-y-auto pr-1 space-y-2">
         {loading ? (
           <div className="rounded-2xl border border-border bg-surface2 p-10 flex justify-center">
             <LoadingSpinner

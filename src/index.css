@@ -234,6 +234,97 @@
     border-color: rgb(var(--color-border) / 0.9);
   }
 
+  .crm-client-row {
+    background: transparent;
+  }
+
+  .crm-client-row:hover {
+    background:
+      linear-gradient(90deg, rgb(var(--color-brand-50) / 0.26) 0%, rgb(var(--color-surface) / 0.16) 100%);
+  }
+
+  .crm-client-row-selected {
+    background:
+      linear-gradient(90deg, rgb(var(--color-brand-100) / 0.58) 0%, rgb(var(--color-brand-50) / 0.2) 56%, transparent 100%);
+    box-shadow:
+      inset 0 0 0 1px rgb(var(--color-brand-300) / 0.28),
+      inset 3px 0 0 rgb(var(--color-brand-500) / 0.9);
+  }
+
+  .crm-client-row-cell-selected {
+    background: rgb(var(--color-brand-50) / 0.14);
+  }
+
+  .crm-comment-surface {
+    border-color: rgb(var(--color-border) / 0.78);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.94) 0%, rgb(var(--color-surface-elevated) / 0.86) 100%);
+    box-shadow:
+      0 14px 30px rgb(var(--color-brand-900) / 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  }
+
+  .crm-comment-surface:hover {
+    border-color: rgb(var(--color-brand-300) / 0.34);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.98) 0%, rgb(var(--color-surface-elevated) / 0.9) 100%);
+  }
+
+  .crm-client-pagination-shell {
+    border-color: rgb(var(--color-border) / 0.82);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.9) 0%, rgb(var(--color-surface-elevated) / 0.84) 100%);
+  }
+
+  .crm-client-pagination-input {
+    border-color: rgb(var(--color-border) / 0.82);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.96) 0%, rgb(var(--color-surface-elevated) / 0.88) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+    color: rgb(var(--color-ink) / 0.9);
+  }
+
+  .crm-scrollbar {
+    scrollbar-width: thin;
+  }
+
+  .crm-scrollbar-shell {
+    scrollbar-color: rgb(var(--color-brand-200) / 0.9) rgb(var(--color-surface-elevated) / 0.16);
+  }
+
+  .crm-scrollbar-shell::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .crm-scrollbar-shell::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.72) 0%, rgb(var(--color-surface-elevated) / 0.54) 100%);
+    box-shadow: inset 0 0 0 1px rgb(var(--color-border) / 0.16);
+  }
+
+  .crm-scrollbar-shell::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgb(var(--color-brand-100) / 0.98) 0%, rgb(var(--color-brand-200) / 0.96) 100%);
+    background-clip: padding-box;
+    box-shadow:
+      0 6px 12px rgb(var(--color-brand-900) / 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.52);
+  }
+
+  .crm-scrollbar-shell::-webkit-scrollbar-thumb:hover {
+    background:
+      linear-gradient(180deg, rgb(var(--color-brand-200) / 1) 0%, rgb(var(--color-brand-300) / 0.98) 100%);
+    background-clip: padding-box;
+  }
+
+  .crm-scrollbar-shell::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
   .crm-select-content::before,
   .crm-select-content::after {
     content: "";
@@ -350,6 +441,23 @@
     border-color: rgb(var(--color-border) / 0.48);
   }
 
+  :root[data-brand-preset="atlas-finance"] .crm-client-row:hover {
+    background:
+      linear-gradient(90deg, rgb(var(--color-brand-500) / 0.07) 0%, transparent 72%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-row-selected {
+    background:
+      linear-gradient(90deg, rgb(var(--color-brand-500) / 0.1) 0%, rgba(14, 24, 42, 0.22) 58%, transparent 100%);
+    box-shadow:
+      inset 0 0 0 1px rgb(var(--color-brand-300) / 0.18),
+      inset 2px 0 0 rgb(var(--color-brand-400) / 0.72);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-row-cell-selected {
+    background: rgba(30, 41, 59, 0.16);
+  }
+
   :root[data-brand-preset="atlas-finance"] .crm-table-shell,
   :root[data-brand-preset="atlas-finance"] .crm-table-header,
   :root[data-brand-preset="atlas-finance"] .crm-table-body,
@@ -447,6 +555,95 @@
     color: rgb(245 158 11 / 1);
   }
 
+  :root[data-brand-preset="atlas-finance"] .crm-agent-tile {
+    border-color: rgb(var(--color-border) / 0.5);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.95) 0%, rgb(var(--color-surface-elevated) / 0.9) 100%);
+    box-shadow:
+      0 22px 52px rgba(2, 8, 18, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-agent-tile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at top right, rgb(var(--color-brand-300) / 0.12), transparent 24%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 30%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-filter-tray,
+  :root[data-brand-preset="atlas-finance"] .crm-comment-surface {
+    border-color: rgb(var(--color-border) / 0.5);
+    box-shadow:
+      0 18px 40px rgba(2, 8, 18, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-filter-tray {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.96) 0%, rgb(var(--color-surface-elevated) / 0.9) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-comment-surface {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.9) 0%, rgb(var(--color-surface-elevated) / 0.82) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-comment-surface:hover {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.94) 0%, rgb(var(--color-surface-elevated) / 0.86) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-pagination-shell {
+    border-color: rgb(var(--color-border) / 0.5);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.84) 0%, rgb(var(--color-surface-elevated) / 0.76) 100%);
+    box-shadow:
+      0 16px 36px rgba(2, 8, 18, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-pagination-input {
+    border-color: rgb(var(--color-border) / 0.48);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.96) 0%, rgb(var(--color-surface-elevated) / 0.88) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    color: rgb(var(--color-ink) / 0.92);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-scrollbar-shell {
+    scrollbar-color: rgb(var(--color-brand-400) / 0.72) rgba(14, 24, 42, 0.22);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-scrollbar-shell::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-scrollbar-shell::-webkit-scrollbar-track {
+    background: rgba(10, 19, 34, 0.46);
+    box-shadow: inset 0 0 0 1px rgb(var(--color-border) / 0.18);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-scrollbar-shell::-webkit-scrollbar-thumb {
+    background:
+      linear-gradient(180deg, rgb(var(--color-brand-300) / 0.84) 0%, rgb(var(--color-brand-500) / 0.92) 100%);
+    background-clip: padding-box;
+    box-shadow:
+      0 10px 18px rgba(2, 8, 18, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-scrollbar-shell::-webkit-scrollbar-thumb:hover {
+    background:
+      linear-gradient(180deg, rgb(var(--color-brand-200) / 0.9) 0%, rgb(var(--color-brand-400) / 0.98) 100%);
+    background-clip: padding-box;
+  }
+
   :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill {
     box-shadow:
       0 12px 28px rgba(2, 8, 18, 0.16),
@@ -481,6 +678,52 @@
     border-color: rgb(244 63 94 / 0.34);
     background: linear-gradient(180deg, rgba(64, 27, 40, 0.92) 0%, rgba(45, 19, 29, 0.84) 100%);
     color: rgb(254 205 211 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action {
+    box-shadow:
+      0 14px 30px rgba(2, 8, 18, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-emerald-400\/35 {
+    border-color: rgb(52 211 153 / 0.5);
+    background: linear-gradient(180deg, rgba(18, 54, 43, 0.88) 0%, rgba(13, 38, 31, 0.8) 100%);
+    color: rgb(167 243 208 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-emerald-400\/35:hover {
+    background: linear-gradient(180deg, rgba(21, 68, 53, 0.92) 0%, rgba(15, 48, 38, 0.84) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-brand\/35 {
+    border-color: rgb(var(--color-brand-300) / 0.44);
+    background: linear-gradient(180deg, rgba(28, 43, 73, 0.9) 0%, rgba(19, 32, 56, 0.82) 100%);
+    color: rgb(191 219 254 / 0.98);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-brand\/35:hover {
+    background: linear-gradient(180deg, rgba(34, 51, 86, 0.94) 0%, rgba(23, 37, 66, 0.86) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-amber-400\/35 {
+    border-color: rgb(251 191 36 / 0.48);
+    background: linear-gradient(180deg, rgba(59, 44, 18, 0.9) 0%, rgba(40, 31, 14, 0.82) 100%);
+    color: rgb(253 230 138 / 0.98);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-amber-400\/35:hover {
+    background: linear-gradient(180deg, rgba(71, 54, 23, 0.94) 0%, rgba(49, 37, 17, 0.86) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-white\/28 {
+    border-color: rgb(var(--color-border) / 0.5);
+    background: linear-gradient(180deg, rgb(var(--color-surface) / 0.82) 0%, rgb(var(--color-surface-elevated) / 0.74) 100%);
+    color: rgb(var(--color-ink) / 0.92);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-white\/28:hover {
+    background: linear-gradient(180deg, rgb(var(--color-surface) / 0.88) 0%, rgb(var(--color-surface-elevated) / 0.78) 100%);
   }
 
   .status-indicator {

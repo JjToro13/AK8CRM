@@ -3,6 +3,9 @@ import { cn } from "../../../lib/utils";
 export const agentCardClass =
   "crm-shell-card rounded-[1.75rem] border border-white/68 bg-surface/84 p-6 shadow-soft backdrop-blur-xl sm:p-7";
 
+export const agentTileClass =
+  "crm-agent-tile relative overflow-hidden rounded-[1.6rem] border border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(255,255,255,0.74))] p-6 shadow-[0_22px_50px_rgba(30,41,59,0.08),inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-xl transition-all hover:-translate-y-[2px] hover:shadow-[0_28px_60px_rgba(30,41,59,0.14)]";
+
 export const agentInsetClass =
   "crm-shell-soft-row rounded-[1.4rem] border border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(255,255,255,0.58))] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-xl";
 

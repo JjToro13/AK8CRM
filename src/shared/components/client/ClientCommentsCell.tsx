@@ -1,10 +1,8 @@
-// clientcommentscell.tsx - Componente para mostrar el último comentario de un cliente en la tabla, con opción a ver el historial completo en un modal.
-
 import { useEffect, useRef, useState } from "react";
-import { X, RefreshCw } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import { clientComments } from "../../../lib/supabase";
-import LoadingSpinner from "../feedback/LoadingSpinner";
 import { formatDate } from "../../../lib/utils";
+import LoadingSpinner from "../feedback/LoadingSpinner";
 
 type CommentRow = {
   id: string;
@@ -70,7 +68,6 @@ export default function ClientCommentsCell({
   const [err, setErr] = useState("");
 
   const rootRef = useRef<HTMLDivElement | null>(null);
-
   const moreCount = Math.max(0, (commentCount || 0) - 1);
 
   const fetchCommentsShared = async () => {
@@ -138,7 +135,7 @@ export default function ClientCommentsCell({
       try {
         await fetchCommentsShared();
       } catch {
-        // silencioso: el prefetch no debe romper la UI
+        // El prefetch no debe romper la UI.
       }
     });
   };
@@ -165,7 +162,6 @@ export default function ClientCommentsCell({
     observer.observe(el);
 
     return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, commentCount]);
 
   const onBackdrop = (e: React.MouseEvent) => {
@@ -208,7 +204,7 @@ export default function ClientCommentsCell({
   };
 
   if (!lastComment) {
-    return <span className="text-sm text-gray-400">Sin comentarios</span>;
+    return <span className="text-sm text-muted">Sin comentarios</span>;
   }
 
   return (
@@ -217,82 +213,69 @@ export default function ClientCommentsCell({
         <button
           type="button"
           onClick={handleOpen}
-          className={[
-            "group w-full text-left",
-            "rounded-xl border border-gray-200 bg-white px-3 py-2",
-            "shadow-sm transition",
-            "hover:-translate-y-[1px] hover:shadow-md hover:border-gray-300",
-            "focus:outline-none focus:ring-2 focus:ring-blue-500/30",
-          ].join(" ")}
+          className="crm-comment-surface group w-full rounded-xl border px-3 py-2 text-left shadow-sm transition hover:-translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-brand/20"
           title="Ver comentarios"
         >
-          <div className="text-sm text-gray-900 leading-snug line-clamp-2">
+          <div className="line-clamp-2 text-sm leading-snug text-ink">
             {lastComment}
           </div>
 
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
-            <span className="font-medium text-blue-700">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+            <span className="font-medium text-brand">
               {agent?.name || "Agente"}
             </span>
-            <span className="text-gray-300">•</span>
+            <span className="text-border">•</span>
             <span>{lastCommentAt ? formatDate(lastCommentAt) : ""}</span>
           </div>
 
-          {moreCount > 0 && (
+          {moreCount > 0 ? (
             <span
-              className={[
-                "absolute -right-2 -top-2",
-                "rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5",
-                "text-[11px] font-semibold text-blue-700 shadow-sm",
-                "opacity-100 md:opacity-0 md:group-hover:opacity-100",
-                "transition-opacity",
-              ].join(" ")}
-              title={`${moreCount} comentarios más`}
+              className="crm-shell-pill absolute -right-2 -top-2 rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand shadow-sm opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+              title={`${moreCount} comentarios mas`}
             >
               +{moreCount}
             </span>
-          )}
+          ) : null}
         </button>
 
         <button
           type="button"
           onClick={handleRefresh}
-          className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full border border-gray-200 bg-white shadow-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition flex items-center justify-center"
+          className="crm-comment-surface absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full border text-muted shadow-sm transition hover:text-ink"
           title="Actualizar comentarios"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="h-4 w-4" />
         </button>
       </div>
 
-      {open && (
+      {open ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <button
             type="button"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm"
             onClick={onBackdrop}
             aria-label="Cerrar comentarios"
           />
-          <div className="relative w-full max-w-2xl max-h-[80vh] overflow-hidden rounded-3xl border border-border bg-surface shadow-soft2">
-            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border bg-surface2">
+
+          <div className="crm-modal-panel relative max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-3xl border border-border bg-surface shadow-soft2">
+            <div className="crm-modal-header flex items-center justify-between gap-3 border-b border-border bg-surface2 px-5 py-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-ink truncate">
-                    Comentarios
-                  </h3>
+                  <h3 className="truncate font-semibold text-ink">Comentarios</h3>
                   <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[12px] font-semibold text-brand">
                     {commentCount || comments.length}
                   </span>
                 </div>
 
-                <p className="text-xs text-muted mt-1">
-                  Historial (más reciente primero)
+                <p className="mt-1 text-xs text-muted">
+                  Historial (mas reciente primero)
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="h-9 w-9 rounded-2xl border border-border bg-surface text-muted hover:text-ink hover:bg-surface2 transition flex items-center justify-center"
+                className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border bg-surface text-muted transition hover:bg-surface2 hover:text-ink"
                 aria-label="Cerrar"
                 title="Cerrar"
               >
@@ -300,9 +283,9 @@ export default function ClientCommentsCell({
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto max-h-[70vh]">
+            <div className="crm-scrollbar crm-scrollbar-shell max-h-[70vh] overflow-y-auto p-5">
               {loading ? (
-                <div className="py-10 flex justify-center">
+                <div className="flex justify-center py-10">
                   <LoadingSpinner
                     size="sm"
                     text="Cargando comentarios..."
@@ -317,27 +300,25 @@ export default function ClientCommentsCell({
                   </button>
                 </div>
               ) : comments.length === 0 ? (
-                <div className="text-sm text-gray-400">
-                  Sin comentarios todavía.
-                </div>
+                <div className="text-sm text-muted">Sin comentarios todavia.</div>
               ) : (
                 <div className="space-y-3">
-                  {comments.map((c) => (
+                  {comments.map((comment) => (
                     <div
-                      key={c.id}
-                      className="rounded-2xl border border-border bg-surface2 p-4"
+                      key={comment.id}
+                      className="crm-comment-surface rounded-2xl border p-4"
                     >
-                      <div className="text-sm text-ink whitespace-pre-wrap leading-relaxed">
-                        {c.comment}
+                      <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
+                        {comment.comment}
                       </div>
 
                       <div className="mt-3 flex items-center gap-2 text-xs text-muted">
-                        <span className="font-semibold text-brand truncate max-w-[240px]">
-                          {c.agent?.name || c.agent_id}
+                        <span className="max-w-[240px] truncate font-semibold text-brand">
+                          {comment.agent?.name || comment.agent_id}
                         </span>
                         <span className="text-border">•</span>
                         <span className="whitespace-nowrap">
-                          {formatDate(c.created_at)}
+                          {formatDate(comment.created_at)}
                         </span>
                       </div>
                     </div>
@@ -346,18 +327,18 @@ export default function ClientCommentsCell({
               )}
             </div>
 
-            <div className="px-5 py-4 border-t border-border bg-surface2 flex justify-end">
+            <div className="crm-modal-footer flex justify-end border-t border-border bg-surface2 px-5 py-4">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="inline-flex items-center rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 hover:bg-surface2 transition"
+                className="crm-shell-pill inline-flex items-center rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 transition hover:bg-surface2"
               >
                 Cerrar
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

@@ -5,11 +5,13 @@ import {
   Edit,
   Mail,
   Phone,
+  UserPlus,
 } from "lucide-react";
 import { cn, resolveClientStatus } from "../../../lib/utils";
 import {
   clientGhostButtonClass,
   clientInsetClass,
+  clientQuickActionButtonClass,
   clientStatusBadgeClass,
 } from "../../../shared/components/client/clientUi";
 import type { Client } from "../../../shared/types/crm";
@@ -34,14 +36,9 @@ type ClientsPaginationProps = {
   onEmailClient: (client: Client) => void;
   onScheduleClient: (client: Client) => void;
   onEditClient: (client: Client) => void;
+  canAssignClient: boolean;
+  onAssignClient: (client: Client) => void;
 };
-
-const actionBtnClass =
-  "inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold shadow-[0_16px_34px_rgba(15,23,42,0.07),inset_0_1px_0_rgba(255,255,255,0.84)] backdrop-blur-xl transition " +
-  "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 disabled:cursor-not-allowed disabled:opacity-45";
-
-const inactiveActionBtnClass =
-  "border-white/76 bg-white/66 text-muted hover:bg-white/78";
 
 export default function ClientsPagination({
   currentPage,
@@ -60,6 +57,8 @@ export default function ClientsPagination({
   onEmailClient,
   onScheduleClient,
   onEditClient,
+  canAssignClient,
+  onAssignClient,
 }: ClientsPaginationProps) {
   const selectedStatus = selectedClient
     ? resolveClientStatus(selectedClient)
@@ -129,11 +128,9 @@ export default function ClientsPagination({
                 !selectedClient ||
                 (enableCalls && callingClient === selectedClient.id)
               }
-              className={cn(
-                actionBtnClass,
-                hasSelectedClient && canExecuteClientActions
-                  ? "border-emerald-200/90 bg-emerald-50/86 text-emerald-800 hover:bg-emerald-100/88"
-                  : inactiveActionBtnClass,
+              className={clientQuickActionButtonClass(
+                "call",
+                hasSelectedClient && canExecuteClientActions,
               )}
             >
               <Phone className="h-4 w-4" />
@@ -149,11 +146,9 @@ export default function ClientsPagination({
               disabled={
                 !canExecuteClientActions || !selectedClient || !selectedClient.email
               }
-              className={cn(
-                actionBtnClass,
-                hasSelectedClient && canExecuteClientActions
-                  ? "border-brand/18 bg-brand/[0.08] text-brand hover:bg-brand/[0.12]"
-                  : inactiveActionBtnClass,
+              className={clientQuickActionButtonClass(
+                "email",
+                hasSelectedClient && canExecuteClientActions && Boolean(selectedClient?.email),
               )}
             >
               <Mail className="h-4 w-4" />
@@ -167,11 +162,9 @@ export default function ClientsPagination({
                 onScheduleClient(selectedClient);
               }}
               disabled={!canExecuteClientActions || !selectedClient}
-              className={cn(
-                actionBtnClass,
-                hasSelectedClient && canExecuteClientActions
-                  ? "border-amber-200/90 bg-amber-50/86 text-amber-800 hover:bg-amber-100/88"
-                  : inactiveActionBtnClass,
+              className={clientQuickActionButtonClass(
+                "calendar",
+                hasSelectedClient && canExecuteClientActions,
               )}
             >
               <CalendarDays className="h-4 w-4" />
@@ -185,19 +178,35 @@ export default function ClientsPagination({
                 onEditClient(selectedClient);
               }}
               disabled={!canExecuteClientActions || !selectedClient}
-              className={cn(
-                actionBtnClass,
-                hasSelectedClient && canExecuteClientActions
-                  ? "border-slate-200/90 bg-slate-50/86 text-slate-800 hover:bg-slate-100/88"
-                  : inactiveActionBtnClass,
+              className={clientQuickActionButtonClass(
+                "neutral",
+                hasSelectedClient && canExecuteClientActions,
               )}
             >
               <Edit className="h-4 w-4" />
               Editar
             </button>
+
+            {canAssignClient ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!selectedClient) return;
+                  onAssignClient(selectedClient);
+                }}
+                disabled={!selectedClient}
+                className={clientQuickActionButtonClass(
+                  "neutral",
+                  hasSelectedClient,
+                )}
+              >
+                <UserPlus className="h-4 w-4" />
+                Asignacion
+              </button>
+            ) : null}
           </div>
 
-          <div className={cn(clientInsetClass, "flex items-center gap-2 px-3 py-2")}>
+          <div className={cn(clientInsetClass, "crm-client-pagination-shell flex items-center gap-2 px-3 py-2")}>
             <button
               type="button"
               onClick={onPrevPage}
@@ -223,7 +232,7 @@ export default function ClientsPagination({
                     onPageInputSubmit();
                   }
                 }}
-                className="w-16 rounded-2xl border border-white/78 bg-white/78 px-3 py-2 text-center text-sm font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.86)] outline-none backdrop-blur-xl focus:ring-4 focus:ring-brand/15"
+                className="crm-client-pagination-input w-16 rounded-2xl border px-3 py-2 text-center text-sm font-semibold outline-none backdrop-blur-xl focus:ring-4 focus:ring-brand/15"
               />
               <span>de {totalPages}</span>
             </div>

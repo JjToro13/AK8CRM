@@ -5,6 +5,7 @@ import {
   agentGhostButtonClass,
   agentInsetClass,
   agentPrimaryButtonClass,
+  agentTileClass,
 } from "./agentUi";
 import { getAgentPresenceCopy } from "../domain/agent-presence";
 
@@ -24,9 +25,6 @@ type AgentCardProps = {
 
 const badgeBaseClass =
   "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold";
-const cardClass =
-  "relative overflow-hidden rounded-[1.6rem] border border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(255,255,255,0.74))] p-6 shadow-[0_22px_50px_rgba(30,41,59,0.08),inset_0_1px_0_rgba(255,255,255,0.84)] backdrop-blur-xl transition-all hover:-translate-y-[2px] hover:shadow-[0_28px_60px_rgba(30,41,59,0.14)]";
-
 export default function AgentCard({
   agent,
   assignedCount,
@@ -55,12 +53,8 @@ export default function AgentCard({
           : "Asignar clientes";
 
   return (
-    <div
-      className={cn(
-        cardClass,
-      )}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-300)/0.14),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.18),transparent_30%)]" />
+    <div className={cn(agentTileClass)}>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-300)/0.14),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_30%)]" />
 
       <div className="relative mb-4 flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center">
@@ -99,7 +93,7 @@ export default function AgentCard({
             type="button"
             onClick={() => onEdit(agent)}
             className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-2xl border border-white/76 bg-white/72 text-muted shadow-[0_12px_26px_rgba(30,41,59,0.08)] transition",
+              "crm-shell-pill flex h-10 w-10 items-center justify-center rounded-2xl border border-white/76 bg-white/72 text-muted shadow-[0_12px_26px_rgba(30,41,59,0.08)] transition",
               "hover:-translate-y-[1px] hover:bg-white/88 hover:text-ink",
             )}
             title="Editar usuario"

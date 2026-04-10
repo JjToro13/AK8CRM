@@ -151,7 +151,7 @@ export default function ClientsFiltersCard({
                   <button
                     type="button"
                     onClick={onClearSearch}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/76 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
+                    className="crm-shell-pill inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/76 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
                     aria-label="Limpiar búsqueda"
                     title="Limpiar búsqueda"
                   >
@@ -160,7 +160,7 @@ export default function ClientsFiltersCard({
                 ) : null
               }
               disabled={opLocked}
-              className="rounded-full border-white/0 bg-white/72 py-2.5 shadow-[0_14px_32px_rgba(15,23,42,0.06)] backdrop-blur-xl"
+              className="crm-shell-pill rounded-full border-white/0 bg-white/72 py-2.5 shadow-[0_14px_32px_rgba(15,23,42,0.06)] backdrop-blur-xl"
               containerClassName="w-full"
             />
           </div>
@@ -220,7 +220,7 @@ export default function ClientsFiltersCard({
                 "inline-flex max-w-[32rem] items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition shadow-[0_14px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl",
                 hasActiveFilters
                   ? "border-brand/20 bg-brand/[0.08] text-brand"
-                  : "border-white/78 bg-white/70 text-muted hover:border-brand/15 hover:bg-white/86",
+                  : "crm-shell-pill border-white/78 bg-white/70 text-muted hover:border-brand/15 hover:bg-white/86",
               )}
               aria-expanded={isTrayOpen}
               aria-haspopup="dialog"
@@ -237,6 +237,7 @@ export default function ClientsFiltersCard({
 
             <div
               className={cn(
+                "crm-filter-tray",
                 "absolute left-0 top-full z-40 mt-3 w-[46rem] max-w-[calc(100vw-4rem)]",
                 "rounded-[1.45rem] border border-white/84 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(255,255,255,0.8))] p-4 shadow-[0_28px_70px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.86)] backdrop-blur-2xl",
                 "transition duration-150 ease-out",

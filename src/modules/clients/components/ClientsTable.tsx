@@ -48,7 +48,7 @@ export default function ClientsTable({
       <div
         ref={tableScrollRef}
         onScroll={onTableScroll}
-        className="max-h-[70vh] overflow-auto"
+        className="crm-scrollbar crm-scrollbar-shell max-h-[70vh] overflow-auto"
       >
         {initialLoading ? (
           <div

@@ -7,6 +7,10 @@ import {
   AlertCircle,
   Edit2,
   Check,
+  CalendarDays,
+  Mail,
+  Phone,
+  UserPlus,
 } from "lucide-react";
 import { supabase, ClientComment, clientComments } from "../../../lib/supabase";
 import { Client } from "../../../lib/supabase";
@@ -37,6 +41,7 @@ import {
   clientModalFooterClass,
   clientModalHeaderClass,
   clientModalPanelClass,
+  clientQuickActionButtonClass,
 } from "./clientUi";
 
 interface EditClientModalProps {
@@ -45,6 +50,15 @@ interface EditClientModalProps {
   onClose: () => void;
   onSave: () => void;
   isAdmin: boolean;
+  canExecuteQuickActions?: boolean;
+  enableCalls?: boolean;
+  callingClientId?: string | null;
+  onCallClient?: (client: Client) => void;
+  onOpenCallNotice?: () => void;
+  onEmailClient?: (client: Client) => void;
+  onScheduleClient?: (client: Client) => void;
+  canAssignClient?: boolean;
+  onAssignClient?: (client: Client) => void;
 }
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -62,6 +76,15 @@ export default function EditClientModal({
   onClose,
   onSave,
   isAdmin,
+  canExecuteQuickActions = false,
+  enableCalls = false,
+  callingClientId = null,
+  onCallClient,
+  onOpenCallNotice,
+  onEmailClient,
+  onScheduleClient,
+  canAssignClient = false,
+  onAssignClient,
 }: EditClientModalProps) {
   const { user } = useAuth();
 
@@ -279,6 +302,10 @@ export default function EditClientModal({
   const currentStatusCode = getStatusCode(client);
   const currentStatusIsSC = currentStatusCode === "NU";
   const statusChanged = statusCode !== currentStatusCode;
+  const canCall =
+    canExecuteQuickActions && !(enableCalls && callingClientId === client.id);
+  const canEmail = canExecuteQuickActions && Boolean(client.email);
+  const canSchedule = canExecuteQuickActions;
 
   return (
     <div
@@ -300,7 +327,7 @@ export default function EditClientModal({
         />
 
         {/* Body */}
-        <ModalBody className="max-h-[calc(90vh-86px-78px)] overflow-y-auto">
+        <ModalBody className="crm-scrollbar crm-scrollbar-shell max-h-[calc(90vh-86px-78px)] overflow-y-auto">
           {/* Info básica */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -456,7 +483,7 @@ export default function EditClientModal({
                   Sin comentarios aún.
                 </div>
               ) : (
-                <div className="max-h-72 overflow-y-auto pr-1 space-y-3">
+                <div className="crm-scrollbar crm-scrollbar-shell max-h-72 overflow-y-auto pr-1 space-y-3">
                   {comments.map((comment) => {
                     const canEdit = user && comment.agent_id === user.id;
                     const isEditing = editingCommentId === comment.id;
@@ -607,38 +634,94 @@ export default function EditClientModal({
               </div>
             </div>
           )}
+
         </ModalBody>
 
         {/* Footer */}
         <ModalFooter className={clientModalFooterClass}>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className={modalSecondaryActionClassName}
-          >
-            Cancelar
-          </button>
+          <div className="flex w-full items-center justify-between gap-4">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <div className="hidden text-[11px] font-semibold uppercase tracking-[0.24em] text-muted xl:block">
+                Acciones rÃ¡pidas
+              </div>
 
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={loading}
-            className={modalPrimaryActionClassName}
-          >
-            {loading ? (
-              <LoadingSpinner
-                size="sm"
-                text="Guardando..."
-                fullScreen={false}
-              />
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Guardar Cambios
-              </>
-            )}
-          </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!canExecuteQuickActions) return;
+                  if (enableCalls) onCallClient?.(client);
+                  else onOpenCallNotice?.();
+                }}
+                disabled={!canCall}
+                className={clientQuickActionButtonClass("call", canCall)}
+              >
+                <Phone className="h-4 w-4" />
+                Llamar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onEmailClient?.(client)}
+                disabled={!canEmail}
+                className={clientQuickActionButtonClass("email", canEmail)}
+              >
+                <Mail className="h-4 w-4" />
+                Email
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onScheduleClient?.(client)}
+                disabled={!canSchedule}
+                className={clientQuickActionButtonClass("calendar", canSchedule)}
+              >
+                <CalendarDays className="h-4 w-4" />
+                Calendario
+              </button>
+
+              {canAssignClient ? (
+                <button
+                  type="button"
+                  onClick={() => onAssignClient?.(client)}
+                  className={clientQuickActionButtonClass("neutral", true)}
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Asignacion
+                </button>
+              ) : null}
+            </div>
+
+            <div className="flex shrink-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className={modalSecondaryActionClassName}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={loading}
+                className={modalPrimaryActionClassName}
+              >
+                {loading ? (
+                  <LoadingSpinner
+                    size="sm"
+                    text="Guardando..."
+                    fullScreen={false}
+                  />
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Guardar Cambios
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </ModalFooter>
       </ModalPanel>
     </div>

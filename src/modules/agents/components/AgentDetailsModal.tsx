@@ -345,7 +345,7 @@ export default function AgentDetailsModal({
               </div>
             ) : (
               <div className={cn(agentInsetClass, "p-10 text-center")}>
-                <div className="h-14 w-14 rounded-2xl bg-white/72 border border-white/76 flex items-center justify-center mx-auto">
+                <div className="crm-shell-pill mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/76 bg-white/72">
                   <User className="h-7 w-7 text-muted" />
                 </div>
                 <div className="mt-4 text-base font-semibold text-ink">
@@ -389,7 +389,7 @@ export default function AgentDetailsModal({
             ) : agentCalls.length > 0 ? (
               <div className="space-y-3">
                 {agentCalls.map((call) => (
-                  <div key={call.id} className={cn(agentInsetClass, "transition p-4 hover:bg-white/72")}>
+                  <div key={call.id} className={cn(agentInsetClass, "transition p-4 hover:bg-surface/72")}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0">
                         <div className="mt-0.5">
@@ -424,7 +424,7 @@ export default function AgentDetailsModal({
               </div>
             ) : (
               <div className={cn(agentInsetClass, "p-10 text-center")}>
-                <div className="h-14 w-14 rounded-2xl bg-white/72 border border-white/76 flex items-center justify-center mx-auto">
+                <div className="crm-shell-pill mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/76 bg-white/72">
                   <Phone className="h-7 w-7 text-muted" />
                 </div>
                 <div className="mt-4 text-base font-semibold text-ink">

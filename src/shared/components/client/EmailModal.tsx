@@ -215,7 +215,7 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
         <form
           id="__email_form__"
           onSubmit={handleSubmit}
-          className="max-h-[calc(90vh-86px-78px)] overflow-y-auto"
+          className="crm-scrollbar crm-scrollbar-shell max-h-[calc(90vh-86px-78px)] overflow-y-auto"
         >
           <ModalBody>
           {/* Información cliente */}

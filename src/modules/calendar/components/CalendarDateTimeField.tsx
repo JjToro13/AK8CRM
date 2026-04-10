@@ -295,7 +295,7 @@ function ScrollableOptionList<T extends string>({
   compact?: boolean;
 }) {
   return (
-    <div className="max-h-56 space-y-1 overflow-y-auto rounded-[1.2rem] border border-border bg-surface p-1">
+    <div className="crm-scrollbar crm-scrollbar-shell max-h-56 space-y-1 overflow-y-auto rounded-[1.2rem] border border-border bg-surface p-1">
       {values.map((value) => (
         <button
           key={value}

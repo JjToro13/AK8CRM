@@ -8,6 +8,7 @@ import {
   type ClientStatusCode,
 } from "../../../lib/utils";
 import { notify } from "../../../shared/lib/notify";
+import { agentNameMap } from "../../../shared/services/agent-name-map";
 import { agents } from "../../agents/services/agents.service";
 import { agentAssignments } from "../../assignments/services/agent-assignments.service";
 import { calls as callsService } from "../../calls/services/calls.service";
@@ -32,6 +33,7 @@ const CLIENTS_VIEW_STATE_KEY = "clients_view_state_v1";
 export type ClientStatusFilter = "all" | ClientStatusCode;
 export type ClientCampaignFilter = "all" | string;
 export type ClientAgentFilter = "all" | string;
+const UNASSIGNED_AGENT_FILTER = "__unassigned__";
 
 export interface ClientManagementProps {
   isAdmin?: boolean;
@@ -70,6 +72,28 @@ function filterAssignedClients(
         .includes(query)
     );
   });
+}
+
+async function enrichClientsWithAssignedAgentNames(clients: Client[]) {
+  const ids = Array.from(
+    new Set(clients.map((client) => client.assigned_to).filter(Boolean)),
+  ) as string[];
+
+  if (ids.length === 0) {
+    return clients.map((client) => ({
+      ...client,
+      assigned_agent: client.assigned_agent ?? null,
+    }));
+  }
+
+  const map = await agentNameMap(ids);
+
+  return clients.map((client) => ({
+    ...client,
+    assigned_agent: client.assigned_to
+      ? { name: map.get(client.assigned_to) ?? client.assigned_to }
+      : null,
+  }));
 }
 
 export function useClientManagement(
@@ -132,6 +156,13 @@ export function useClientManagement(
     Array<{ id: string; name: string }>
   >([]);
   const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [selectedClientForAssignment, setSelectedClientForAssignment] =
+    useState<Client | null>(null);
+  const [assignmentAgents, setAssignmentAgents] = useState<
+    Array<{ id: string; name: string; email?: string | null }>
+  >([]);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
 
   const [error, setError] = useState("");
   const [callingClient, setCallingClient] = useState<string | null>(null);
@@ -488,7 +519,10 @@ export function useClientManagement(
           setClients([]);
           setTotalClients(0);
         } else {
-          setClients(result.data || []);
+          const enrichedClients = await enrichClientsWithAssignedAgentNames(
+            result.data || [],
+          );
+          setClients(enrichedClients);
           setTotalClients(result.count || 0);
           setUnfilteredTotalClients(baselineResult.count || 0);
           setLastUpdatedAt(Date.now());
@@ -525,13 +559,16 @@ export function useClientManagement(
           campaignFilter,
           operationId,
         );
+        const enrichedClients = await enrichClientsWithAssignedAgentNames(
+          filteredClients,
+        );
 
         setUnfilteredTotalClients(assignedList.length);
-        setTotalClients(filteredClients.length);
+        setTotalClients(enrichedClients.length);
 
         const from = (currentPage - 1) * rowsPerPage;
         const to = from + rowsPerPage;
-        setClients(filteredClients.slice(from, to));
+        setClients(enrichedClients.slice(from, to));
         setLastUpdatedAt(Date.now());
         setError("");
       }
@@ -678,14 +715,17 @@ export function useClientManagement(
 
       setAgentFilterOptions(
         isAdmin
-          ? (agentsData ?? [])
-              .filter(
-                (agent) =>
-                  agent.role === "agent" &&
-                  agent.is_active !== false &&
-                  agent.operation_id === targetOperationId,
-              )
-              .map((agent) => ({ id: agent.id, name: agent.name }))
+          ? [
+              { id: UNASSIGNED_AGENT_FILTER, name: "Sin asignar" },
+              ...(agentsData ?? [])
+                .filter(
+                  (agent) =>
+                    agent.role === "agent" &&
+                    agent.is_active !== false &&
+                    agent.operation_id === targetOperationId,
+                )
+                .map((agent) => ({ id: agent.id, name: agent.name })),
+            ]
           : [],
       );
     };
@@ -864,6 +904,53 @@ export function useClientManagement(
     setShowEmailModal(true);
   };
 
+  const handleAssignClient = async (client: Client) => {
+    if (!isAdmin) return;
+
+    setError("");
+    setSelectedClientForAssignment(client);
+    setShowAssignmentModal(true);
+    setAssignmentSaving(false);
+
+    const { data, error } = await agents.getAll();
+    if (error) {
+      console.error("Error cargando agentes para asignacion:", error);
+      setError("No se pudieron cargar los agentes disponibles");
+      setAssignmentAgents([]);
+      return;
+    }
+
+    const availableAgents = (data ?? [])
+      .filter(
+        (agent) =>
+          agent.role === "agent" &&
+          agent.is_active !== false &&
+          (!client.operation_id || agent.operation_id === client.operation_id),
+      )
+      .map((agent) => ({
+        id: agent.id,
+        name: agent.name,
+        email: agent.email,
+      }));
+
+    const currentAssignedStillMissing =
+      client.assigned_to &&
+      !availableAgents.some((agent) => agent.id === client.assigned_to);
+
+    setAssignmentAgents(
+      currentAssignedStillMissing
+        ? [
+            {
+              id: client.assigned_to!,
+              name: client.assigned_agent?.name?.trim() || client.assigned_to!,
+              email: null,
+            },
+            ...availableAgents,
+          ]
+        : availableAgents,
+    );
+  };
+
   const loadScheduleAgentsForClient = async (client: Client) => {
     if (!isAdmin) {
       setScheduleAgents([]);
@@ -941,6 +1028,12 @@ export function useClientManagement(
 
   const closeEditModal = () => setShowEditModal(false);
   const closeEmailModal = () => setShowEmailModal(false);
+  const closeAssignmentModal = () => {
+    setShowAssignmentModal(false);
+    setSelectedClientForAssignment(null);
+    setAssignmentAgents([]);
+    setAssignmentSaving(false);
+  };
   const closeScheduleModal = () => {
     setShowScheduleModal(false);
     setShowScheduleFollowUpModal(false);
@@ -1107,6 +1200,43 @@ export function useClientManagement(
     return "Busca, revisa comentarios y gestiona la cartera";
   }, [opLocked]);
 
+  const handleAssignmentSaved = async (agentId: string | null) => {
+    if (!selectedClientForAssignment) return;
+
+    setAssignmentSaving(true);
+    setError("");
+
+    const previousAgentLabel =
+      selectedClientForAssignment.assigned_agent?.name?.trim() || "Sin asignar";
+    const nextAgentLabel =
+      agentId === null
+        ? "Sin asignar"
+        : assignmentAgents.find((agent) => agent.id === agentId)?.name ?? agentId;
+
+    const { error: updateError } = await clientsService.update(
+      selectedClientForAssignment.id,
+      {
+        assigned_to: agentId,
+        updated_at: new Date().toISOString(),
+      },
+      selectedClientForAssignment.operation_id ?? undefined,
+    );
+
+    if (updateError) {
+      console.error("Error actualizando asignacion del cliente:", updateError);
+      setError("No se pudo actualizar la asignacion del cliente");
+      setAssignmentSaving(false);
+      return;
+    }
+
+    notify.clientAssignmentUpdated(
+      `${previousAgentLabel} -> ${nextAgentLabel}`,
+    );
+
+    closeAssignmentModal();
+    await loadClients({ silent: true });
+  };
+
   return {
     isAdmin,
     canExecuteClientActions,
@@ -1132,13 +1262,18 @@ export function useClientManagement(
     selectedClientForEmail,
     showScheduleModal,
     showScheduleFollowUpModal,
+    showAssignmentModal,
     closeScheduleModal,
     closeScheduleFollowUpModal,
+    closeAssignmentModal,
     selectedClientForSchedule,
     selectedScheduledEvent,
+    selectedClientForAssignment,
     scheduleDraftDate,
     scheduleAgents,
+    assignmentAgents,
     scheduleSaving,
+    assignmentSaving,
     error,
     callingClient,
     noticeOpen,
@@ -1171,7 +1306,9 @@ export function useClientManagement(
     handleClientSaved,
     handleCallClient,
     handleEmailClient,
+    handleAssignClient,
     handleScheduleClient,
+    handleAssignmentSaved,
     handleScheduleCreated,
     handleScheduleUpdated,
     handleScheduleDeleted,
@@ -1183,5 +1320,6 @@ export function useClientManagement(
     headerSubtitle,
     handleTableScroll,
     viewerAgentId: user?.id ?? null,
+    unassignedAgentFilter: UNASSIGNED_AGENT_FILTER,
   };
 }

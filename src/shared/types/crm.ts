@@ -23,6 +23,9 @@ export interface Client {
   agent?: {
     name?: string;
   } | null;
+  assigned_agent?: {
+    name?: string;
+  } | null;
   name?: string;
   serial: string;
   trading_company?: string;

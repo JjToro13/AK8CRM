@@ -162,7 +162,7 @@ export default function ClientCommentsDropdown({
                 <button
                   type="button"
                   onClick={loadComments}
-                  className="flex h-8 w-8 items-center justify-center rounded-2xl border border-white/76 bg-white/72 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
+                  className="crm-shell-pill flex h-8 w-8 items-center justify-center rounded-2xl border border-white/76 bg-white/72 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
                   title="Actualizar comentarios"
                 >
                   <RefreshCw className="h-4 w-4" />
@@ -171,7 +171,7 @@ export default function ClientCommentsDropdown({
                 <button
                   type="button"
                   onClick={() => setOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/76 bg-white/72 px-3 py-1.5 text-xs font-semibold text-ink/80 shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white"
+                  className="crm-shell-pill inline-flex items-center gap-2 rounded-full border border-white/76 bg-white/72 px-3 py-1.5 text-xs font-semibold text-ink/80 shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white"
                   title="Ver historial"
                 >
                   Ver todos
@@ -187,7 +187,7 @@ export default function ClientCommentsDropdown({
               onClick={() => setOpen(true)}
               className={cn(
                 "mt-2 w-full text-left",
-                "rounded-2xl border border-white/76 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.68))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]",
+                "crm-comment-surface rounded-2xl border border-white/76 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.68))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]",
                 "hover:bg-white transition",
                 "focus:outline-none focus-visible:ring-4 focus-visible:ring-brand/15",
               )}
@@ -235,7 +235,7 @@ export default function ClientCommentsDropdown({
                 exit="exit"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between gap-3 border-b border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.42))] px-5 py-4">
+                <div className="crm-modal-header flex items-center justify-between gap-3 border-b border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.42))] px-5 py-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-ink truncate">
@@ -254,7 +254,7 @@ export default function ClientCommentsDropdown({
                     <button
                       type="button"
                       onClick={loadComments}
-                      className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/78 bg-white/76 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
+                      className="crm-shell-pill flex h-9 w-9 items-center justify-center rounded-2xl border border-white/78 bg-white/76 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
                       title="Actualizar"
                     >
                       <RefreshCw className="h-4 w-4" />
@@ -263,7 +263,7 @@ export default function ClientCommentsDropdown({
                     <button
                       type="button"
                       onClick={() => setOpen(false)}
-                      className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/78 bg-white/76 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
+                      className="crm-shell-pill flex h-9 w-9 items-center justify-center rounded-2xl border border-white/78 bg-white/76 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
                       aria-label="Cerrar"
                       title="Cerrar"
                     >
@@ -273,12 +273,12 @@ export default function ClientCommentsDropdown({
                 </div>
 
                 {/* Body */}
-                <div className="max-h-[70vh] overflow-y-auto p-5">
+                <div className="crm-scrollbar crm-scrollbar-shell max-h-[70vh] overflow-y-auto p-5">
                   <div className="space-y-3">
                     {sortedComments.map((c) => (
                       <div
                         key={c.id}
-                        className={`${clientInsetClass} p-4`}
+                        className={`crm-comment-surface ${clientInsetClass} p-4`}
                       >
                         <div className="text-sm text-ink whitespace-pre-wrap leading-relaxed break-words">
                           {c.comment}
@@ -299,7 +299,7 @@ export default function ClientCommentsDropdown({
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end border-t border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.58))] px-5 py-4">
+                <div className="crm-modal-footer flex justify-end border-t border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.58))] px-5 py-4">
                   <button
                     type="button"
                     className={clientGhostButtonClass}

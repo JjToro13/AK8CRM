@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ArrowLeft, RefreshCw, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import EditClientModal from "../../../shared/components/client/EditClientModal";
+import ClientAssignmentModal from "../../../shared/components/client/ClientAssignmentModal";
 import EmailModal from "../../../shared/components/client/EmailModal";
 import GeneralNoticeModal from "../../../shared/components/feedback/GeneralNoticeModal";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
@@ -56,13 +57,18 @@ export default function ClientManagementPage(
     selectedClientForEmail,
     showScheduleModal,
     showScheduleFollowUpModal,
+    showAssignmentModal,
     closeScheduleModal,
     closeScheduleFollowUpModal,
+    closeAssignmentModal,
     selectedClientForSchedule,
     selectedScheduledEvent,
+    selectedClientForAssignment,
     scheduleDraftDate,
     scheduleAgents,
+    assignmentAgents,
     scheduleSaving,
+    assignmentSaving,
     error,
     callingClient,
     callNoticeOpen,
@@ -88,7 +94,9 @@ export default function ClientManagementPage(
     handleClientSaved,
     handleCallClient,
     handleEmailClient,
+    handleAssignClient,
     handleScheduleClient,
+    handleAssignmentSaved,
     handleScheduleCreated,
     handleScheduleUpdated,
     handleScheduleDeleted,
@@ -301,6 +309,8 @@ export default function ClientManagementPage(
               onEmailClient={handleEmailClient}
               onScheduleClient={handleScheduleClient}
               onEditClient={handleEditClient}
+              canAssignClient={isAdmin}
+              onAssignClient={handleAssignClient}
             />
           </section>
         </PageStage>
@@ -315,6 +325,26 @@ export default function ClientManagementPage(
           onClose={closeEditModal}
           onSave={handleClientSaved}
           isAdmin={isAdmin}
+          canExecuteQuickActions={canExecuteClientActions}
+          enableCalls={enableCalls}
+          callingClientId={callingClient}
+          onCallClient={handleCallClient}
+          onOpenCallNotice={openCallNotice}
+          onEmailClient={handleEmailClient}
+          onScheduleClient={handleScheduleClient}
+          canAssignClient={isAdmin}
+          onAssignClient={handleAssignClient}
+        />
+      ) : null}
+
+      {isAdmin ? (
+        <ClientAssignmentModal
+          client={selectedClientForAssignment}
+          isOpen={showAssignmentModal}
+          onClose={closeAssignmentModal}
+          onSave={handleAssignmentSaved}
+          saving={assignmentSaving}
+          agents={assignmentAgents}
         />
       ) : null}
 

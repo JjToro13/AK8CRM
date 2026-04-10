@@ -23,6 +23,34 @@ export const clientPrimaryButtonClass =
 export const clientMutedPillClass =
   "crm-shell-pill inline-flex items-center gap-2 rounded-full border border-white/76 bg-white/68 px-3 py-2 text-sm text-muted shadow-[0_14px_28px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-xl";
 
+export function clientQuickActionButtonClass(
+  tone: "call" | "email" | "calendar" | "neutral",
+  enabled: boolean,
+) {
+  return cn(
+    "crm-client-quick-action inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur-xl transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 disabled:cursor-not-allowed",
+    enabled
+      ? "shadow-[0_16px_34px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.14)] hover:-translate-y-[1px]"
+      : "opacity-45",
+    tone === "call" &&
+      (enabled
+        ? "border-emerald-400/35 bg-emerald-50/88 text-emerald-700 hover:bg-emerald-100/92"
+        : "border-slate-200/75 bg-white/68 text-slate-400"),
+    tone === "email" &&
+      (enabled
+        ? "border-brand/35 bg-brand/[0.1] text-brand-700 hover:bg-brand/[0.16]"
+        : "border-slate-200/75 bg-white/68 text-slate-400"),
+    tone === "calendar" &&
+      (enabled
+        ? "border-amber-400/35 bg-amber-50/90 text-amber-700 hover:bg-amber-100/92"
+        : "border-slate-200/75 bg-white/68 text-slate-400"),
+    tone === "neutral" &&
+      (enabled
+        ? "border-white/28 bg-white/82 text-ink/88 hover:bg-white"
+        : "border-slate-200/75 bg-white/68 text-slate-400"),
+  );
+}
+
 export const clientTableShellClass =
   "crm-table-shell overflow-hidden rounded-[1.45rem] border border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,255,255,0.62))] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-xl";
 
