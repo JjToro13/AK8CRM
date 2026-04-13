@@ -14,6 +14,7 @@ import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import { supabase, Agent, agentAssignments } from "../../../lib/supabase";
 import { useAuth } from "../../../hooks/useAuth";
 import { notify } from "../../../shared/lib/notify";
+import { agentManagement } from "../services/agent-management.service";
 import {
   Select,
   SelectTrigger,
@@ -56,8 +57,6 @@ type CampaignStats = {
   id: string;
   prefix: string;
   display_name: string | null;
-  total: number;
-  assigned: number;
   available: number;
 };
 
@@ -164,29 +163,16 @@ export default function AssignmentModal({
       const { data: campRows, error: campErr } = await campaignsQuery;
       if (campErr) throw campErr;
 
-      const clientsQuery = supabase
-        .from("clients")
-        .select("campaign_id, assigned_to, operation_id")
-        .eq("operation_id", effectiveOperationId);
-
-      const { data: totalsRows, error: totalsErr } = await clientsQuery;
-      if (totalsErr) throw totalsErr;
-
       const list = (campRows || []) as CampaignRow[];
+      const {
+        data: availableRows,
+        error: availableErr,
+      } = await agentManagement.getAvailableCampaigns([effectiveOperationId]);
+      if (availableErr) throw availableErr;
 
-      const totalsMap: Record<string, { total: number; assigned: number }> = {};
-
-      for (const r of totalsRows || []) {
-        const campaignId = String((r as any).campaign_id ?? "").trim();
-        if (!campaignId) continue;
-
-        if (!totalsMap[campaignId]) totalsMap[campaignId] = { total: 0, assigned: 0 };
-
-        totalsMap[campaignId].total += 1;
-
-        const assignedTo = (r as any).assigned_to as string | null;
-        if (assignedTo) totalsMap[campaignId].assigned += 1;
-      }
+      const availableByCampaignId = new Map(
+        (availableRows || []).map((row) => [row.id, Number(row.available || 0)]),
+      );
 
       const seen = new Set<string>();
       const merged: CampaignStats[] = [];
@@ -196,32 +182,23 @@ export default function AssignmentModal({
         const prefix = c.prefix;
         seen.add(campaignId);
 
-        const stats = totalsMap[campaignId] || { total: 0, assigned: 0 };
-        const total = Number(stats.total || 0);
-        const assigned = Number(stats.assigned || 0);
-
         merged.push({
           id: campaignId,
           prefix,
           display_name: (c.display_name?.trim() ||
             `Campaña ${prefix}`) as string,
-          total,
-          assigned,
-          available: Math.max(0, total - assigned),
+          available: Math.max(0, Number(availableByCampaignId.get(campaignId) || 0)),
         });
       }
 
-      for (const prefix of Object.keys(totalsMap)) {
-        if (seen.has(prefix)) continue;
+      for (const row of availableRows || []) {
+        if (seen.has(row.id)) continue;
 
-        const stats = totalsMap[prefix];
         merged.push({
-          id: prefix,
-          prefix,
-          display_name: `Campaña ${prefix}`,
-          total: stats.total,
-          assigned: stats.assigned,
-          available: Math.max(0, stats.total - stats.assigned),
+          id: row.id,
+          prefix: row.prefix,
+          display_name: row.display_name?.trim() || `Campaña ${row.prefix}`,
+          available: Math.max(0, Number(row.available || 0)),
         });
       }
 
