@@ -78,7 +78,7 @@ function ProtectedRoute({
 }
 
 export default function App() {
-  const { branding, clearBrandPresetOverride, setAutoBranding } = useBranding();
+  const { branding, setAutoBranding } = useBranding();
   const [brandingReady, setBrandingReady] = useState(true);
   const {
     user,
@@ -94,12 +94,6 @@ export default function App() {
   const canAccessCampaigns = !!user && canAccessCampaignWorkspace(role);
   const canAccessCalls = !!user && canUseCallHistory(role);
   const canAccessCalendar = !!user && canUseCalendarWorkspace(role);
-
-  useEffect(() => {
-    if (role !== "dev") {
-      clearBrandPresetOverride();
-    }
-  }, [clearBrandPresetOverride, role]);
 
   useEffect(() => {
     if (!user) {

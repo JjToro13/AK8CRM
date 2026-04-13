@@ -136,7 +136,7 @@ export default function CalendarWeekBoard({
                           onSelectEvent?.(event);
                         }}
                         className={cn(
-                          "w-full rounded-2xl border border-white/72 border-l-[3px] px-3 py-3 text-left transition hover:-translate-y-[1px] hover:shadow-[0_14px_24px_rgba(15,23,42,0.08)]",
+                          "crm-calendar-event-card w-full rounded-2xl border border-white/72 border-l-[3px] px-3 py-3 text-left transition hover:-translate-y-[1px] hover:shadow-[0_14px_24px_rgba(15,23,42,0.08)]",
                           compact && "px-3 py-2.5 shadow-none",
                           status.cardClass,
                         )}

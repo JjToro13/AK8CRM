@@ -680,6 +680,45 @@
     color: rgb(254 205 211 / 0.96);
   }
 
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card {
+    border-color: rgb(var(--color-border) / 0.46);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.92) 0%, rgb(var(--color-surface-elevated) / 0.84) 100%);
+    box-shadow:
+      0 16px 34px rgba(2, 8, 18, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card.border-l-sky-500 {
+    border-color: rgb(56 189 248 / 0.28);
+    background:
+      linear-gradient(180deg, rgba(16, 41, 56, 0.92) 0%, rgba(11, 29, 41, 0.84) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card.border-l-amber-500 {
+    border-color: rgb(245 158 11 / 0.3);
+    background:
+      linear-gradient(180deg, rgba(56, 41, 19, 0.92) 0%, rgba(39, 29, 14, 0.84) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card.border-l-emerald-500 {
+    border-color: rgb(16 185 129 / 0.3);
+    background:
+      linear-gradient(180deg, rgba(18, 54, 43, 0.92) 0%, rgba(13, 38, 31, 0.84) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card.border-l-violet-500 {
+    border-color: rgb(139 92 246 / 0.3);
+    background:
+      linear-gradient(180deg, rgba(40, 27, 63, 0.92) 0%, rgba(28, 19, 44, 0.84) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card.border-l-rose-500 {
+    border-color: rgb(244 63 94 / 0.3);
+    background:
+      linear-gradient(180deg, rgba(64, 27, 40, 0.92) 0%, rgba(45, 19, 29, 0.84) 100%);
+  }
+
   :root[data-brand-preset="atlas-finance"] .crm-client-quick-action {
     box-shadow:
       0 14px 30px rgba(2, 8, 18, 0.16),

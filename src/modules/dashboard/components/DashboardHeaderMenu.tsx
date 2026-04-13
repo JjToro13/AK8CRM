@@ -75,7 +75,7 @@ export default function DashboardHeaderMenu({
         </div>
 
         <div className="space-y-3">
-          <BrandPresetSelector enabled={role === "dev"} />
+          <BrandPresetSelector enabled />
 
           <DashboardTenantSelect
             enabled={canSeeAllOperations}

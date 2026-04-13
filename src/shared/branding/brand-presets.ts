@@ -27,9 +27,12 @@ export type BrandTheme = {
   brand: BrandScale;
 };
 
+export type BrandAppearance = "light" | "dark";
+
 export type BrandPreset = {
   id: string;
   displayName: string;
+  appearance: BrandAppearance;
   productName: string;
   platformLabel: string;
   defaultFooterNote: string;
@@ -40,6 +43,7 @@ export const brandPresets: Record<string, BrandPreset> = {
   "call-master": {
     id: "call-master",
     displayName: "Default",
+    appearance: "light",
     productName: "AK8 CRM",
     platformLabel: "AK8 CRM",
     defaultFooterNote:
@@ -74,6 +78,7 @@ export const brandPresets: Record<string, BrandPreset> = {
   "atlas-finance": {
     id: "atlas-finance",
     displayName: "Light",
+    appearance: "dark",
     productName: "Light CRM",
     platformLabel: "AK8 CRM",
     defaultFooterNote:
@@ -108,6 +113,7 @@ export const brandPresets: Record<string, BrandPreset> = {
   "cobalt-ops": {
     id: "cobalt-ops",
     displayName: "Shade",
+    appearance: "light",
     productName: "Shade CRM",
     platformLabel: "AK8 CRM",
     defaultFooterNote:
@@ -143,7 +149,16 @@ export const brandPresets: Record<string, BrandPreset> = {
 
 export const defaultBrandPresetId = "call-master";
 
+export const defaultBrandPresetIdByAppearance: Record<BrandAppearance, string> = {
+  light: "cobalt-ops",
+  dark: "atlas-finance",
+};
+
 export function getBrandPreset(presetId?: string | null): BrandPreset {
   if (!presetId) return brandPresets[defaultBrandPresetId];
   return brandPresets[presetId] ?? brandPresets[defaultBrandPresetId];
+}
+
+export function getBrandAppearance(presetId?: string | null): BrandAppearance {
+  return getBrandPreset(presetId).appearance;
 }

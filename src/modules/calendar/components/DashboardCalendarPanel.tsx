@@ -285,7 +285,7 @@ export default function DashboardCalendarPanel() {
                         type="button"
                         onClick={() => openEventModal(event)}
                         className={cn(
-                          "w-full rounded-[1.2rem] border border-border border-l-[3px] bg-surface px-4 py-3 text-left transition hover:-translate-y-[1px] hover:shadow-[0_12px_24px_rgba(15,23,42,0.06)]",
+                          "crm-calendar-event-card w-full rounded-[1.2rem] border border-border border-l-[3px] bg-surface px-4 py-3 text-left transition hover:-translate-y-[1px] hover:shadow-[0_12px_24px_rgba(15,23,42,0.06)]",
                           status.cardClass,
                         )}
                       >

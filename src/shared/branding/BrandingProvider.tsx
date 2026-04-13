@@ -9,20 +9,25 @@ import {
 } from "react";
 import {
   brandPresets,
+  defaultBrandPresetIdByAppearance,
   defaultBrandPresetId,
+  getBrandAppearance,
   getBrandPreset,
+  type BrandAppearance,
   type BrandPreset,
 } from "./brand-presets";
 
-const BRAND_STORAGE_KEY = "crm.brand-preset";
+const BRAND_MODE_STORAGE_KEY = "crm.theme-mode";
+const LEGACY_BRAND_STORAGE_KEY = "crm.brand-preset";
 
 type BrandingContextValue = {
   brandPresetId: string;
   branding: BrandPreset;
   availableBrandPresets: typeof brandPresets;
-  clearBrandPresetOverride: () => void;
+  colorMode: BrandAppearance;
+  clearColorModeOverride: () => void;
   setAutoBranding: (branding: BrandPreset | null) => void;
-  setBrandPresetId: (presetId: string) => void;
+  setColorMode: (mode: BrandAppearance) => void;
 };
 
 const BrandingContext = createContext<BrandingContextValue | null>(null);
@@ -59,46 +64,79 @@ function applyThemeVariables(branding: BrandPreset) {
 }
 
 function getInitialBrandPresetId() {
-  if (typeof window === "undefined") return defaultBrandPresetId;
-  const stored = window.localStorage.getItem(BRAND_STORAGE_KEY);
-  return stored && brandPresets[stored] ? stored : defaultBrandPresetId;
+  if (typeof window === "undefined") return null;
+
+  const storedMode = window.localStorage.getItem(BRAND_MODE_STORAGE_KEY);
+  if (storedMode === "light" || storedMode === "dark") return storedMode;
+
+  const legacyPresetId = window.localStorage.getItem(LEGACY_BRAND_STORAGE_KEY);
+  if (legacyPresetId && brandPresets[legacyPresetId]) {
+    return getBrandAppearance(legacyPresetId);
+  }
+
+  return null;
+}
+
+function resolveBrandingForMode(
+  baseBranding: BrandPreset,
+  mode: BrandAppearance,
+): BrandPreset {
+  if (baseBranding.appearance === mode) {
+    return baseBranding;
+  }
+
+  const themePreset = getBrandPreset(defaultBrandPresetIdByAppearance[mode]);
+
+  return {
+    ...themePreset,
+    productName: baseBranding.productName,
+    platformLabel: baseBranding.platformLabel,
+    defaultFooterNote: baseBranding.defaultFooterNote,
+  };
 }
 
 export function BrandingProvider({ children }: { children: ReactNode }) {
-  const [overrideBrandPresetId, setOverrideBrandPresetId] = useState<string | null>(
+  const [overrideColorMode, setOverrideColorMode] = useState<BrandAppearance | null>(
     getInitialBrandPresetId,
   );
   const [autoBranding, setAutoBrandingState] = useState<BrandPreset | null>(
     null,
   );
 
+  const baseBranding = useMemo(
+    () => autoBranding ?? getBrandPreset(defaultBrandPresetId),
+    [autoBranding],
+  );
+
+  const colorMode = overrideColorMode ?? baseBranding.appearance;
+
   const branding = useMemo(() => {
-    if (overrideBrandPresetId) return getBrandPreset(overrideBrandPresetId);
-    return autoBranding ?? getBrandPreset(defaultBrandPresetId);
-  }, [autoBranding, overrideBrandPresetId]);
+    return resolveBrandingForMode(baseBranding, colorMode);
+  }, [baseBranding, colorMode]);
 
   useEffect(() => {
     applyThemeVariables(branding);
     if (typeof window !== "undefined") {
-      if (overrideBrandPresetId) {
-        window.localStorage.setItem(BRAND_STORAGE_KEY, overrideBrandPresetId);
+      if (overrideColorMode) {
+        window.localStorage.setItem(BRAND_MODE_STORAGE_KEY, overrideColorMode);
       } else {
-        window.localStorage.removeItem(BRAND_STORAGE_KEY);
+        window.localStorage.removeItem(BRAND_MODE_STORAGE_KEY);
       }
-    }
-  }, [branding, overrideBrandPresetId]);
 
-  const clearBrandPresetOverride = useCallback(() => {
-    setOverrideBrandPresetId(null);
+      window.localStorage.removeItem(LEGACY_BRAND_STORAGE_KEY);
+    }
+  }, [branding, overrideColorMode]);
+
+  const clearColorModeOverride = useCallback(() => {
+    setOverrideColorMode(null);
   }, []);
 
   const setAutoBranding = useCallback((nextBranding: BrandPreset | null) => {
     setAutoBrandingState(nextBranding);
   }, []);
 
-  const setBrandPresetId = useCallback((presetId: string) => {
-    if (!brandPresets[presetId]) return;
-    setOverrideBrandPresetId(presetId);
+  const setColorMode = useCallback((mode: BrandAppearance) => {
+    setOverrideColorMode(mode);
   }, []);
 
   const value = useMemo<BrandingContextValue>(
@@ -106,11 +144,12 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       brandPresetId: branding.id,
       branding,
       availableBrandPresets: brandPresets,
-      clearBrandPresetOverride,
+      colorMode,
+      clearColorModeOverride,
       setAutoBranding,
-      setBrandPresetId,
+      setColorMode,
     }),
-    [branding, clearBrandPresetOverride, setAutoBranding, setBrandPresetId],
+    [branding, colorMode, clearColorModeOverride, setAutoBranding, setColorMode],
   );
 
   return (

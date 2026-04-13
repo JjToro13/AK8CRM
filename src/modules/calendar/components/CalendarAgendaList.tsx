@@ -101,7 +101,7 @@ export default function CalendarAgendaList({
                       type="button"
                       onClick={() => onSelectEvent?.(event)}
                       className={cn(
-                        "w-full rounded-[1.4rem] border border-white/72 border-l-4 bg-white/76 px-5 py-4 text-left shadow-[0_12px_28px_rgba(15,23,42,0.05)] transition hover:-translate-y-[1px] hover:shadow-[0_18px_34px_rgba(15,23,42,0.08)]",
+                        "crm-calendar-event-card w-full rounded-[1.4rem] border border-white/72 border-l-4 bg-white/76 px-5 py-4 text-left shadow-[0_12px_28px_rgba(15,23,42,0.05)] transition hover:-translate-y-[1px] hover:shadow-[0_18px_34px_rgba(15,23,42,0.08)]",
                         status.cardClass,
                       )}
                     >
