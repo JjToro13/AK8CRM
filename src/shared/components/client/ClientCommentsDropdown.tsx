@@ -1,12 +1,6 @@
-// ClientCommentsDropdown.tsx
-// ✅ Último comentario + botón "Ver todos" que abre modal premium
-// ✅ Modal por portal al <body> para evitar quedar atrapado en cards/motion/transforms
-// ✅ ESC + click afuera + body scroll lock
-// ✅ Animaciones alineadas con el resto usando framer-motion
-
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { MessageSquare, X, RefreshCw } from "lucide-react";
+import { MessageSquare, RefreshCw, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClientComment, clientComments } from "../../../lib/supabase";
 import { formatDate } from "../../../lib/utils";
@@ -24,6 +18,8 @@ interface ClientCommentsDropdownProps {
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
+
+const COMMENTS_PAGE_SIZE = 10;
 
 const overlayV = {
   initial: { opacity: 0 },
@@ -53,47 +49,80 @@ export default function ClientCommentsDropdown({
   clientId,
 }: ClientCommentsDropdownProps) {
   const [comments, setComments] = useState<ClientComment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const latest = useMemo(() => {
-    if (!comments?.length) return null;
-    return [...comments].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )[0];
-  }, [comments]);
-
-  const sortedComments = useMemo(() => {
-    return [...comments].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    );
-  }, [comments]);
-
-  const count = comments?.length || 0;
-
-  const loadComments = async () => {
-    setLoading(true);
+  useEffect(() => {
+    setComments([]);
+    setLoading(false);
+    setLoadingMore(false);
+    setOpen(false);
     setErr("");
+    setCurrentPage(0);
+    setHasMore(false);
+    setTotalCount(0);
+  }, [clientId]);
+
+  const latest = useMemo(() => comments[0] ?? null, [comments]);
+
+  const loadComments = async (
+    page: number,
+    options?: { reset?: boolean },
+  ) => {
+    const reset = options?.reset ?? false;
+
+    if (reset) {
+      setLoading(true);
+      setComments([]);
+    } else {
+      setLoadingMore(true);
+    }
+
+    setErr("");
+
     try {
-      const { data, error } = await clientComments.getByClient(clientId);
-      if (error) throw error;
-      setComments(data || []);
+      const { data, error, count, hasMore: nextHasMore } =
+        await clientComments.getByClient(clientId, {
+          page,
+          pageSize: COMMENTS_PAGE_SIZE,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      const nextRows = (data || []) as ClientComment[];
+
+      setComments((prev) => {
+        if (reset) return nextRows;
+
+        const seen = new Set(prev.map((comment) => comment.id));
+        const appended = nextRows.filter((comment) => !seen.has(comment.id));
+        return [...prev, ...appended];
+      });
+      setCurrentPage(page);
+      setHasMore(nextHasMore);
+      setTotalCount((prev) => count ?? prev);
     } catch (e: any) {
       console.error("Error cargando comentarios:", e);
       setErr(e?.message || "No se pudieron cargar comentarios");
-      setComments([]);
+      if (reset) {
+        setComments([]);
+        setCurrentPage(0);
+      }
     } finally {
-      setLoading(false);
+      if (reset) {
+        setLoading(false);
+      } else {
+        setLoadingMore(false);
+      }
     }
   };
-
-  useEffect(() => {
-    loadComments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId]);
 
   useEffect(() => {
     if (!open) return;
@@ -122,46 +151,41 @@ export default function ClientCommentsDropdown({
     };
   }, [open]);
 
+  const handleOpen = async () => {
+    setOpen(true);
+    if (currentPage > 0 || loading) return;
+    await loadComments(1, { reset: true });
+  };
+
   const onBackdropMouseDown = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) setOpen(false);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center text-sm text-muted">
-        <LoadingSpinner size="sm" text="" fullScreen={false} />
-      </div>
-    );
-  }
+  const handleRefresh = async () => {
+    await loadComments(1, { reset: true });
+  };
 
-  if (err) {
-    return (
-      <div className="text-xs text-red-600">
-        {err}{" "}
-        <button type="button" className="underline" onClick={loadComments}>
-          reintentar
-        </button>
-      </div>
-    );
-  }
+  const handleLoadMore = async () => {
+    if (!hasMore || loadingMore) return;
+    await loadComments(currentPage + 1, { reset: false });
+  };
 
-  if (!latest) return null;
+  const count = totalCount || comments.length;
 
   return (
     <>
-      {/* Vista compacta (inline) */}
-      <div className="mt-3 pt-3 border-t border-border overflow-hidden">
+      <div className="mt-3 overflow-hidden border-t border-border pt-3">
         <div className="flex items-start gap-2 text-sm text-muted">
-          <MessageSquare className="h-4 w-4 text-muted mt-0.5 shrink-0" />
+          <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
 
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-3">
               <span className="font-semibold text-ink/80">Comentarios</span>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
-                  onClick={loadComments}
+                  onClick={handleRefresh}
                   className="crm-shell-pill flex h-8 w-8 items-center justify-center rounded-2xl border border-white/76 bg-white/72 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
                   title="Actualizar comentarios"
                 >
@@ -170,48 +194,57 @@ export default function ClientCommentsDropdown({
 
                 <button
                   type="button"
-                  onClick={() => setOpen(true)}
+                  onClick={() => void handleOpen()}
                   className="crm-shell-pill inline-flex items-center gap-2 rounded-full border border-white/76 bg-white/72 px-3 py-1.5 text-xs font-semibold text-ink/80 shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white"
                   title="Ver historial"
                 >
-                  Ver todos
-                  <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
-                    {count}
-                  </span>
+                  Ver comentarios
+                  {count > 0 ? (
+                    <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
+                      {count}
+                    </span>
+                  ) : null}
                 </button>
               </div>
             </div>
 
             <button
               type="button"
-              onClick={() => setOpen(true)}
+              onClick={() => void handleOpen()}
               className={cn(
                 "mt-2 w-full text-left",
                 "crm-comment-surface rounded-2xl border border-white/76 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.68))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]",
-                "hover:bg-white transition",
+                "transition hover:bg-white",
                 "focus:outline-none focus-visible:ring-4 focus-visible:ring-brand/15",
               )}
               title="Abrir historial"
             >
-              <div className="text-sm text-ink leading-snug line-clamp-2 break-words">
-                {latest.comment}
-              </div>
+              {latest ? (
+                <>
+                  <div className="line-clamp-2 break-words text-sm leading-snug text-ink">
+                    {latest.comment}
+                  </div>
 
-              <div className="mt-1 flex items-center gap-2 text-[11px] text-muted min-w-0">
-                <span className="font-semibold text-brand truncate max-w-[140px]">
-                  {latest.agent?.name || "Agente"}
-                </span>
-                <span className="text-border">•</span>
-                <span className="truncate">
-                  {formatDate(latest.created_at)}
-                </span>
-              </div>
+                  <div className="mt-1 flex min-w-0 items-center gap-2 text-[11px] text-muted">
+                    <span className="max-w-[140px] truncate font-semibold text-brand">
+                      {latest.agent?.name || "Agente"}
+                    </span>
+                    <span className="text-border">•</span>
+                    <span className="truncate">
+                      {formatDate(latest.created_at)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-muted">
+                  Abrir historial de comentarios. Se cargan solo cuando lo abras.
+                </div>
+              )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Modal premium por portal */}
       {createPortal(
         <AnimatePresence>
           {open && (
@@ -234,18 +267,17 @@ export default function ClientCommentsDropdown({
                 animate="animate"
                 exit="exit"
               >
-                {/* Header */}
                 <div className="crm-modal-header flex items-center justify-between gap-3 border-b border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.42))] px-5 py-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-ink truncate">
+                      <h3 className="truncate font-semibold text-ink">
                         Comentarios
                       </h3>
                       <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[12px] font-semibold text-brand">
                         {count}
                       </span>
                     </div>
-                    <p className="text-xs text-muted mt-1">
+                    <p className="mt-1 text-xs text-muted">
                       Historial del cliente (más reciente primero)
                     </p>
                   </div>
@@ -253,7 +285,7 @@ export default function ClientCommentsDropdown({
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={loadComments}
+                      onClick={handleRefresh}
                       className="crm-shell-pill flex h-9 w-9 items-center justify-center rounded-2xl border border-white/78 bg-white/76 text-muted shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:bg-white hover:text-ink"
                       title="Actualizar"
                     >
@@ -272,33 +304,69 @@ export default function ClientCommentsDropdown({
                   </div>
                 </div>
 
-                {/* Body */}
                 <div className="crm-scrollbar crm-scrollbar-shell max-h-[70vh] overflow-y-auto p-5">
-                  <div className="space-y-3">
-                    {sortedComments.map((c) => (
-                      <div
-                        key={c.id}
-                        className={`crm-comment-surface ${clientInsetClass} p-4`}
+                  {loading ? (
+                    <div className="flex justify-center py-8">
+                      <LoadingSpinner
+                        size="sm"
+                        text="Cargando comentarios..."
+                        fullScreen={false}
+                      />
+                    </div>
+                  ) : err ? (
+                    <div className="text-xs text-red-600">
+                      {err}{" "}
+                      <button
+                        type="button"
+                        className="underline"
+                        onClick={() => void loadComments(1, { reset: true })}
                       >
-                        <div className="text-sm text-ink whitespace-pre-wrap leading-relaxed break-words">
-                          {c.comment}
-                        </div>
+                        reintentar
+                      </button>
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <div className="py-3 text-sm text-muted">
+                      Sin comentarios aún.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {comments.map((comment) => (
+                        <div
+                          key={comment.id}
+                          className={`crm-comment-surface ${clientInsetClass} p-4`}
+                        >
+                          <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">
+                            {comment.comment}
+                          </div>
 
-                        <div className="mt-3 flex items-center gap-2 text-xs text-muted min-w-0">
-                          <span className="font-semibold text-brand truncate max-w-[220px]">
-                            {c.agent?.name || "Agente"}
-                          </span>
-                          <span className="text-border">•</span>
-                          <span className="whitespace-nowrap">
-                            {formatDate(c.created_at)}
-                          </span>
+                          <div className="mt-3 flex min-w-0 items-center gap-2 text-xs text-muted">
+                            <span className="max-w-[220px] truncate font-semibold text-brand">
+                              {comment.agent?.name || "Agente"}
+                            </span>
+                            <span className="text-border">•</span>
+                            <span className="whitespace-nowrap">
+                              {formatDate(comment.created_at)}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+
+                      {hasMore ? (
+                        <div className="flex justify-center pt-2">
+                          <button
+                            type="button"
+                            onClick={handleLoadMore}
+                            disabled={loadingMore}
+                            className="crm-shell-pill inline-flex items-center rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 transition hover:bg-surface2 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {loadingMore ? "Cargando..." : "Cargar mas"}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
 
-                {/* Footer */}
                 <div className="crm-modal-footer flex justify-end border-t border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(255,255,255,0.58))] px-5 py-4">
                   <button
                     type="button"

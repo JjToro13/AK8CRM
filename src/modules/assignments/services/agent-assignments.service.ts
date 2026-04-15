@@ -1,6 +1,7 @@
 import { supabase } from "../../../integrations/supabase/client";
 import type { AgentAssignment } from "../../../shared/types/crm";
 import { agentNameMap } from "../../../shared/services/agent-name-map";
+import { CLIENT_LIST_SELECT } from "../../clients/services/clients.service";
 
 export const agentAssignments = {
   getAll: async () => {
@@ -95,7 +96,7 @@ export const agentAssignments = {
   getAssignedClients: async (agentId: string) => {
     const { data, error } = await supabase
       .from("clients")
-      .select("*")
+      .select(CLIENT_LIST_SELECT)
       .eq("assigned_to", agentId)
       .order("created_at", { ascending: false });
 

@@ -11,6 +11,7 @@ import {
   Mail,
   Phone,
   UserPlus,
+  RefreshCw,
 } from "lucide-react";
 import { supabase, ClientComment, clientComments } from "../../../lib/supabase";
 import { Client } from "../../../lib/supabase";
@@ -70,6 +71,8 @@ type StatusGroup = {
   items: Array<(typeof CLIENT_STATUS_OPTIONS)[number]>;
 };
 
+const COMMENTS_PAGE_SIZE = 10;
+
 export default function EditClientModal({
   client,
   isOpen,
@@ -94,22 +97,30 @@ export default function EditClientModal({
   const [comments, setComments] = useState<ClientComment[]>([]);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState("");
+  const [commentsPage, setCommentsPage] = useState(0);
+  const [commentsTotalCount, setCommentsTotalCount] = useState(0);
+  const [hasMoreComments, setHasMoreComments] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [loadingMoreComments, setLoadingMoreComments] = useState(false);
   const [error, setError] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (client) {
+    if (client && isOpen) {
       setStatusCode(getStatusCode(client));
       setNewComment("");
+      setComments([]);
       setEditingCommentId(null);
       setEditingCommentText("");
-      loadComments();
+      setCommentsPage(0);
+      setCommentsTotalCount(client.comment_count ?? 0);
+      setHasMoreComments((client.comment_count ?? 0) > 0);
+      void loadCommentsPage(1, { reset: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client]);
+  }, [client, isOpen]);
 
   const selectableStatusOptions = useMemo(() => {
     return CLIENT_STATUS_OPTIONS.filter((status) => status.code !== "NU");
@@ -142,22 +153,65 @@ export default function EditClientModal({
     ];
   }, [selectableStatusOptions]);
 
-  const loadComments = async () => {
+  const loadCommentsPage = async (
+    page: number,
+    options?: { reset?: boolean },
+  ) => {
     if (!client) return;
 
-    setLoadingComments(true);
+    const reset = options?.reset ?? false;
+
+    if (reset) {
+      setLoadingComments(true);
+      setComments([]);
+      setCommentsPage(0);
+    } else {
+      setLoadingMoreComments(true);
+    }
+
     try {
-      const { data, error } = await clientComments.getByClient(client.id);
+      const { data, error, count, hasMore } = await clientComments.getByClient(
+        client.id,
+        {
+          page,
+          pageSize: COMMENTS_PAGE_SIZE,
+        },
+      );
+
       if (error) {
         console.error("Error cargando comentarios:", error);
       } else {
-        setComments(data || []);
+        const nextRows = data || [];
+
+        setComments((prev) => {
+          if (reset) return nextRows;
+
+          const seen = new Set(prev.map((comment) => comment.id));
+          const appended = nextRows.filter((comment) => !seen.has(comment.id));
+          return [...prev, ...appended];
+        });
+        setCommentsPage(page);
+        setCommentsTotalCount((prev) => count ?? prev ?? client.comment_count ?? 0);
+        setHasMoreComments(hasMore);
       }
     } catch (e) {
       console.error("Error en loadComments:", e);
     } finally {
-      setLoadingComments(false);
+      if (reset) {
+        setLoadingComments(false);
+      } else {
+        setLoadingMoreComments(false);
+      }
     }
+  };
+
+  const loadComments = async () => {
+    await loadCommentsPage(1, { reset: true });
+  };
+
+  const loadMoreComments = async () => {
+    if (!hasMoreComments || loadingMoreComments) return;
+    await loadCommentsPage(commentsPage + 1, { reset: false });
   };
 
   const startEditComment = (comment: ClientComment) => {
@@ -460,12 +514,12 @@ export default function EditClientModal({
 
           {/* Historial */}
           <div>
-            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center justify-between gap-3 mb-3">
               <div className="block text-xs font-semibold text-muted">
                 Historial de Comentarios
               </div>
               <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[12px] font-semibold text-brand">
-                {comments.length}
+                {commentsTotalCount || comments.length}
               </span>
             </div>
 
@@ -483,89 +537,111 @@ export default function EditClientModal({
                   Sin comentarios aún.
                 </div>
               ) : (
-                <div className="crm-scrollbar crm-scrollbar-shell max-h-72 overflow-y-auto pr-1 space-y-3">
-                  {comments.map((comment) => {
-                    const canEdit = user && comment.agent_id === user.id;
-                    const isEditing = editingCommentId === comment.id;
+                <div className="crm-scrollbar crm-scrollbar-shell max-h-72 overflow-y-auto pr-1">
+                  <div className="space-y-3">
+                    {comments.map((comment) => {
+                      const canEdit = user && comment.agent_id === user.id;
+                      const isEditing = editingCommentId === comment.id;
 
-                    return (
-                      <div
-                        key={comment.id}
-                        className="rounded-2xl border border-white/76 bg-white/72 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)] backdrop-blur-xl"
-                      >
-                        {isEditing ? (
-                          <div className="space-y-3">
-                            <Textarea
-                              value={editingCommentText}
-                              onChange={(e) => {
-                                setEditingCommentText(e.target.value);
-                                if (commentError) setCommentError(null);
-                              }}
-                              className="h-24 resize-none"
-                              rows={3}
-                            />
-                            {commentError && (
-                              <span className="mt-3 flex items-start gap-2 rounded-xl border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,226,226,0.82),rgba(255,255,255,0.7))] px-3 py-2">
-                                <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
-                                <p className="text-xs text-red-700 font-medium leading-relaxed">
-                                  {commentError}
-                                </p>
-                              </span>
-                            )}
-
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={cancelEditComment}
-                                className={cn(clientGhostButtonClass, "px-3 py-1.5 text-xs")}
-                              >
-                                Cancelar
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => saveEditComment(comment.id)}
-                                className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-soft bg-gradient-to-r from-brand via-brand-600 to-brand-700 hover:brightness-105 active:brightness-95 transition"
-                              >
-                                <Check className="h-3.5 w-3.5 mr-1" />
-                                Guardar
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <p className="text-sm text-ink whitespace-pre-wrap leading-relaxed break-words">
-                              {comment.comment}
-                            </p>
-
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2 text-xs text-muted min-w-0">
-                                <span className="font-semibold text-brand truncate max-w-[220px]">
-                                  {comment.agent?.name || "Desconocido"}
+                      return (
+                        <div
+                          key={comment.id}
+                          className="rounded-2xl border border-white/76 bg-white/72 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)] backdrop-blur-xl"
+                        >
+                          {isEditing ? (
+                            <div className="space-y-3">
+                              <Textarea
+                                value={editingCommentText}
+                                onChange={(e) => {
+                                  setEditingCommentText(e.target.value);
+                                  if (commentError) setCommentError(null);
+                                }}
+                                className="h-24 resize-none"
+                                rows={3}
+                              />
+                              {commentError && (
+                                <span className="mt-3 flex items-start gap-2 rounded-xl border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,226,226,0.82),rgba(255,255,255,0.7))] px-3 py-2">
+                                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                                  <p className="text-xs font-medium leading-relaxed text-red-700">
+                                    {commentError}
+                                  </p>
                                 </span>
-                                <span className="text-border">•</span>
-                                <span className="whitespace-nowrap">
-                                  {formatDate(comment.created_at)}
-                                </span>
-                              </div>
+                              )}
 
-                              {canEdit && (
+                              <div className="flex items-center justify-end gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => startEditComment(comment)}
-                                  className={cn(clientGhostButtonClass, "gap-1 px-3 py-1.5 text-xs")}
-                                  title="Editar comentario"
+                                  onClick={cancelEditComment}
+                                  className={cn(clientGhostButtonClass, "px-3 py-1.5 text-xs")}
                                 >
-                                  <Edit2 className="h-3.5 w-3.5" />
-                                  Editar
+                                  Cancelar
                                 </button>
-                              )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => saveEditComment(comment.id)}
+                                  className="inline-flex items-center rounded-full bg-gradient-to-r from-brand via-brand-600 to-brand-700 px-3 py-1.5 text-xs font-semibold text-white shadow-soft transition hover:brightness-105 active:brightness-95"
+                                >
+                                  <Check className="mr-1 h-3.5 w-3.5" />
+                                  Guardar
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          ) : (
+                            <div className="space-y-2">
+                              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">
+                                {comment.comment}
+                              </p>
+
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-2 text-xs text-muted">
+                                  <span className="max-w-[220px] truncate font-semibold text-brand">
+                                    {comment.agent?.name || "Desconocido"}
+                                  </span>
+                                  <span className="text-border">•</span>
+                                  <span className="whitespace-nowrap">
+                                    {formatDate(comment.created_at)}
+                                  </span>
+                                </div>
+
+                                {canEdit && (
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditComment(comment)}
+                                    className={cn(clientGhostButtonClass, "gap-1 px-3 py-1.5 text-xs")}
+                                    title="Editar comentario"
+                                  >
+                                    <Edit2 className="h-3.5 w-3.5" />
+                                    Editar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {hasMoreComments ? (
+                      <div className="flex justify-center pt-1">
+                        <button
+                          type="button"
+                          onClick={loadMoreComments}
+                          disabled={loadingMoreComments}
+                          className={cn(clientGhostButtonClass, "gap-2 px-4 py-2 text-sm")}
+                        >
+                          {loadingMoreComments ? (
+                            "Cargando..."
+                          ) : (
+                            <>
+                              <RefreshCw className="h-4 w-4" />
+                              Cargar más
+                            </>
+                          )}
+                        </button>
                       </div>
-                    );
-                  })}
+                    ) : null}
+                  </div>
                 </div>
               )}
             </div>

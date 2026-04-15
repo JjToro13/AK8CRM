@@ -3,12 +3,13 @@ import type { Client } from "../../../shared/types/crm";
 
 const UNASSIGNED_AGENT_FILTER = "__unassigned__";
 
-const CLIENT_LIST_SELECT = `
+export const CLIENT_LIST_SELECT = `
   id,
   tenant_id,
   operation_id,
   campaign_id,
   assigned_to,
+  name,
   serial,
   first_name,
   last_name,
@@ -16,6 +17,7 @@ const CLIENT_LIST_SELECT = `
   phone_number,
   country,
   source,
+  trading_company,
   funnel,
   deposit_amount,
   net_deposit,
@@ -34,6 +36,23 @@ const CLIENT_LIST_SELECT = `
 `;
 
 export const clients = {
+  getCount: async (operationId?: string | null) => {
+    let request = supabase
+      .from("clients")
+      .select("id", { count: "exact", head: true });
+
+    if (operationId) {
+      request = request.eq("operation_id", operationId);
+    }
+
+    const { error, count } = await request;
+
+    return {
+      error,
+      count: count ?? 0,
+    };
+  },
+
   search: async (
     query: string,
     params?: {

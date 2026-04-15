@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { clientComments } from "../../../lib/supabase";
 import { formatDate } from "../../../lib/utils";
@@ -10,43 +10,10 @@ type CommentRow = {
   agent_id: string;
   comment: string;
   created_at: string;
-  agent?: { name: string };
+  agent?: { id: string; name: string };
 };
 
-const commentsCache: Record<string, CommentRow[]> = {};
-const commentsPromiseCache: Record<
-  string,
-  Promise<{ data: CommentRow[] | null; error: any }> | null
-> = {};
-
-const PREFETCH_MAX_CONCURRENT = 2;
-let activePrefetches = 0;
-const prefetchQueue: Array<() => void> = [];
-
-function runPrefetchTask(task: () => Promise<void>) {
-  return new Promise<void>((resolve) => {
-    const start = async () => {
-      activePrefetches++;
-
-      try {
-        await task();
-      } finally {
-        activePrefetches--;
-        const next = prefetchQueue.shift();
-        if (next) next();
-        resolve();
-      }
-    };
-
-    if (activePrefetches < PREFETCH_MAX_CONCURRENT) {
-      void start();
-    } else {
-      prefetchQueue.push(() => {
-        void start();
-      });
-    }
-  });
-}
+const COMMENTS_PAGE_SIZE = 10;
 
 export default function ClientCommentsCell({
   clientId,
@@ -64,145 +31,102 @@ export default function ClientCommentsCell({
 }) {
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState("");
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState((commentCount ?? 0) > 1);
+  const [totalCount, setTotalCount] = useState(commentCount ?? 0);
 
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const moreCount = Math.max(0, (commentCount || 0) - 1);
+  useEffect(() => {
+    setComments([]);
+    setLoading(false);
+    setLoadingMore(false);
+    setOpen(false);
+    setErr("");
+    setCurrentPage(0);
+    setHasMore((commentCount ?? 0) > 1);
+    setTotalCount(commentCount ?? 0);
+  }, [clientId, commentCount]);
 
-  const fetchCommentsShared = async () => {
-    if (commentsCache[clientId]) {
-      return { data: commentsCache[clientId], error: null };
+  const loadPage = async (
+    page: number,
+    options?: { reset?: boolean },
+  ) => {
+    const reset = options?.reset ?? false;
+
+    if (reset) {
+      setLoading(true);
+      setComments([]);
+    } else {
+      setLoadingMore(true);
     }
 
-    if (!commentsPromiseCache[clientId]) {
-      commentsPromiseCache[clientId] = clientComments
-        .getByClient(clientId)
-        .then((result) => {
-          const rows = (result.data || []) as CommentRow[];
-          commentsCache[clientId] = rows;
-          return { data: rows, error: result.error };
-        })
-        .finally(() => {
-          commentsPromiseCache[clientId] = null;
-        });
-    }
-
-    return commentsPromiseCache[clientId]!;
-  };
-
-  const load = async () => {
-    if (commentsCache[clientId]) {
-      setComments(commentsCache[clientId]);
-      setErr("");
-      return;
-    }
-
-    setLoading(true);
     setErr("");
 
     try {
-      const { data, error } = await fetchCommentsShared();
+      const { data, error, count, hasMore: nextHasMore } =
+        await clientComments.getByClient(clientId, {
+          page,
+          pageSize: COMMENTS_PAGE_SIZE,
+        });
 
       if (error) {
-        setErr((error as any)?.message || "No se pudieron cargar comentarios");
-        setComments([]);
+        setErr((error as { message?: string })?.message || "No se pudieron cargar comentarios");
+        if (reset) {
+          setComments([]);
+          setCurrentPage(0);
+        }
         return;
       }
 
-      setComments((data || []) as CommentRow[]);
+      const nextRows = (data || []) as CommentRow[];
+
+      setComments((prev) => {
+        if (reset) return nextRows;
+
+        const seen = new Set(prev.map((comment) => comment.id));
+        const appended = nextRows.filter((comment) => !seen.has(comment.id));
+        return [...prev, ...appended];
+      });
+      setCurrentPage(page);
+      setHasMore(nextHasMore);
+      setTotalCount((prev) => count ?? prev);
     } catch (e: any) {
       setErr(e?.message || "Error cargando comentarios");
-      setComments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const prefetchComments = async () => {
-    if (
-      commentsCache[clientId] ||
-      commentsPromiseCache[clientId] ||
-      !commentCount ||
-      commentCount <= 1
-    ) {
-      return;
-    }
-
-    await runPrefetchTask(async () => {
-      if (commentsCache[clientId] || commentsPromiseCache[clientId]) return;
-
-      try {
-        await fetchCommentsShared();
-      } catch {
-        // El prefetch no debe romper la UI.
+      if (reset) {
+        setComments([]);
+        setCurrentPage(0);
       }
-    });
+    } finally {
+      if (reset) {
+        setLoading(false);
+      } else {
+        setLoadingMore(false);
+      }
+    }
   };
 
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
+  const handleOpen = async () => {
+    setOpen(true);
+    if (currentPage > 0) return;
+    await loadPage(1, { reset: true });
+  };
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (!entry?.isIntersecting) return;
+  const handleRefresh = async () => {
+    await loadPage(1, { reset: true });
+  };
 
-        void prefetchComments();
-        observer.disconnect();
-      },
-      {
-        root: null,
-        rootMargin: "80px 0px",
-        threshold: 0.01,
-      },
-    );
-
-    observer.observe(el);
-
-    return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, commentCount]);
+  const handleLoadMore = async () => {
+    if (!hasMore || loadingMore) return;
+    await loadPage(currentPage + 1, { reset: false });
+  };
 
   const onBackdrop = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) setOpen(false);
   };
 
-  const handleOpen = async () => {
-    setOpen(true);
-    setErr("");
-
-    if (commentsCache[clientId]) {
-      setComments(commentsCache[clientId]);
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { data, error } = await fetchCommentsShared();
-
-      if (error) {
-        setErr((error as any)?.message || "No se pudieron cargar comentarios");
-        setComments([]);
-        return;
-      }
-
-      setComments((data || []) as CommentRow[]);
-    } catch (e: any) {
-      setErr(e?.message || "Error cargando comentarios");
-      setComments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    delete commentsCache[clientId];
-    commentsPromiseCache[clientId] = null;
-    await load();
-  };
+  const moreCount = Math.max(0, totalCount - 1);
 
   if (!lastComment) {
     return <span className="text-sm text-muted">Sin comentarios</span>;
@@ -210,7 +134,7 @@ export default function ClientCommentsCell({
 
   return (
     <>
-      <div ref={rootRef} className="relative">
+      <div className="relative">
         <button
           type="button"
           onClick={handleOpen}
@@ -264,7 +188,7 @@ export default function ClientCommentsCell({
                 <div className="flex items-center gap-2">
                   <h3 className="truncate font-semibold text-ink">Comentarios</h3>
                   <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[12px] font-semibold text-brand">
-                    {commentCount || comments.length}
+                    {totalCount || comments.length}
                   </span>
                 </div>
 
@@ -296,7 +220,11 @@ export default function ClientCommentsCell({
               ) : err ? (
                 <div className="text-sm text-red-600">
                   {err}{" "}
-                  <button type="button" className="underline" onClick={load}>
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => void loadPage(1, { reset: true })}
+                  >
                     reintentar
                   </button>
                 </div>
@@ -324,6 +252,19 @@ export default function ClientCommentsCell({
                       </div>
                     </div>
                   ))}
+
+                  {hasMore ? (
+                    <div className="flex justify-center pt-2">
+                      <button
+                        type="button"
+                        onClick={handleLoadMore}
+                        disabled={loadingMore}
+                        className="crm-shell-pill inline-flex items-center rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 transition hover:bg-surface2 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {loadingMore ? "Cargando..." : "Cargar mas"}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>

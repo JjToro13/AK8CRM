@@ -9,6 +9,7 @@ import type { DashboardProps, Operation, VisibleTenant } from "../types/dashboar
 
 const SELECTED_OPERATION_STORAGE_KEY = "cm_selected_operation_id";
 const SELECTED_TENANT_STORAGE_KEY = "cm_selected_tenant_id";
+const DASHBOARD_SEARCH_DEBOUNCE_MS = 400;
 
 export function useDashboard({
   isAdmin,
@@ -25,6 +26,7 @@ export function useDashboard({
   const searchRequestIdRef = useRef(0);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Client[]>([]);
   const [recentCalls, setRecentCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(false);
@@ -220,6 +222,14 @@ export function useDashboard({
     void loadRecentCalls();
   }, [loadRecentCalls]);
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, DASHBOARD_SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery]);
+
   const runSearch = useCallback(
     async (query: string) => {
       const requestId = ++searchRequestIdRef.current;
@@ -274,9 +284,8 @@ export function useDashboard({
   const handleSearchInput = useCallback(
     (query: string) => {
       setSearchQuery(query);
-      void runSearch(query);
     },
-    [runSearch],
+    [],
   );
 
   useEffect(() => {
@@ -286,12 +295,12 @@ export function useDashboard({
   }, [searchQuery]);
 
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+    if (!debouncedSearchQuery.trim() || debouncedSearchQuery.trim().length < 2) {
       return;
     }
 
-    void runSearch(searchQuery);
-  }, [effectiveOperationId, runSearch, searchQuery]);
+    void runSearch(debouncedSearchQuery);
+  }, [debouncedSearchQuery, effectiveOperationId, runSearch]);
 
   const handleCallStarted = useCallback(() => {
     void loadRecentCalls();

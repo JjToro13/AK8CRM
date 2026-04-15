@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  createElement,
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../integrations/supabase/client";
 
@@ -24,11 +32,17 @@ interface AuthState {
   operationReady: boolean;
 }
 
-const PRESENCE_HEARTBEAT_MS = 30_000;
+type AuthContextValue = AuthState & {
+  signOut: () => Promise<{ error: unknown }>;
+};
+
+const PRESENCE_HEARTBEAT_MS = 90_000;
 const AUTH_DEBUG = false;
 const dlog = (...a: any[]) => AUTH_DEBUG && console.log("[AUTH]", ...a);
 const dwarn = (...a: any[]) => AUTH_DEBUG && console.warn("[AUTH]", ...a);
 const derr = (...a: any[]) => AUTH_DEBUG && console.error("[AUTH]", ...a);
+
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -64,7 +78,7 @@ async function rpcWithRetry<T>(
   return { data: null as any, error: lastErr };
 }
 
-export function useAuth() {
+function useProvideAuth(): AuthContextValue {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     session: null,
@@ -425,4 +439,20 @@ export function useAuth() {
   };
 
   return { ...authState, signOut };
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const value = useProvideAuth();
+
+  return createElement(AuthContext.Provider, { value }, children);
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
+
+  return context;
 }

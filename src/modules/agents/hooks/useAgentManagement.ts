@@ -21,6 +21,8 @@ const roleSortOrder: Record<Agent["role"], number> = {
   agent: 4,
 };
 
+const AGENTS_FOCUS_REFRESH_STALE_MS = 90_000;
+
 function sortVisibleAgents(agentsList: Agent[]) {
   return [...agentsList].sort((left, right) => {
     const roleOrder = roleSortOrder[left.role] - roleSortOrder[right.role];
@@ -55,6 +57,7 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
   const [showAgentDetails, setShowAgentDetails] = useState(false);
   const [showUpsertModal, setShowUpsertModal] = useState(false);
   const [upsertMode, setUpsertMode] = useState<"create" | "edit">("create");
+  const [lastLoadedAt, setLastLoadedAt] = useState(0);
 
   const canManageAgents =
     !!role && ["dev", "owner", "manager"].includes(role);
@@ -132,6 +135,7 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
       setAgentsList(visibleAgents);
       setAssignedCounts(nextAssignedCounts);
       setAvailableCampaigns(nextAvailableCampaigns);
+      setLastLoadedAt(Date.now());
     } catch (error) {
       console.error("Error cargando datos de agentes:", error);
       setError(
@@ -172,10 +176,11 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     }
 
     const refreshPresence = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastLoadedAt < AGENTS_FOCUS_REFRESH_STALE_MS) return;
       void loadData({ silent: true });
     };
 
-    const intervalId = window.setInterval(refreshPresence, 30_000);
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         refreshPresence();
@@ -186,12 +191,11 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      window.clearInterval(intervalId);
       window.removeEventListener("focus", refreshPresence);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, canManageAgents, scopedOperationId]);
+  }, [authLoading, canManageAgents, lastLoadedAt, scopedOperationId]);
 
   const openCreateAgent = () => {
     if (!canCreateAgents) return;

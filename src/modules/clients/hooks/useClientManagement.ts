@@ -29,6 +29,8 @@ const CLIENTS_CAMPAIGN_FILTER_KEY = "clients_campaign_filter_v1";
 const CLIENTS_AGENT_FILTER_KEY = "clients_agent_filter_v1";
 const CLIENTS_PAGE_SIZE_KEY = "clients_page_size_v1";
 const CLIENTS_VIEW_STATE_KEY = "clients_view_state_v1";
+const CLIENTS_SEARCH_DEBOUNCE_MS = 400;
+const CLIENTS_FOCUS_REFRESH_STALE_MS = 90_000;
 
 export type ClientStatusFilter = "all" | ClientStatusCode;
 export type ClientCampaignFilter = "all" | string;
@@ -127,6 +129,7 @@ export function useClientManagement(
   const [, setTick] = useState(0);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ClientStatusFilter>("all");
   const [campaignFilter, setCampaignFilter] =
     useState<ClientCampaignFilter>("all");
@@ -183,6 +186,7 @@ export function useClientManagement(
   const lastWindowScrollYRef = useRef(0);
   const shouldRestoreViewRef = useRef(false);
   const didInitPageResetRef = useRef(false);
+  const lastClientsLoadAtRef = useRef(0);
 
   const enableCalls = appEnv.features.enableCalls;
 
@@ -320,6 +324,14 @@ export function useClientManagement(
   }, [searchQuery]);
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, CLIENTS_SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  useEffect(() => {
     try {
       localStorage.setItem(CLIENTS_STATUS_FILTER_KEY, statusFilter);
     } catch {
@@ -370,7 +382,7 @@ export function useClientManagement(
 
     setCurrentPage(1);
   }, [
-    searchQuery,
+    debouncedSearchQuery,
     statusFilter,
     campaignFilter,
     assignedAgentFilter,
@@ -490,28 +502,33 @@ export function useClientManagement(
           return;
         }
 
-        const query = searchQuery.trim();
-        const [result, baselineResult] = await Promise.all([
+        const query = debouncedSearchQuery.trim();
+        const hasScopedFilters =
+          query.length > 0 ||
+          statusFilter !== "all" ||
+          campaignFilter !== "all" ||
+          assignedAgentFilter !== "all";
+
+        const result = await (
           query
             ? clientsService.search(query, {
-              operationId: targetOperationId,
-              statusCode: statusFilter === "all" ? null : statusFilter,
-              campaignId: campaignFilter === "all" ? null : campaignFilter,
-              assignedAgentId:
+                operationId: targetOperationId,
+                statusCode: statusFilter === "all" ? null : statusFilter,
+                campaignId: campaignFilter === "all" ? null : campaignFilter,
+                assignedAgentId:
+                  assignedAgentFilter === "all" ? null : assignedAgentFilter,
+                page: currentPage,
+                pageSize: rowsPerPage,
+              })
+            : clientsService.getAll(
+                targetOperationId,
+                currentPage,
+                rowsPerPage,
+                statusFilter === "all" ? null : statusFilter,
+                campaignFilter === "all" ? null : campaignFilter,
                 assignedAgentFilter === "all" ? null : assignedAgentFilter,
-              page: currentPage,
-              pageSize: rowsPerPage,
-            })
-          : clientsService.getAll(
-              targetOperationId,
-              currentPage,
-              rowsPerPage,
-              statusFilter === "all" ? null : statusFilter,
-              campaignFilter === "all" ? null : campaignFilter,
-              assignedAgentFilter === "all" ? null : assignedAgentFilter,
-            ),
-          clientsService.getAll(targetOperationId, 1, 1, null),
-        ]);
+              )
+        );
 
         if (result.error) {
           console.error("Error cargando clientes:", result.error);
@@ -524,8 +541,11 @@ export function useClientManagement(
           );
           setClients(enrichedClients);
           setTotalClients(result.count || 0);
-          setUnfilteredTotalClients(baselineResult.count || 0);
+          if (!hasScopedFilters) {
+            setUnfilteredTotalClients(result.count || 0);
+          }
           setLastUpdatedAt(Date.now());
+          lastClientsLoadAtRef.current = Date.now();
           setError("");
         }
 
@@ -570,6 +590,7 @@ export function useClientManagement(
         const to = from + rowsPerPage;
         setClients(enrichedClients.slice(from, to));
         setLastUpdatedAt(Date.now());
+        lastClientsLoadAtRef.current = Date.now();
         setError("");
       }
     } catch (error) {
@@ -642,12 +663,43 @@ export function useClientManagement(
   }, [
     currentPage,
     rowsPerPage,
-    searchQuery,
+    debouncedSearchQuery,
     statusFilter,
     campaignFilter,
     assignedAgentFilter,
     viewHydrated,
   ]);
+
+  useEffect(() => {
+    if (!viewHydrated || opLocked || !isAdmin) return;
+
+    const targetOperationId = canSeeAllOperations ? activeOperationId : operationId;
+    if (!targetOperationId) {
+      setUnfilteredTotalClients(0);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadBaselineCount = async () => {
+      const { count, error } = await clientsService.getCount(targetOperationId);
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error("Error cargando total base de clientes:", error);
+        return;
+      }
+
+      setUnfilteredTotalClients(count);
+    };
+
+    void loadBaselineCount();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeOperationId, canSeeAllOperations, isAdmin, opLocked, operationId, viewHydrated]);
 
   useEffect(() => {
     if (opLocked) {
@@ -760,24 +812,30 @@ export function useClientManagement(
   useEffect(() => {
     if (opLocked) return;
 
-    const shouldPoll = isAdmin && !showEditModal && !showEmailModal;
-
-    if (shouldPoll) {
-      if (pollTimerRef.current) {
-        window.clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
-
-      pollTimerRef.current = window.setInterval(() => {
-        refreshClientsPreservingScroll();
-      }, 45_000);
+    if (pollTimerRef.current) {
+      window.clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
     }
 
-    return () => {
-      if (pollTimerRef.current) {
-        window.clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
+    const shouldRefreshOnFocus = isAdmin && !showEditModal && !showEmailModal;
+
+    if (!shouldRefreshOnFocus) return;
+
+    const maybeRefresh = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastClientsLoadAtRef.current < CLIENTS_FOCUS_REFRESH_STALE_MS) {
+        return;
       }
+
+      void refreshClientsPreservingScroll();
+    };
+
+    window.addEventListener("focus", maybeRefresh);
+    document.addEventListener("visibilitychange", maybeRefresh);
+
+    return () => {
+      window.removeEventListener("focus", maybeRefresh);
+      document.removeEventListener("visibilitychange", maybeRefresh);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -787,12 +845,6 @@ export function useClientManagement(
     activeOperationId,
     operationId,
     operationReady,
-    currentPage,
-    rowsPerPage,
-    searchQuery,
-    statusFilter,
-    campaignFilter,
-    assignedAgentFilter,
   ]);
 
   useEffect(() => {

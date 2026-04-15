@@ -14,7 +14,7 @@ type Props = {
   pollMs?: number;
 };
 
-export default function MaintenanceGate({ children, pollMs = 15000 }: Props) {
+export default function MaintenanceGate({ children, pollMs = 60000 }: Props) {
   const [state, setState] = useState<MaintenanceState>({
     enabled: false,
     message: "",
@@ -48,6 +48,8 @@ export default function MaintenanceGate({ children, pollMs = 15000 }: Props) {
     let mounted = true;
 
     const load = async () => {
+      if (document.visibilityState === "hidden") return;
+
       try {
         const s = await fetchMaintenance();
         if (!mounted) return;
@@ -62,6 +64,12 @@ export default function MaintenanceGate({ children, pollMs = 15000 }: Props) {
     load();
 
     const t = window.setInterval(load, pollMs);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void load();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     const unsub = subscribeMaintenance((s) => {
       setState(s);
@@ -71,6 +79,7 @@ export default function MaintenanceGate({ children, pollMs = 15000 }: Props) {
     return () => {
       mounted = false;
       window.clearInterval(t);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       unsub?.();
     };
   }, [pollMs]);

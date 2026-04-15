@@ -49,7 +49,7 @@ export const calls = {
       }
 
       if (params?.operationId) {
-        request = request.eq("client.operation_id", params.operationId);
+        request = request.eq("operation_id", params.operationId);
       }
 
       const { data, error } = await request;
