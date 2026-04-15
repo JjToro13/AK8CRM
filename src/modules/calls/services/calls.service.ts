@@ -41,7 +41,7 @@ export const calls = {
             )
           `,
         )
-        .order("created_at", { ascending: false })
+        .order("start_time", { ascending: false })
         .limit(params?.limit ?? 50);
 
       if (params?.agentId) {

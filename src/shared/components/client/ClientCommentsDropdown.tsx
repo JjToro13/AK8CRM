@@ -13,6 +13,7 @@ import {
 
 interface ClientCommentsDropdownProps {
   clientId: string;
+  initialCount?: number | null;
 }
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -47,6 +48,7 @@ const panelV = {
 
 export default function ClientCommentsDropdown({
   clientId,
+  initialCount = null,
 }: ClientCommentsDropdownProps) {
   const [comments, setComments] = useState<ClientComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,7 +57,7 @@ export default function ClientCommentsDropdown({
   const [err, setErr] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(initialCount ?? 0);
 
   useEffect(() => {
     setComments([]);
@@ -65,8 +67,8 @@ export default function ClientCommentsDropdown({
     setErr("");
     setCurrentPage(0);
     setHasMore(false);
-    setTotalCount(0);
-  }, [clientId]);
+    setTotalCount(initialCount ?? 0);
+  }, [clientId, initialCount]);
 
   const latest = useMemo(() => comments[0] ?? null, [comments]);
 
@@ -90,6 +92,7 @@ export default function ClientCommentsDropdown({
         await clientComments.getByClient(clientId, {
           page,
           pageSize: COMMENTS_PAGE_SIZE,
+          includeCount: false,
         });
 
       if (error) {
@@ -170,7 +173,13 @@ export default function ClientCommentsDropdown({
     await loadComments(currentPage + 1, { reset: false });
   };
 
-  const count = totalCount || comments.length;
+  const countLabel =
+    totalCount > 0
+      ? String(totalCount)
+      : hasMore
+        ? `${comments.length}+`
+        : String(comments.length);
+  const shouldShowCountBadge = totalCount > 0 || comments.length > 0 || hasMore;
 
   return (
     <>
@@ -199,9 +208,9 @@ export default function ClientCommentsDropdown({
                   title="Ver historial"
                 >
                   Ver comentarios
-                  {count > 0 ? (
+                  {shouldShowCountBadge ? (
                     <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
-                      {count}
+                      {countLabel}
                     </span>
                   ) : null}
                 </button>
@@ -274,7 +283,7 @@ export default function ClientCommentsDropdown({
                         Comentarios
                       </h3>
                       <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[12px] font-semibold text-brand">
-                        {count}
+                        {countLabel}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-muted">

@@ -205,7 +205,10 @@ export default function ClientSearch({
 
       {canUseActions ? (
         <div className="mt-4">
-          <ClientCommentsDropdown clientId={client.id} />
+          <ClientCommentsDropdown
+            clientId={client.id}
+            initialCount={client.comment_count ?? null}
+          />
         </div>
       ) : null}
 

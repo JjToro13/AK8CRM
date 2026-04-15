@@ -78,6 +78,7 @@ export default function ClientManagementPage(
     totalClients,
     unfilteredTotalClients,
     isSearchActive,
+    isSearchPendingMinLength,
     rowsPerPage,
     setRowsPerPage,
     currentPage,
@@ -108,6 +109,7 @@ export default function ClientManagementPage(
     headerSubtitle,
     handleTableScroll,
     viewerAgentId,
+    searchMinLength,
   } = useClientManagement(props);
   const clientsWorkspaceRef = useRef<HTMLElement | null>(null);
   const [selectedActionClientId, setSelectedActionClientId] = useState<string | null>(
@@ -258,6 +260,8 @@ export default function ClientManagementPage(
 
             <ClientsFiltersCard
               searchQuery={searchQuery}
+              isSearchPendingMinLength={isSearchPendingMinLength}
+              searchMinLength={searchMinLength}
               onSearchChange={setSearchQuery}
               onClearSearch={() => setSearchQuery("")}
               statusFilter={statusFilter}
@@ -279,7 +283,7 @@ export default function ClientManagementPage(
               clients={clients}
               initialLoading={initialLoading}
               opLocked={opLocked}
-              searchQuery={searchQuery}
+              isSearchActive={isSearchActive}
               selectedClientId={selectedActionClientId}
               tableScrollRef={tableScrollRef}
               lastTableViewportHeight={lastTableViewportHeightRef.current}

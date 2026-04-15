@@ -17,7 +17,7 @@ type ClientsTableProps = {
   clients: Client[];
   initialLoading: boolean;
   opLocked: boolean;
-  searchQuery: string;
+  isSearchActive: boolean;
   selectedClientId: string | null;
   tableScrollRef: MutableRefObject<HTMLDivElement | null>;
   lastTableViewportHeight: number | null;
@@ -34,7 +34,7 @@ export default function ClientsTable({
   clients,
   initialLoading,
   opLocked,
-  searchQuery,
+  isSearchActive,
   selectedClientId,
   tableScrollRef,
   lastTableViewportHeight,
@@ -85,7 +85,7 @@ export default function ClientsTable({
                 No hay resultados en esta vista
               </h3>
               <p className="mt-2 text-sm leading-6 text-muted">
-                {searchQuery.trim()
+                {isSearchActive
                   ? "Ajusta la busqueda o los filtros para encontrar otra cartera."
                   : "Todavia no hay clientes cargados para esta operacion."}
               </p>

@@ -30,6 +30,7 @@ const CLIENTS_AGENT_FILTER_KEY = "clients_agent_filter_v1";
 const CLIENTS_PAGE_SIZE_KEY = "clients_page_size_v1";
 const CLIENTS_VIEW_STATE_KEY = "clients_view_state_v1";
 const CLIENTS_SEARCH_DEBOUNCE_MS = 400;
+const CLIENTS_MIN_SEARCH_LENGTH = 2;
 const CLIENTS_FOCUS_REFRESH_STALE_MS = 90_000;
 
 export type ClientStatusFilter = "all" | ClientStatusCode;
@@ -43,37 +44,6 @@ export interface ClientManagementProps {
   operationReady?: boolean;
   activeOperationId?: string | null;
   operationId?: string | null;
-}
-
-function filterAssignedClients(
-  clients: Client[],
-  searchQuery: string,
-  statusFilter: ClientStatusFilter,
-  campaignFilter: ClientCampaignFilter,
-  targetOperationId?: string | null,
-) {
-  const query = searchQuery.trim().toLowerCase();
-
-  return clients.filter((client) => {
-    const matchesOperation =
-      !targetOperationId || client.operation_id === targetOperationId;
-    const matchesStatus =
-      statusFilter === "all" || (client.status_code ?? "NU") === statusFilter;
-    const matchesCampaign =
-      campaignFilter === "all" || client.campaign_id === campaignFilter;
-
-    if (!matchesOperation || !matchesStatus || !matchesCampaign) return false;
-    if (!query) return true;
-
-    return (
-      (client.first_name || client.name || "").toLowerCase().includes(query) ||
-      client.serial.toLowerCase().includes(query) ||
-      client.email?.toLowerCase().includes(query) ||
-      (client.source || client.trading_company || "")
-        .toLowerCase()
-        .includes(query)
-    );
-  });
 }
 
 async function enrichClientsWithAssignedAgentNames(clients: Client[]) {
@@ -194,6 +164,15 @@ export function useClientManagement(
   const startItem =
     totalClients === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
   const endItem = Math.min(currentPage * rowsPerPage, totalClients);
+  const trimmedSearchQuery = searchQuery.trim();
+  const trimmedDebouncedSearchQuery = debouncedSearchQuery.trim();
+  const effectiveSearchQuery =
+    trimmedDebouncedSearchQuery.length >= CLIENTS_MIN_SEARCH_LENGTH
+      ? trimmedDebouncedSearchQuery
+      : "";
+  const isSearchPendingMinLength =
+    trimmedSearchQuery.length > 0 &&
+    trimmedSearchQuery.length < CLIENTS_MIN_SEARCH_LENGTH;
 
   const persistViewState = (overrides?: {
     currentPage?: number;
@@ -502,7 +481,7 @@ export function useClientManagement(
           return;
         }
 
-        const query = debouncedSearchQuery.trim();
+        const query = effectiveSearchQuery;
         const hasScopedFilters =
           query.length > 0 ||
           statusFilter !== "all" ||
@@ -552,43 +531,42 @@ export function useClientManagement(
         return;
       }
 
-      const currentUser = await supabase.auth.getUser();
-      if (!currentUser.data.user) {
+      if (!user?.id) {
         setError("No se pudo obtener la información del usuario");
         return;
       }
 
-      const { data: assignedClients, error } =
-        await agentAssignments.getAssignedClients(currentUser.data.user.id);
+      const query = effectiveSearchQuery;
+      const hasScopedFilters =
+        query.length > 0 ||
+        statusFilter !== "all" ||
+        campaignFilter !== "all";
+
+      const { data: assignedClients, error, count } =
+        await agentAssignments.getAssignedClientsPage(user.id, {
+          operationId: operationId ?? null,
+          searchQuery: query,
+          statusCode: statusFilter === "all" ? null : statusFilter,
+          campaignId: campaignFilter === "all" ? null : campaignFilter,
+          page: currentPage,
+          pageSize: rowsPerPage,
+        });
 
       if (error) {
         console.error("Error cargando clientes asignados:", error);
         setError("Error cargando clientes asignados");
         setClients([]);
         setTotalClients(0);
-        setUnfilteredTotalClients(0);
       } else {
-        const assignedList = ((assignedClients || []) as Client[]).filter(
-          (client) =>
-            !operationId || client.operation_id === operationId,
-        );
-        const filteredClients = filterAssignedClients(
-          assignedList,
-          searchQuery,
-          statusFilter,
-          campaignFilter,
-          operationId,
-        );
         const enrichedClients = await enrichClientsWithAssignedAgentNames(
-          filteredClients,
+          (assignedClients || []) as Client[],
         );
 
-        setUnfilteredTotalClients(assignedList.length);
-        setTotalClients(enrichedClients.length);
-
-        const from = (currentPage - 1) * rowsPerPage;
-        const to = from + rowsPerPage;
-        setClients(enrichedClients.slice(from, to));
+        setTotalClients(count || 0);
+        if (!hasScopedFilters) {
+          setUnfilteredTotalClients(count || 0);
+        }
+        setClients(enrichedClients);
         setLastUpdatedAt(Date.now());
         lastClientsLoadAtRef.current = Date.now();
         setError("");
@@ -671,23 +649,45 @@ export function useClientManagement(
   ]);
 
   useEffect(() => {
-    if (!viewHydrated || opLocked || !isAdmin) return;
+    if (!viewHydrated || opLocked) return;
 
     const targetOperationId = canSeeAllOperations ? activeOperationId : operationId;
-    if (!targetOperationId) {
-      setUnfilteredTotalClients(0);
-      return;
-    }
-
     let cancelled = false;
 
     const loadBaselineCount = async () => {
-      const { count, error } = await clientsService.getCount(targetOperationId);
+      if (isAdmin) {
+        if (!targetOperationId) {
+          setUnfilteredTotalClients(0);
+          return;
+        }
+
+        const { count, error } = await clientsService.getCount(targetOperationId);
+
+        if (cancelled) return;
+
+        if (error) {
+          console.error("Error cargando total base de clientes:", error);
+          return;
+        }
+
+        setUnfilteredTotalClients(count);
+        return;
+      }
+
+      if (!user?.id) {
+        setUnfilteredTotalClients(0);
+        return;
+      }
+
+      const { count, error } = await agentAssignments.getAssignedClientsCount(
+        user.id,
+        targetOperationId,
+      );
 
       if (cancelled) return;
 
       if (error) {
-        console.error("Error cargando total base de clientes:", error);
+        console.error("Error cargando total base de clientes asignados:", error);
         return;
       }
 
@@ -699,7 +699,15 @@ export function useClientManagement(
     return () => {
       cancelled = true;
     };
-  }, [activeOperationId, canSeeAllOperations, isAdmin, opLocked, operationId, viewHydrated]);
+  }, [
+    activeOperationId,
+    canSeeAllOperations,
+    isAdmin,
+    opLocked,
+    operationId,
+    user?.id,
+    viewHydrated,
+  ]);
 
   useEffect(() => {
     if (opLocked) {
@@ -724,39 +732,17 @@ export function useClientManagement(
       const [
         { data: campaignsData },
         { data: agentsData },
-        { data: assignedClientsData, error: assignedClientsError },
       ] = await Promise.all([
         campaigns.list(targetOperationId),
         isAdmin
           ? agents.getAll()
           : Promise.resolve({ data: [] as never[], error: null }),
-        !isAdmin && user?.id
-          ? agentAssignments.getAssignedClients(user.id)
-          : Promise.resolve({ data: [] as Client[], error: null }),
       ]);
 
       if (cancelled) return;
 
-      if (assignedClientsError) {
-        console.error(
-          "Error cargando campañas permitidas para el agente:",
-          assignedClientsError,
-        );
-      }
-
-      const allowedCampaignIds = new Set(
-        ((assignedClientsData ?? []) as Client[])
-          .filter(
-            (client) =>
-              !targetOperationId || client.operation_id === targetOperationId,
-          )
-          .map((client) => client.campaign_id)
-          .filter((campaignId): campaignId is string => Boolean(campaignId)),
-      );
-
       setCampaignFilterOptions(
         (campaignsData ?? [])
-          .filter((campaign) => isAdmin || allowedCampaignIds.has(campaign.id))
           .map((campaign) => ({
             id: campaign.id,
             label: campaign.display_name?.trim()
@@ -1218,12 +1204,12 @@ export function useClientManagement(
   };
 
   const updatedSecs = Math.floor((Date.now() - lastUpdatedAt) / 1000);
-  const isSearchActive = searchQuery.trim().length > 0;
+  const isSearchActive = trimmedSearchQuery.length >= CLIENTS_MIN_SEARCH_LENGTH;
   const isStatusFilterActive = statusFilter !== "all";
   const isCampaignFilterActive = campaignFilter !== "all";
   const isAgentFilterActive = assignedAgentFilter !== "all";
   const activeFilterSummary = [
-    isSearchActive ? searchQuery.trim() : null,
+    isSearchActive ? trimmedSearchQuery : null,
     statusFilter !== "all"
       ? ({
           NU: "Nuevo",
@@ -1337,6 +1323,7 @@ export function useClientManagement(
     totalClients,
     unfilteredTotalClients,
     isSearchActive,
+    isSearchPendingMinLength,
     isStatusFilterActive,
     isCampaignFilterActive,
     isAgentFilterActive,
@@ -1372,6 +1359,7 @@ export function useClientManagement(
     headerSubtitle,
     handleTableScroll,
     viewerAgentId: user?.id ?? null,
+    searchMinLength: CLIENTS_MIN_SEARCH_LENGTH,
     unassignedAgentFilter: UNASSIGNED_AGENT_FILTER,
   };
 }

@@ -27,6 +27,8 @@ import {
 
 type ClientsFiltersCardProps = {
   searchQuery: string;
+  isSearchPendingMinLength: boolean;
+  searchMinLength: number;
   onSearchChange: (value: string) => void;
   onClearSearch: () => void;
   statusFilter: "all" | ClientStatusCode;
@@ -49,6 +51,8 @@ const compactTriggerClassName =
 
 export default function ClientsFiltersCard({
   searchQuery,
+  isSearchPendingMinLength,
+  searchMinLength,
   onSearchChange,
   onClearSearch,
   statusFilter,
@@ -70,7 +74,7 @@ export default function ClientsFiltersCard({
   const closeTimerRef = useRef<number | null>(null);
   const filterAnchorRef = useRef<HTMLDivElement | null>(null);
 
-  const isSearchActive = searchQuery.trim().length > 0;
+  const hasSearchValue = searchQuery.trim().length > 0;
   const hasActiveFilters = useMemo(() => {
     return (
       statusFilter !== "all" ||
@@ -142,12 +146,12 @@ export default function ClientsFiltersCard({
           <div className="w-full xl:max-w-[22rem]">
             <Input
               type="text"
-              placeholder="Buscar clientes..."
+              placeholder={`Buscar clientes (min. ${searchMinLength})...`}
               value={searchQuery}
               onChange={(event) => onSearchChange(event.target.value)}
               leftIcon={<Search className="h-5 w-5" />}
               rightSlot={
-                isSearchActive ? (
+                hasSearchValue ? (
                   <button
                     type="button"
                     onClick={onClearSearch}
@@ -163,6 +167,11 @@ export default function ClientsFiltersCard({
               className="crm-shell-pill rounded-full border-white/0 bg-white/72 py-2.5 shadow-[0_14px_32px_rgba(15,23,42,0.06)] backdrop-blur-xl"
               containerClassName="w-full"
             />
+            {isSearchPendingMinLength ? (
+              <p className="mt-1 px-3 text-xs text-muted">
+                La busqueda se activa desde {searchMinLength} caracteres.
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 xl:justify-end">

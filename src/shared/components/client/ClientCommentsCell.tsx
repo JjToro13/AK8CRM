@@ -69,6 +69,7 @@ export default function ClientCommentsCell({
         await clientComments.getByClient(clientId, {
           page,
           pageSize: COMMENTS_PAGE_SIZE,
+          includeCount: false,
         });
 
       if (error) {

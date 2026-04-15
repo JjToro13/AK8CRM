@@ -13,7 +13,6 @@ import {
   User,
   Hash,
   Mail,
-  Building,
   DollarSign,
   AlertCircle,
   CheckCircle,
@@ -66,14 +65,13 @@ type AgentDetailsClient = Pick<
   | "id"
   | "first_name"
   | "last_name"
-  | "name"
   | "serial"
   | "email"
-  | "trading_company"
   | "deposit_amount"
   | "attempts"
   | "status_color"
   | "status_code"
+  | "comment_count"
 >;
 
 type AgentDetailsCall = Pick<
@@ -98,14 +96,12 @@ export default function AgentDetailsModal({
 }: AgentDetailsModalProps) {
   const [assignedClients, setAssignedClients] = useState<AgentDetailsClient[]>([]);
   const [assignedClientsPage, setAssignedClientsPage] = useState(0);
-  const [assignedClientsTotal, setAssignedClientsTotal] = useState(0);
   const [hasMoreAssignedClients, setHasMoreAssignedClients] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMoreClients, setLoadingMoreClients] = useState(false);
 
   const [agentCalls, setAgentCalls] = useState<AgentDetailsCall[]>([]);
   const [callsPage, setCallsPage] = useState(0);
-  const [agentCallsTotal, setAgentCallsTotal] = useState(0);
   const [hasMoreCalls, setHasMoreCalls] = useState(false);
   const [callsLoading, setCallsLoading] = useState(false);
   const [loadingMoreCalls, setLoadingMoreCalls] = useState(false);
@@ -131,13 +127,12 @@ export default function AgentDetailsModal({
 
       try {
         const from = (page - 1) * ASSIGNED_CLIENTS_PAGE_SIZE;
-        const to = from + ASSIGNED_CLIENTS_PAGE_SIZE - 1;
+        const to = from + ASSIGNED_CLIENTS_PAGE_SIZE;
 
-        const { data, error, count } = await supabase
+        const { data, error } = await supabase
           .from("clients")
           .select(
-            "id, first_name, last_name, name, serial, email, trading_company, deposit_amount, attempts, status_color, status_code",
-            { count: "exact" },
+            "id, first_name, last_name, serial, email, deposit_amount, attempts, status_color, status_code, comment_count",
           )
           .eq("assigned_to", agent.id)
           .order("serial", { ascending: true })
@@ -149,33 +144,29 @@ export default function AgentDetailsModal({
           if (reset) {
             setAssignedClients([]);
             setAssignedClientsPage(0);
-            setAssignedClientsTotal(0);
             setHasMoreAssignedClients(false);
           }
           return;
         }
 
         const nextRows = (data ?? []) as AgentDetailsClient[];
+        const visibleRows = nextRows.slice(0, ASSIGNED_CLIENTS_PAGE_SIZE);
 
         setAssignedClients((prev) => {
-          if (reset) return nextRows;
+          if (reset) return visibleRows;
 
           const seen = new Set(prev.map((client) => client.id));
-          const appended = nextRows.filter((client) => !seen.has(client.id));
+          const appended = visibleRows.filter((client) => !seen.has(client.id));
           return [...prev, ...appended];
         });
         setAssignedClientsPage(page);
-        setAssignedClientsTotal(count ?? nextRows.length);
-        setHasMoreAssignedClients(
-          (count ?? nextRows.length) > page * ASSIGNED_CLIENTS_PAGE_SIZE,
-        );
+        setHasMoreAssignedClients(nextRows.length > ASSIGNED_CLIENTS_PAGE_SIZE);
       } catch (err) {
         console.error("Error cargando datos del agente:", err);
         setError("Error inesperado");
         if (reset) {
           setAssignedClients([]);
           setAssignedClientsPage(0);
-          setAssignedClientsTotal(0);
           setHasMoreAssignedClients(false);
         }
       } finally {
@@ -211,9 +202,9 @@ export default function AgentDetailsModal({
         endDate.setHours(23, 59, 59, 999);
 
         const from = (page - 1) * AGENT_CALLS_PAGE_SIZE;
-        const to = from + AGENT_CALLS_PAGE_SIZE - 1;
+        const to = from + AGENT_CALLS_PAGE_SIZE;
 
-        const { data: callsData, error: callsError, count } = await supabase
+        const { data: callsData, error: callsError } = await supabase
           .from("calls")
           .select(
             `
@@ -228,7 +219,6 @@ export default function AgentDetailsModal({
               client:clients(id, first_name, name, serial),
               agent:agents(id, name)
             `,
-            { count: "exact" },
           )
           .eq("agent_id", agent.id)
           .gte("start_time", startDate.toISOString())
@@ -242,7 +232,6 @@ export default function AgentDetailsModal({
           if (reset) {
             setAgentCalls([]);
             setCallsPage(0);
-            setAgentCallsTotal(0);
             setHasMoreCalls(false);
           }
           return;
@@ -257,24 +246,23 @@ export default function AgentDetailsModal({
             ? (call.agent[0] ?? null)
             : (call.agent ?? null),
         })) as AgentDetailsCall[];
+        const visibleRows = nextRows.slice(0, AGENT_CALLS_PAGE_SIZE);
 
         setAgentCalls((prev) => {
-          if (reset) return nextRows;
+          if (reset) return visibleRows;
 
           const seen = new Set(prev.map((call) => call.id));
-          const appended = nextRows.filter((call) => !seen.has(call.id));
+          const appended = visibleRows.filter((call) => !seen.has(call.id));
           return [...prev, ...appended];
         });
         setCallsPage(page);
-        setAgentCallsTotal(count ?? nextRows.length);
-        setHasMoreCalls((count ?? nextRows.length) > page * AGENT_CALLS_PAGE_SIZE);
+        setHasMoreCalls(nextRows.length > AGENT_CALLS_PAGE_SIZE);
       } catch (e) {
         console.error("Error cargando llamadas:", e);
         setError("Error inesperado");
         if (reset) {
           setAgentCalls([]);
           setCallsPage(0);
-          setAgentCallsTotal(0);
           setHasMoreCalls(false);
         }
       } finally {
@@ -350,8 +338,10 @@ export default function AgentDetailsModal({
     await loadAgentCalls(callsPage + 1, { reset: false });
   };
 
-  const totalClients = assignedClientsTotal || assignedClients.length;
-  const totalCalls = agentCallsTotal || agentCalls.length;
+  const totalClientsLabel = hasMoreAssignedClients
+    ? `${assignedClients.length}+`
+    : `${assignedClients.length}`;
+  const totalCallsLabel = hasMoreCalls ? `${agentCalls.length}+` : `${agentCalls.length}`;
 
   const headerSubtitle = useMemo(() => {
     const email = (agent.email || "").trim();
@@ -398,7 +388,7 @@ export default function AgentDetailsModal({
                 Clientes asignados
               </h3>
               <span className="text-xs text-muted">
-                {totalClients} en total
+                {totalClientsLabel} cargados
               </span>
             </div>
 
@@ -410,7 +400,7 @@ export default function AgentDetailsModal({
                   fullScreen={false}
                 />
               </div>
-            ) : totalClients > 0 ? (
+            ) : assignedClients.length > 0 ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {assignedClients.map((client) => {
@@ -421,7 +411,7 @@ export default function AgentDetailsModal({
                         <div className="mb-3 flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="truncate font-semibold text-ink">
-                              {client.first_name || client.name || "Sin nombre"}{" "}
+                              {client.first_name || "Sin nombre"}{" "}
                               {client.last_name || ""}
                             </div>
                             <div className="truncate text-xs text-muted">
@@ -467,15 +457,6 @@ export default function AgentDetailsModal({
                             </div>
                           ) : null}
 
-                          {client.trading_company ? (
-                            <div className="flex min-w-0 items-center gap-2">
-                              <Building className="h-4 w-4 text-muted" />
-                              <span className="truncate">
-                                {client.trading_company}
-                              </span>
-                            </div>
-                          ) : null}
-
                           {client.deposit_amount ? (
                             <div className="flex items-center gap-2">
                               <DollarSign className="h-4 w-4 text-muted" />
@@ -491,7 +472,10 @@ export default function AgentDetailsModal({
                         </div>
 
                         <div className="mt-3">
-                          <ClientCommentsDropdown clientId={client.id} />
+                          <ClientCommentsDropdown
+                            clientId={client.id}
+                            initialCount={client.comment_count ?? null}
+                          />
                         </div>
                       </div>
                     );
@@ -533,7 +517,7 @@ export default function AgentDetailsModal({
                   Historial de llamadas
                 </h3>
                 <span className="text-xs text-muted">
-                  {totalCalls} en total
+                  {totalCallsLabel} cargadas
                 </span>
               </div>
 

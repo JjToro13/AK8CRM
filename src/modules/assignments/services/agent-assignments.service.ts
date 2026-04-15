@@ -103,6 +103,78 @@ export const agentAssignments = {
     return { data: data ?? [], error };
   },
 
+  getAssignedClientsPage: async (
+    agentId: string,
+    params?: {
+      operationId?: string | null;
+      searchQuery?: string;
+      statusCode?: string | null;
+      campaignId?: string | null;
+      page?: number;
+      pageSize?: number;
+    },
+  ) => {
+    const query = params?.searchQuery?.trim() ?? "";
+    const page = Math.max(1, params?.page ?? 1);
+    const pageSize = Math.max(1, params?.pageSize ?? 15);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let request = supabase
+      .from("clients")
+      .select(CLIENT_LIST_SELECT, { count: "exact" })
+      .eq("assigned_to", agentId);
+
+    if (params?.operationId) {
+      request = request.eq("operation_id", params.operationId);
+    }
+
+    if (query) {
+      request = request.or(
+        `first_name.ilike.%${query}%,last_name.ilike.%${query}%,serial.ilike.%${query}%,email.ilike.%${query}%,source.ilike.%${query}%`,
+      );
+    }
+
+    if (params?.statusCode) {
+      request = request.eq("status_code", params.statusCode);
+    }
+
+    if (params?.campaignId) {
+      request = request.eq("campaign_id", params.campaignId);
+    }
+
+    const { data, error, count } = await request
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    return {
+      data: data ?? [],
+      error,
+      count: count ?? 0,
+    };
+  },
+
+  getAssignedClientsCount: async (
+    agentId: string,
+    operationId?: string | null,
+  ) => {
+    let request = supabase
+      .from("clients")
+      .select("id", { count: "exact", head: true })
+      .eq("assigned_to", agentId);
+
+    if (operationId) {
+      request = request.eq("operation_id", operationId);
+    }
+
+    const { count, error } = await request;
+
+    return {
+      count: count ?? 0,
+      error,
+    };
+  },
+
   assignLeadsAtomic: async (params: {
     agent_id: string;
     count: number;

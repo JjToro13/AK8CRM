@@ -100,6 +100,7 @@ export default function EditClientModal({
   const [commentsPage, setCommentsPage] = useState(0);
   const [commentsTotalCount, setCommentsTotalCount] = useState(0);
   const [hasMoreComments, setHasMoreComments] = useState(false);
+  const [commentsHistoryOpen, setCommentsHistoryOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -116,8 +117,8 @@ export default function EditClientModal({
       setEditingCommentText("");
       setCommentsPage(0);
       setCommentsTotalCount(client.comment_count ?? 0);
-      setHasMoreComments((client.comment_count ?? 0) > 0);
-      void loadCommentsPage(1, { reset: true });
+      setHasMoreComments((client.comment_count ?? 0) > COMMENTS_PAGE_SIZE);
+      setCommentsHistoryOpen(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, isOpen]);
@@ -175,6 +176,7 @@ export default function EditClientModal({
         {
           page,
           pageSize: COMMENTS_PAGE_SIZE,
+          includeCount: false,
         },
       );
 
@@ -212,6 +214,23 @@ export default function EditClientModal({
   const loadMoreComments = async () => {
     if (!hasMoreComments || loadingMoreComments) return;
     await loadCommentsPage(commentsPage + 1, { reset: false });
+  };
+
+  const toggleCommentsHistory = async () => {
+    const nextOpen = !commentsHistoryOpen;
+    setCommentsHistoryOpen(nextOpen);
+
+    if (nextOpen && commentsPage === 0) {
+      await loadComments();
+    }
+  };
+
+  const refreshCommentsHistory = async () => {
+    if (!commentsHistoryOpen) {
+      setCommentsHistoryOpen(true);
+    }
+
+    await loadComments();
   };
 
   const startEditComment = (comment: ClientComment) => {
@@ -514,17 +533,43 @@ export default function EditClientModal({
 
           {/* Historial */}
           <div>
-              <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center justify-between gap-3 mb-3">
               <div className="block text-xs font-semibold text-muted">
                 Historial de Comentarios
               </div>
-              <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[12px] font-semibold text-brand">
-                {commentsTotalCount || comments.length}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[12px] font-semibold text-brand">
+                  {commentsTotalCount > 0
+                    ? commentsTotalCount
+                    : hasMoreComments
+                      ? `${comments.length}+`
+                      : comments.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void toggleCommentsHistory()}
+                  className={cn(clientGhostButtonClass, "gap-2 px-3 py-1.5 text-xs")}
+                >
+                  {commentsHistoryOpen ? "Ocultar historial" : "Ver historial"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void refreshCommentsHistory()}
+                  className={cn(clientGhostButtonClass, "gap-2 px-3 py-1.5 text-xs")}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Actualizar
+                </button>
+              </div>
             </div>
 
             <div className={cn(clientInsetClass, "rounded-3xl p-4")}>
-              {loadingComments ? (
+              {!commentsHistoryOpen ? (
+                <div className="py-3 text-sm text-muted">
+                  El historial no se carga automaticamente. Abre el historial solo
+                  cuando lo necesites.
+                </div>
+              ) : loadingComments ? (
                 <div className="flex justify-center py-6">
                   <LoadingSpinner
                     size="sm"

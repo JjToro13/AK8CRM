@@ -384,7 +384,8 @@ export function useDashboard({
     const today = new Date().toDateString();
 
     return recentCalls.filter(
-      (call) => new Date(call.created_at).toDateString() === today,
+      (call) =>
+        new Date(call.start_time || call.created_at).toDateString() === today,
     ).length;
   }, [recentCalls]);
 
