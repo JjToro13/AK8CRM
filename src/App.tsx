@@ -10,6 +10,7 @@ import { useAuth } from "./hooks/useAuth";
 import { Suspense, lazy, useEffect, useState } from "react";
 
 import LoadingSpinner from "./shared/components/feedback/LoadingSpinner";
+import GeneralNoticeModal from "./shared/components/feedback/GeneralNoticeModal";
 import MaintenanceGate from "./shared/components/guards/MaintenanceGate";
 import {
   canAccessAgentWorkspace,
@@ -18,6 +19,9 @@ import {
   canUseCallHistory,
 } from "./lib/supabase";
 import { useBranding } from "./shared/branding/BrandingProvider";
+import BackendHealthBanner from "./shared/resilience/BackendHealthBanner";
+import BackendHealthDebugger from "./shared/resilience/BackendHealthDebugger";
+import { useBackendHealth } from "./shared/resilience/BackendHealthProvider";
 import { resolveTenantBranding } from "./shared/branding/tenant-branding";
 import { dashboard } from "./modules/dashboard/services/dashboard.service";
 import type { BrandPreset } from "./shared/branding/brand-presets";
@@ -34,6 +38,7 @@ const DashboardPage = lazy(() => import("./modules/dashboard/pages/DashboardPage
 
 const BRANDING_CACHE_KEY_PREFIX = "crm.branding-cache.";
 const BRANDING_MAX_WAIT_MS = 1500;
+const CRM_RELEASE_NOTICE_KEY = "crm.release-notice.1.0.30";
 
 function getBrandingCacheKey(operationId: string) {
   return `${BRANDING_CACHE_KEY_PREFIX}${operationId}`;
@@ -79,7 +84,9 @@ function ProtectedRoute({
 
 export default function App() {
   const { branding, setAutoBranding } = useBranding();
+  const { isDegraded, isManualDegraded } = useBackendHealth();
   const [brandingReady, setBrandingReady] = useState(true);
+  const [releaseNoticeOpen, setReleaseNoticeOpen] = useState(true);
   const {
     user,
     loading,
@@ -94,6 +101,10 @@ export default function App() {
   const canAccessCampaigns = !!user && canAccessCampaignWorkspace(role);
   const canAccessCalls = !!user && canUseCallHistory(role);
   const canAccessCalendar = !!user && canUseCalendarWorkspace(role);
+
+  useEffect(() => {
+    setReleaseNoticeOpen(Boolean(user));
+  }, [user]);
 
   useEffect(() => {
     if (!user) {
@@ -179,6 +190,28 @@ export default function App() {
       >
         <MaintenanceGate>
           <div className="min-h-screen bg-bg">
+          <GeneralNoticeModal
+            open={Boolean(user) && releaseNoticeOpen}
+            onClose={() => setReleaseNoticeOpen(false)}
+            dismissKey={CRM_RELEASE_NOTICE_KEY}
+            variant="info"
+            title="Cambios recientes en el CRM"
+            message={
+              <ul className="list-disc space-y-2 pl-5 text-sm">
+                <li>Clientes y agentes ahora cargan de forma mas ligera y estable.</li>
+                <li>La busqueda principal de clientes se activa desde 2 caracteres.</li>
+                <li>El historial de comentarios se carga solo cuando lo abres.</li>
+                <li>
+                  Si la base entra en alta carga, el CRM activa modo de contingencia
+                  para seguir accesible.
+                </li>
+                <li>Version actual: 1.0.30.</li>
+              </ul>
+            }
+            primaryText="Continuar"
+          />
+          {user ? <BackendHealthBanner /> : null}
+          <BackendHealthDebugger />
           <Toaster
             position="top-center"
             theme={branding.id === "atlas-finance" ? "dark" : "light"}
@@ -275,6 +308,9 @@ export default function App() {
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Suspense>
+          {user && isDegraded && !isManualDegraded ? (
+            <div className="sr-only">Modo de contingencia activo</div>
+          ) : null}
           </div>
         </MaintenanceGate>
       </Router>

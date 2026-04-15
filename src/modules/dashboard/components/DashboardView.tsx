@@ -25,6 +25,7 @@ export default function DashboardView(props: DashboardProps) {
   const { branding } = useBranding();
   const {
     callsLoading,
+    degradedMode,
     handleCallStarted,
     handleClientSaved,
     handleEditClient,
@@ -155,6 +156,7 @@ export default function DashboardView(props: DashboardProps) {
                 >
                   {canUseSearch ? (
                     <DashboardSearchPanel
+                      degradedMode={degradedMode}
                       loading={loading}
                       onCallStarted={handleCallStarted}
                       onEditClient={handleEditClient}
@@ -196,6 +198,7 @@ export default function DashboardView(props: DashboardProps) {
                   >
                     <DashboardRecentCallsPanel
                       callsLoading={callsLoading}
+                      degradedMode={degradedMode}
                       recentCalls={recentCalls}
                     />
                   </motion.div>

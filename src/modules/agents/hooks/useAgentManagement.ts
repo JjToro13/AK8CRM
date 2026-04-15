@@ -10,6 +10,7 @@ import {
   type Agent,
 } from "../../../lib/supabase";
 import { useAuth } from "../../../hooks/useAuth";
+import { useBackendHealth } from "../../../shared/resilience/BackendHealthProvider";
 import { agentManagement } from "../services/agent-management.service";
 import type { AgentManagementProps } from "../types/agent-management.types";
 
@@ -42,6 +43,8 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     operationReady,
     role,
   } = useAuth();
+  const { reportBackendIssue, reportBackendSuccess, shouldReduceLoad } =
+    useBackendHealth();
 
   const [agentsList, setAgentsList] = useState<Agent[]>([]);
   const [assignedCounts, setAssignedCounts] = useState<Record<string, number>>(
@@ -81,6 +84,12 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     }
     setError("");
 
+    if (shouldReduceLoad) {
+      setError("Modo reducido activo. La carga de agentes se pausa temporalmente.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const visibleRoles = getAgentManagementVisibleRoles(role);
       if (visibleRoles.length === 0) {
@@ -101,6 +110,7 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
       const { data: agentsData, error: agentsError } = await agents.getAll();
       if (agentsError) {
         console.error("Error cargando agentes:", agentsError);
+        reportBackendIssue(agentsError, "agents:list");
         setError("Error cargando agentes.");
         return;
       }
@@ -130,14 +140,17 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
           "No se pudieron calcular las campañas disponibles para el tenant activo.",
           campaignsError,
         );
+        reportBackendIssue(campaignsError, "agents:campaigns");
       }
 
       setAgentsList(visibleAgents);
       setAssignedCounts(nextAssignedCounts);
       setAvailableCampaigns(nextAvailableCampaigns);
       setLastLoadedAt(Date.now());
+      reportBackendSuccess("agents:list");
     } catch (error) {
       console.error("Error cargando datos de agentes:", error);
+      reportBackendIssue(error, "agents:list");
       setError(
         error instanceof Error ? error.message : "Error inesperado cargando agentes.",
       );
@@ -195,7 +208,13 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, canManageAgents, lastLoadedAt, scopedOperationId]);
+  }, [
+    authLoading,
+    canManageAgents,
+    lastLoadedAt,
+    scopedOperationId,
+    shouldReduceLoad,
+  ]);
 
   const openCreateAgent = () => {
     if (!canCreateAgents) return;
@@ -241,6 +260,7 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     canEditAgents,
     canManageAgents,
     compact,
+    degradedMode: shouldReduceLoad,
     error,
     getAgentRoleLabel,
     handleAgentSaved,

@@ -70,6 +70,7 @@ export default function ClientManagementPage(
     scheduleSaving,
     assignmentSaving,
     error,
+    degradedMode,
     callingClient,
     callNoticeOpen,
     openCallNotice,
@@ -169,7 +170,7 @@ export default function ClientManagementPage(
               type="button"
               onClick={() => loadClients({ silent: true })}
               className={pageHeaderActionClassName}
-              disabled={refreshing || opLocked}
+              disabled={refreshing || opLocked || degradedMode}
               title="Recargar"
             >
               {refreshing ? (
@@ -203,6 +204,20 @@ export default function ClientManagementPage(
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-red-600" />
                 <p className="text-red-700 text-sm font-semibold">{error}</p>
+              </div>
+            </div>
+          ) : null}
+
+          {degradedMode ? (
+            <div
+              className={`${clientInsetClass} border-amber-200/90 bg-[linear-gradient(180deg,rgba(254,243,199,0.78),rgba(255,255,255,0.62))] p-4`}
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-700" />
+                <p className="text-sm font-semibold text-amber-900">
+                  Modo reducido activo. Se pausaron lecturas pesadas de cartera,
+                  bÃºsqueda y recargas para mantener el CRM accesible.
+                </p>
               </div>
             </div>
           ) : null}

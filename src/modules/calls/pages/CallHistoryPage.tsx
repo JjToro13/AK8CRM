@@ -18,6 +18,7 @@ export type CallHistoryPageProps = UseCallHistoryProps;
 export default function CallHistoryPage({ isAdmin }: CallHistoryPageProps) {
   const {
     calls,
+    degradedMode,
     error,
     filteredCalls,
     loading,
@@ -52,7 +53,7 @@ export default function CallHistoryPage({ isAdmin }: CallHistoryPageProps) {
               type="button"
               onClick={() => loadCalls({ silent: true })}
               className={pageHeaderActionClassName}
-              disabled={refreshing}
+              disabled={refreshing || degradedMode}
               title="Recargar"
             >
               {refreshing ? (
@@ -81,6 +82,7 @@ export default function CallHistoryPage({ isAdmin }: CallHistoryPageProps) {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             <CallHistoryList
+              degradedMode={degradedMode}
               loading={loading}
               refreshing={refreshing}
               filteredCalls={filteredCalls}

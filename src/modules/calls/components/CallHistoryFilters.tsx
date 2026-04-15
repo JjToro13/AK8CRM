@@ -13,6 +13,7 @@ import {
 } from "../../../shared/components/ui/Select";
 
 type CallHistoryFiltersProps = {
+  disabled?: boolean;
   loading: boolean;
   searchQuery: string;
   statusFilter: StatusFilter;
@@ -21,6 +22,7 @@ type CallHistoryFiltersProps = {
 };
 
 export default function CallHistoryFilters({
+  disabled = false,
   loading,
   searchQuery,
   statusFilter,
@@ -37,7 +39,7 @@ export default function CallHistoryFilters({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-12"
-          disabled={loading}
+          disabled={loading || disabled}
         />
       </div>
 
@@ -45,7 +47,7 @@ export default function CallHistoryFilters({
         <Select
           value={statusFilter}
           onValueChange={(value) => onStatusFilterChange(value as StatusFilter)}
-          disabled={loading}
+          disabled={loading || disabled}
         >
           <SelectTrigger leftIcon={<Filter className="h-4 w-4" />}>
             <SelectValue placeholder="Todos los estados" />

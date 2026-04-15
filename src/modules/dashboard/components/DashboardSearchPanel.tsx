@@ -28,6 +28,7 @@ function SearchMetaCard({
 }
 
 export default function DashboardSearchPanel({
+  degradedMode = false,
   loading,
   onCallStarted,
   onEditClient,
@@ -40,6 +41,7 @@ export default function DashboardSearchPanel({
   const showResults = searchQuery.trim().length >= 2 && searchResults.length > 0;
   const showEmptyState =
     searchQuery.trim().length >= 2 && searchResults.length === 0 && !loading;
+  const searchDisabled = opLocked || degradedMode;
 
   return (
     <section className={cn(dashboardCardClass, "relative overflow-hidden")}>
@@ -63,7 +65,13 @@ export default function DashboardSearchPanel({
           <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[22rem]">
             <SearchMetaCard
               label="Estado"
-              value={opLocked ? "Operacion requerida" : "Busqueda habilitada"}
+              value={
+                degradedMode
+                  ? "Modo reducido"
+                  : opLocked
+                    ? "Operacion requerida"
+                    : "Busqueda habilitada"
+              }
             />
             <SearchMetaCard
               label="Entrada"
@@ -80,20 +88,22 @@ export default function DashboardSearchPanel({
               placeholder="Buscar por nombre o numero de serie..."
               value={searchQuery}
               onChange={(event) => onSearchChange(event.target.value)}
-              disabled={opLocked}
+              disabled={searchDisabled}
               className={cn(
                 "crm-dashboard-search-input w-full rounded-[1.2rem] border border-border bg-white/70 px-4 py-4 pl-12 text-sm outline-none transition",
                 "shadow-[0_1px_0_rgba(255,255,255,0.7)]",
                 "hover:border-brand/20 focus-visible:border-brand/40 focus-visible:ring-4 focus-visible:ring-brand/15",
-                opLocked && "cursor-not-allowed opacity-60",
+                searchDisabled && "cursor-not-allowed opacity-60",
               )}
             />
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
             <span>
-              {opLocked
-                ? "Selecciona una operacion para habilitar la busqueda."
-                : "Escribe al menos 2 caracteres para obtener resultados."}
+              {degradedMode
+                ? "Busqueda temporalmente pausada para reducir carga sobre la base."
+                : opLocked
+                  ? "Selecciona una operacion para habilitar la busqueda."
+                  : "Escribe al menos 2 caracteres para obtener resultados."}
             </span>
             <span className="font-medium text-ink/70">
               {searchQuery.trim().length > 0

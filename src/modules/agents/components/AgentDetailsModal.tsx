@@ -40,6 +40,7 @@ import {
   ModalPanel,
   modalSecondaryActionClassName,
 } from "../../../shared/components/layout/ModalLayout";
+import { useBackendHealth } from "../../../shared/resilience/BackendHealthProvider";
 import {
   agentInsetClass,
   agentModalFooterClass,
@@ -94,6 +95,8 @@ export default function AgentDetailsModal({
   isOpen,
   onClose,
 }: AgentDetailsModalProps) {
+  const { reportBackendIssue, reportBackendSuccess, shouldReduceLoad } =
+    useBackendHealth();
   const [assignedClients, setAssignedClients] = useState<AgentDetailsClient[]>([]);
   const [assignedClientsPage, setAssignedClientsPage] = useState(0);
   const [hasMoreAssignedClients, setHasMoreAssignedClients] = useState(false);
@@ -125,6 +128,21 @@ export default function AgentDetailsModal({
 
       setError("");
 
+      if (shouldReduceLoad) {
+        setError(
+          "Modo reducido activo. El detalle pesado del agente se pausa temporalmente.",
+        );
+        setHasMoreAssignedClients(false);
+        if (reset) {
+          setAssignedClients([]);
+          setAssignedClientsPage(0);
+          setLoading(false);
+        } else {
+          setLoadingMoreClients(false);
+        }
+        return;
+      }
+
       try {
         const from = (page - 1) * ASSIGNED_CLIENTS_PAGE_SIZE;
         const to = from + ASSIGNED_CLIENTS_PAGE_SIZE;
@@ -140,6 +158,7 @@ export default function AgentDetailsModal({
 
         if (error) {
           console.error("Error cargando clientes asignados:", error);
+          reportBackendIssue(error, "agent-details:clients");
           setError("Error cargando clientes asignados");
           if (reset) {
             setAssignedClients([]);
@@ -161,8 +180,10 @@ export default function AgentDetailsModal({
         });
         setAssignedClientsPage(page);
         setHasMoreAssignedClients(nextRows.length > ASSIGNED_CLIENTS_PAGE_SIZE);
+        reportBackendSuccess("agent-details:clients");
       } catch (err) {
         console.error("Error cargando datos del agente:", err);
+        reportBackendIssue(err, "agent-details:clients");
         setError("Error inesperado");
         if (reset) {
           setAssignedClients([]);
@@ -177,7 +198,7 @@ export default function AgentDetailsModal({
         }
       }
     },
-    [agent.id],
+    [agent.id, reportBackendIssue, reportBackendSuccess, shouldReduceLoad],
   );
 
   const loadAgentCalls = useCallback(
@@ -193,6 +214,21 @@ export default function AgentDetailsModal({
       }
 
       setError("");
+
+      if (shouldReduceLoad) {
+        setError(
+          "Modo reducido activo. El historial pesado del agente se pausa temporalmente.",
+        );
+        setHasMoreCalls(false);
+        if (reset) {
+          setAgentCalls([]);
+          setCallsPage(0);
+          setCallsLoading(false);
+        } else {
+          setLoadingMoreCalls(false);
+        }
+        return;
+      }
 
       try {
         const startDate = new Date(selectedDate);
@@ -228,6 +264,7 @@ export default function AgentDetailsModal({
 
         if (callsError) {
           console.error("Error cargando llamadas:", callsError);
+          reportBackendIssue(callsError, "agent-details:calls");
           setError("Error cargando llamadas");
           if (reset) {
             setAgentCalls([]);
@@ -257,8 +294,10 @@ export default function AgentDetailsModal({
         });
         setCallsPage(page);
         setHasMoreCalls(nextRows.length > AGENT_CALLS_PAGE_SIZE);
+        reportBackendSuccess("agent-details:calls");
       } catch (e) {
         console.error("Error cargando llamadas:", e);
+        reportBackendIssue(e, "agent-details:calls");
         setError("Error inesperado");
         if (reset) {
           setAgentCalls([]);
@@ -273,7 +312,13 @@ export default function AgentDetailsModal({
         }
       }
     },
-    [agent.id, selectedDate],
+    [
+      agent.id,
+      reportBackendIssue,
+      reportBackendSuccess,
+      selectedDate,
+      shouldReduceLoad,
+    ],
   );
 
   useEffect(() => {

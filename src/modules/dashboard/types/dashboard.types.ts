@@ -31,6 +31,7 @@ export interface DashboardProps {
 }
 
 export interface DashboardSearchPanelProps {
+  degradedMode?: boolean;
   loading: boolean;
   onCallStarted: () => void;
   onEditClient: (client: Client) => void;
@@ -42,5 +43,6 @@ export interface DashboardSearchPanelProps {
 
 export interface DashboardRecentCallsPanelProps {
   callsLoading: boolean;
+  degradedMode?: boolean;
   recentCalls: Call[];
 }

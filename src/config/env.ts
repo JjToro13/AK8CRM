@@ -20,11 +20,15 @@ export const appEnv = {
   supabase: {
     url: requireEnv("VITE_SUPABASE_URL"),
     anonKey: requireEnv("VITE_SUPABASE_ANON_KEY"),
+    requestTimeoutMs: Number(readEnv("VITE_SUPABASE_TIMEOUT_MS") || "12000"),
   },
   features: {
     enableCalls: readEnv("VITE_ENABLE_CALLS") === "true",
     maintenanceBypass:
       import.meta.env.DEV && readEnv("VITE_MAINT_BYPASS") === "true",
+    enableResilienceDebugger:
+      import.meta.env.DEV &&
+      readEnv("VITE_ENABLE_RESILIENCE_DEBUGGER") === "true",
   },
   security: {
     encryptionKey:

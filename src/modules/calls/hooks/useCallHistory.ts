@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import { auth, calls as callsService, type Call } from "../../../lib/supabase";
+import { useBackendHealth } from "../../../shared/resilience/BackendHealthProvider";
 import type { StatusFilter } from "../types/call-history.types";
 
 export interface UseCallHistoryProps {
@@ -14,6 +15,8 @@ export function useCallHistory({ isAdmin }: UseCallHistoryProps) {
     operationId,
     operationReady,
   } = useAuth();
+  const { reportBackendIssue, reportBackendSuccess, shouldReduceLoad } =
+    useBackendHealth();
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,6 +37,13 @@ export function useCallHistory({ isAdmin }: UseCallHistoryProps) {
     if (isAdmin && (!operationReady || !effectiveOperationId)) {
       setCalls([]);
       setSelectedCall(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    if (shouldReduceLoad) {
+      setError("Modo reducido activo. El historial de llamadas se pausa temporalmente.");
       setLoading(false);
       setRefreshing(false);
       return;
@@ -60,19 +70,29 @@ export function useCallHistory({ isAdmin }: UseCallHistoryProps) {
 
       if (error) {
         console.error("Error cargando llamadas:", error);
+        reportBackendIssue(error, "calls:list");
         setError("Error cargando historial de llamadas.");
         return;
       }
 
       setCalls(data || []);
+      reportBackendSuccess("calls:list");
     } catch (error) {
       console.error("Error cargando llamadas:", error);
+      reportBackendIssue(error, "calls:list");
       setError("Error inesperado cargando llamadas.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [effectiveOperationId, isAdmin, operationReady]);
+  }, [
+    effectiveOperationId,
+    isAdmin,
+    operationReady,
+    reportBackendIssue,
+    reportBackendSuccess,
+    shouldReduceLoad,
+  ]);
 
   useEffect(() => {
     void loadCalls({ silent: false });
@@ -119,6 +139,7 @@ export function useCallHistory({ isAdmin }: UseCallHistoryProps) {
 
   return {
     calls,
+    degradedMode: shouldReduceLoad,
     error,
     filteredCalls,
     loading,

@@ -10,6 +10,7 @@ import {
 
 export default function DashboardRecentCallsPanel({
   callsLoading,
+  degradedMode = false,
   recentCalls,
 }: DashboardRecentCallsPanelProps) {
   return (
@@ -32,7 +33,11 @@ export default function DashboardRecentCallsPanel({
         </Link>
       </div>
 
-      {callsLoading ? (
+      {degradedMode ? (
+        <div className="rounded-[1.35rem] border border-dashed border-amber-200 bg-amber-50/80 px-4 py-10 text-center text-sm text-amber-800">
+          El feed de llamadas recientes esta pausado temporalmente para reducir carga.
+        </div>
+      ) : callsLoading ? (
         <div className="flex justify-center py-10">
           <LoadingSpinner
             size="sm"

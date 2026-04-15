@@ -3,6 +3,7 @@ import { appEnv } from "../../../config/env";
 import { useAuth } from "../../../hooks/useAuth";
 import { supabase } from "../../../integrations/supabase/client";
 import { canUseClientActions } from "../../../lib/supabase";
+import { useBackendHealth } from "../../../shared/resilience/BackendHealthProvider";
 import {
   isClientStatusCode,
   type ClientStatusCode,
@@ -80,6 +81,8 @@ export function useClientManagement(
     activeOperationId: hookActiveOperationId,
     operationId: hookOperationId,
   } = useAuth();
+  const { reportBackendIssue, reportBackendSuccess, shouldReduceLoad } =
+    useBackendHealth();
 
   const isAdmin = props.isAdmin ?? hookIsAdmin;
   const canSeeAllOperations =
@@ -464,6 +467,13 @@ export function useClientManagement(
       return;
     }
 
+    if (shouldReduceLoad) {
+      setError("Modo reducido activo. La carga de clientes se pausa temporalmente.");
+      setInitialLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     if (silent) setRefreshing(true);
     else setInitialLoading(true);
 
@@ -511,6 +521,7 @@ export function useClientManagement(
 
         if (result.error) {
           console.error("Error cargando clientes:", result.error);
+          reportBackendIssue(result.error, "clients:list");
           setError("Error cargando clientes");
           setClients([]);
           setTotalClients(0);
@@ -526,6 +537,7 @@ export function useClientManagement(
           setLastUpdatedAt(Date.now());
           lastClientsLoadAtRef.current = Date.now();
           setError("");
+          reportBackendSuccess("clients:list");
         }
 
         return;
@@ -554,6 +566,7 @@ export function useClientManagement(
 
       if (error) {
         console.error("Error cargando clientes asignados:", error);
+        reportBackendIssue(error, "clients:list");
         setError("Error cargando clientes asignados");
         setClients([]);
         setTotalClients(0);
@@ -570,9 +583,11 @@ export function useClientManagement(
         setLastUpdatedAt(Date.now());
         lastClientsLoadAtRef.current = Date.now();
         setError("");
+        reportBackendSuccess("clients:list");
       }
     } catch (error) {
       console.error("Error cargando clientes:", error);
+      reportBackendIssue(error, "clients:list");
       setError("Error cargando clientes");
       setClients([]);
       setTotalClients(0);
@@ -661,6 +676,10 @@ export function useClientManagement(
           return;
         }
 
+        if (shouldReduceLoad) {
+          return;
+        }
+
         const { count, error } = await clientsService.getCount(targetOperationId);
 
         if (cancelled) return;
@@ -676,6 +695,10 @@ export function useClientManagement(
 
       if (!user?.id) {
         setUnfilteredTotalClients(0);
+        return;
+      }
+
+      if (shouldReduceLoad) {
         return;
       }
 
@@ -705,6 +728,7 @@ export function useClientManagement(
     isAdmin,
     opLocked,
     operationId,
+    shouldReduceLoad,
     user?.id,
     viewHydrated,
   ]);
@@ -713,6 +737,10 @@ export function useClientManagement(
     if (opLocked) {
       setCampaignFilterOptions([]);
       setAgentFilterOptions([]);
+      return;
+    }
+
+    if (shouldReduceLoad) {
       return;
     }
 
@@ -773,7 +801,15 @@ export function useClientManagement(
     return () => {
       cancelled = true;
     };
-  }, [activeOperationId, canSeeAllOperations, isAdmin, opLocked, operationId, user?.id]);
+  }, [
+    activeOperationId,
+    canSeeAllOperations,
+    isAdmin,
+    opLocked,
+    operationId,
+    shouldReduceLoad,
+    user?.id,
+  ]);
 
   useEffect(() => {
     if (
@@ -797,6 +833,7 @@ export function useClientManagement(
 
   useEffect(() => {
     if (opLocked) return;
+    if (shouldReduceLoad) return;
 
     if (pollTimerRef.current) {
       window.clearInterval(pollTimerRef.current);
@@ -831,6 +868,7 @@ export function useClientManagement(
     activeOperationId,
     operationId,
     operationReady,
+    shouldReduceLoad,
   ]);
 
   useEffect(() => {
@@ -1313,6 +1351,7 @@ export function useClientManagement(
     scheduleSaving,
     assignmentSaving,
     error,
+    degradedMode: shouldReduceLoad,
     callingClient,
     noticeOpen,
     handleCloseNotice,

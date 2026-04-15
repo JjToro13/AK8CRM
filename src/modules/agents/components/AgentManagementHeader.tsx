@@ -12,6 +12,7 @@ import {
 
 type AgentManagementHeaderProps = {
   canCreateAgent: boolean;
+  degradedMode?: boolean;
   onCreateAgent: () => void;
   onRefresh: () => void;
 };
@@ -21,6 +22,7 @@ const cardClass =
 
 export default function AgentManagementHeader({
   canCreateAgent,
+  degradedMode = false,
   onCreateAgent,
   onRefresh,
 }: AgentManagementHeaderProps) {
@@ -70,6 +72,7 @@ export default function AgentManagementHeader({
             onClick={onRefresh}
             className={agentGhostButtonClass}
             title="Recargar agentes"
+            disabled={degradedMode}
           >
             <RefreshCw className="h-4 w-4" />
             Recargar
@@ -81,6 +84,7 @@ export default function AgentManagementHeader({
               onClick={onCreateAgent}
               className={agentPrimaryButtonClass}
               title="Crear un nuevo usuario"
+              disabled={degradedMode}
             >
               <Plus className="h-4 w-4" />
               Nuevo usuario

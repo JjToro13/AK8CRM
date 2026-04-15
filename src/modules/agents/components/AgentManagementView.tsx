@@ -44,6 +44,7 @@ export default function AgentManagementView(props: AgentManagementProps) {
     canEditAgents,
     canManageAgents,
     compact,
+    degradedMode,
     error,
     getAgentRoleLabel,
     handleAgentSaved,
@@ -101,9 +102,16 @@ export default function AgentManagementView(props: AgentManagementProps) {
     <div className="space-y-6">
       {error ? <AgentManagementErrorCard error={error} /> : null}
 
+      {degradedMode ? (
+        <div className="rounded-[1.35rem] border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-900">
+          Modo reducido activo. Se pausaron lecturas pesadas de agentes y asignaciones para mantener el CRM accesible.
+        </div>
+      ) : null}
+
       {!compact ? (
         <AgentManagementHeader
           canCreateAgent={canCreateAgents}
+          degradedMode={degradedMode}
           onCreateAgent={openCreateAgent}
           onRefresh={loadData}
         />

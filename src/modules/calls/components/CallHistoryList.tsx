@@ -6,6 +6,7 @@ import CallHistoryFilters from "./CallHistoryFilters";
 import CallHistoryListItem from "./CallHistoryListItem";
 
 type CallHistoryListProps = {
+  degradedMode?: boolean;
   loading: boolean;
   refreshing: boolean;
   filteredCalls: Call[];
@@ -21,6 +22,7 @@ const cardClass =
   "rounded-[1.5rem] border border-border bg-surface shadow-soft p-6 sm:p-8";
 
 export default function CallHistoryList({
+  degradedMode = false,
   loading,
   refreshing,
   filteredCalls,
@@ -50,6 +52,7 @@ export default function CallHistoryList({
       </div>
 
       <CallHistoryFilters
+        disabled={degradedMode}
         loading={loading}
         searchQuery={searchQuery}
         statusFilter={statusFilter}
@@ -65,6 +68,10 @@ export default function CallHistoryList({
               text="Cargando llamadas..."
               fullScreen={false}
             />
+          </div>
+        ) : degradedMode ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/90 p-8 text-center text-sm text-amber-900">
+            El historial completo de llamadas esta pausado temporalmente para reducir carga.
           </div>
         ) : filteredCalls.length === 0 ? (
           <div className="rounded-2xl border border-border bg-surface2 p-8 text-center text-sm text-muted">

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import type { Call, Client } from "../../../shared/types/crm";
+import { useBackendHealth } from "../../../shared/resilience/BackendHealthProvider";
 import { auth } from "../../auth/services/auth.service";
 import { calls } from "../../calls/services/calls.service";
 import { clients } from "../../clients/services/clients.service";
@@ -21,6 +22,8 @@ export function useDashboard({
     operationId: authOperationId,
     signOut,
   } = useAuth();
+  const { shouldReduceLoad, reportBackendIssue, reportBackendSuccess } =
+    useBackendHealth();
 
   const syncedOperationIdRef = useRef<string | null>(null);
   const searchRequestIdRef = useRef(0);
@@ -190,6 +193,11 @@ export function useDashboard({
       return;
     }
 
+    if (shouldReduceLoad) {
+      setCallsLoading(false);
+      return;
+    }
+
     setCallsLoading(true);
 
     try {
@@ -207,16 +215,26 @@ export function useDashboard({
 
       if (error) {
         console.error("Error cargando llamadas:", error);
+        reportBackendIssue(error, "dashboard:recentCalls");
         return;
       }
 
       setRecentCalls(data || []);
+      reportBackendSuccess("dashboard:recentCalls");
     } catch (error) {
       console.error("Error cargando llamadas:", error);
+      reportBackendIssue(error, "dashboard:recentCalls");
     } finally {
       setCallsLoading(false);
     }
-  }, [effectiveOperationId, isAdmin, operationReady]);
+  }, [
+    effectiveOperationId,
+    isAdmin,
+    operationReady,
+    reportBackendIssue,
+    reportBackendSuccess,
+    shouldReduceLoad,
+  ]);
 
   useEffect(() => {
     void loadRecentCalls();
@@ -236,6 +254,12 @@ export function useDashboard({
       const trimmedQuery = query.trim();
 
       if (!trimmedQuery || trimmedQuery.length < 2) {
+        setSearchResults([]);
+        setLoading(false);
+        return;
+      }
+
+      if (shouldReduceLoad) {
         setSearchResults([]);
         setLoading(false);
         return;
@@ -262,23 +286,32 @@ export function useDashboard({
 
         if (error) {
           console.error("Error buscando clientes:", error);
+          reportBackendIssue(error, "dashboard:search");
           return;
         }
 
         setSearchResults(data || []);
+        reportBackendSuccess("dashboard:search");
       } catch (error) {
         if (requestId !== searchRequestIdRef.current) {
           return;
         }
 
         console.error("Error buscando clientes:", error);
+        reportBackendIssue(error, "dashboard:search");
       } finally {
         if (requestId === searchRequestIdRef.current) {
           setLoading(false);
         }
       }
     },
-    [effectiveOperationId, isAdmin],
+    [
+      effectiveOperationId,
+      isAdmin,
+      reportBackendIssue,
+      reportBackendSuccess,
+      shouldReduceLoad,
+    ],
   );
 
   const handleSearchInput = useCallback(
@@ -406,6 +439,7 @@ export function useDashboard({
 
   return {
     callsLoading,
+    degradedMode: shouldReduceLoad,
     handleCallStarted,
     handleClientSaved,
     handleEditClient,
