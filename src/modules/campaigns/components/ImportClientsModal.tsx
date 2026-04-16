@@ -2,7 +2,7 @@
 // ✅ Premium modal (overlay blur + panel soft) + framer-motion
 // ✅ Parser endurecido: detecta cabecera real, múltiples bloques, cabeceras repetidas y filas sospechosas
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Upload,
   FileSpreadsheet,
@@ -16,12 +16,20 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import Input from "../../../shared/components/ui/Input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../shared/components/ui/Select";
+import {
   ModalBody,
   ModalFooter,
   ModalHeader,
   modalPrimaryActionClassName,
   modalSecondaryActionClassName,
 } from "../../../shared/components/layout/ModalLayout";
+import { campaigns } from "../services/campaigns.service";
 import {
   campaignInsetClass,
   campaignModalFooterClass,
@@ -40,6 +48,7 @@ interface ImportResult {
   success: number;
   errors: string[];
   campaign_prefix?: string;
+  campaign_id?: string;
 }
 
 interface ParsedClient {
@@ -55,6 +64,14 @@ interface ParsedClient {
   user_balance?: number;
   investment_date?: string;
 }
+
+type ImportMode = "new" | "existing";
+
+type CampaignOption = {
+  id: string;
+  prefix: string;
+  display_name: string | null;
+};
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -88,6 +105,7 @@ const HEADER_SCAN_LIMIT = 8;
 const MIN_RECOGNIZED_HEADERS = 2;
 const MAX_SUSPICIOUS_ROWS_BEFORE_FAIL = 5;
 const MAX_HEADER_ROWS_INSIDE_DATA = 1;
+const EXISTING_CAMPAIGN_PLACEHOLDER = "__campaign_placeholder__";
 
 const HEADER_TOKENS = new Set([
   "nombre",
@@ -137,17 +155,59 @@ export default function ImportClientsModal({
   selectedOperationId,
 }: ImportClientsModalProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [importMode, setImportMode] = useState<ImportMode>("new");
   const [campaignName, setCampaignName] = useState("");
+  const [availableCampaigns, setAvailableCampaigns] = useState<CampaignOption[]>([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const canAppendToExisting = Boolean(selectedOperationId);
+  const selectedCampaign =
+    availableCampaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null;
+
+  const loadAvailableCampaigns = useCallback(async () => {
+    if (!selectedOperationId) {
+      setAvailableCampaigns([]);
+      setSelectedCampaignId("");
+      return;
+    }
+
+    setLoadingCampaigns(true);
+
+    try {
+      const { data, error } = await campaigns.list(selectedOperationId);
+      if (error) {
+        throw error;
+      }
+
+      setAvailableCampaigns(
+        (data ?? []).map((campaign) => ({
+          id: campaign.id,
+          prefix: campaign.prefix,
+          display_name: campaign.display_name,
+        })),
+      );
+    } catch (loadError: any) {
+      console.error("Error cargando campañas para importación:", loadError);
+      setAvailableCampaigns([]);
+      setError(
+        loadError?.message || "No se pudieron cargar las bases disponibles.",
+      );
+    } finally {
+      setLoadingCampaigns(false);
+    }
+  }, [selectedOperationId]);
+
   useEffect(() => {
     if (!isOpen) return;
     setError("");
     setResult(null);
-  }, [isOpen]);
+    void loadAvailableCampaigns();
+  }, [isOpen, loadAvailableCampaigns]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -309,6 +369,23 @@ export default function ImportClientsModal({
     }
 
     if (
+      lower.includes("target campaign not found") ||
+      lower.includes("target campaign is outside current operation") ||
+      lower.includes("target campaign tenant does not match")
+    ) {
+      return [
+        "No se pudo anexar la importación a la base seleccionada.",
+        "",
+        "Detalles detectados:",
+        `• ${message}`,
+        "",
+        "Qué revisar antes de volver a importar:",
+        "• Confirma que la base seleccionada pertenezca a la operación activa.",
+        "• Recarga la vista de campañas si la base fue creada hace poco.",
+      ].join("\n");
+    }
+
+    if (
       lower.includes("cabecera") ||
       lower.includes("encabezado") ||
       lower.includes("header")
@@ -367,6 +444,10 @@ export default function ImportClientsModal({
 
   const handleImport = async () => {
     if (!file) return;
+    if (importMode === "existing" && !selectedCampaignId) {
+      setError("Selecciona una base existente antes de importar.");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -389,11 +470,18 @@ export default function ImportClientsModal({
         return;
       }
 
-      const { data, error: importError } = await supabase.rpc("import_clients_v1", {
-        p_clients: clientsData,
-        p_campaign_name: campaignName.trim() || null,
-        p_operation_id: selectedOperationId ?? null,
-      });
+      const { data, error: importError } =
+        importMode === "existing"
+          ? await supabase.rpc("import_clients_to_existing_campaign_v1", {
+              p_clients: clientsData,
+              p_campaign_id: selectedCampaignId,
+              p_operation_id: selectedOperationId ?? null,
+            })
+          : await supabase.rpc("import_clients_v1", {
+              p_clients: clientsData,
+              p_campaign_name: campaignName.trim() || null,
+              p_operation_id: selectedOperationId ?? null,
+            });
 
       if (importError) {
         setError(
@@ -989,6 +1077,9 @@ export default function ImportClientsModal({
 
   const hardReset = () => {
     setFile(null);
+    setImportMode("new");
+    setCampaignName("");
+    setSelectedCampaignId("");
     setError("");
     setResult(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1053,7 +1144,11 @@ export default function ImportClientsModal({
             <ModalHeader
               icon={<FileSpreadsheet className="h-5 w-5 text-emerald-600" />}
               title="Importar clientes desde Excel"
-              description="XLSX/XLS. Se creara una campaña nueva automaticamente."
+              description={
+                importMode === "existing"
+                  ? "XLSX/XLS. Los clientes se anexarán a una base existente."
+                  : "XLSX/XLS. Se creará una campaña nueva automáticamente."
+              }
               onClose={close}
               closeDisabled={loading}
               className={campaignModalHeaderClass}
@@ -1062,19 +1157,131 @@ export default function ImportClientsModal({
             <ModalBody className="space-y-6">
               <div className={cn(campaignInsetClass, "p-4")}>
                 <div className="mb-2 block text-sm font-semibold text-ink/80">
-                  Nombre de campaña (opcional)
+                  Destino de la importación
                 </div>
-                <Input
-                  type="text"
-                  value={campaignName}
-                  onChange={(e) => setCampaignName(e.target.value)}
-                  placeholder="Ej: EZinvest Feb 20 / Reactivacion MX"
-                  disabled={loading}
-                />
                 <p className="mt-2 text-xs text-muted">
-                  Esto solo es una etiqueta para identificar la campaña.
+                  Elige si esta carga crea una base nueva o si se anexará a una ya existente.
                 </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportMode("new");
+                      setSelectedCampaignId("");
+                      setError("");
+                      setResult(null);
+                    }}
+                    disabled={loading}
+                    className={cn(
+                      "rounded-[1.15rem] border px-4 py-3 text-left transition",
+                      importMode === "new"
+                        ? "border-brand/24 bg-brand/[0.08] shadow-[0_16px_28px_rgba(15,23,42,0.06)]"
+                        : "border-white/74 bg-white/72 hover:bg-white/84",
+                    )}
+                  >
+                    <div className="text-sm font-semibold text-ink/85">
+                      Crear base nueva
+                    </div>
+                    <div className="mt-1 text-xs text-muted">
+                      Se generará una campaña nueva para esta importación.
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!canAppendToExisting) return;
+                      setImportMode("existing");
+                      setCampaignName("");
+                      setError("");
+                      setResult(null);
+                    }}
+                    disabled={loading || !canAppendToExisting}
+                    className={cn(
+                      "rounded-[1.15rem] border px-4 py-3 text-left transition",
+                      importMode === "existing"
+                        ? "border-brand/24 bg-brand/[0.08] shadow-[0_16px_28px_rgba(15,23,42,0.06)]"
+                        : "border-white/74 bg-white/72 hover:bg-white/84",
+                      !canAppendToExisting && "cursor-not-allowed opacity-60",
+                    )}
+                  >
+                    <div className="text-sm font-semibold text-ink/85">
+                      Anexar a base existente
+                    </div>
+                    <div className="mt-1 text-xs text-muted">
+                      Agrega clientes a una campaña ya creada sin abrir una nueva.
+                    </div>
+                  </button>
+                </div>
+
+                {!canAppendToExisting ? (
+                  <p className="mt-3 text-xs text-amber-700">
+                    Para anexar clientes primero debes seleccionar una operación activa.
+                  </p>
+                ) : null}
               </div>
+
+              {importMode === "new" ? (
+                <div className={cn(campaignInsetClass, "p-4")}>
+                  <div className="mb-2 block text-sm font-semibold text-ink/80">
+                    Nombre de campaña (opcional)
+                  </div>
+                  <Input
+                    type="text"
+                    value={campaignName}
+                    onChange={(e) => setCampaignName(e.target.value)}
+                    placeholder="Ej: EZinvest Feb 20 / Reactivacion MX"
+                    disabled={loading}
+                  />
+                  <p className="mt-2 text-xs text-muted">
+                    Esto solo es una etiqueta para identificar la campaña nueva.
+                  </p>
+                </div>
+              ) : (
+                <div className={cn(campaignInsetClass, "p-4")}>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="block text-sm font-semibold text-ink/80">
+                      Base destino
+                    </div>
+                    {loadingCampaigns ? (
+                      <span className="text-xs text-muted">Cargando bases...</span>
+                    ) : null}
+                  </div>
+
+                  <Select
+                    value={selectedCampaignId || EXISTING_CAMPAIGN_PLACEHOLDER}
+                    onValueChange={(value) => {
+                      if (value === EXISTING_CAMPAIGN_PLACEHOLDER) return;
+                      setSelectedCampaignId(value);
+                      setError("");
+                      setResult(null);
+                    }}
+                    disabled={loading || loadingCampaigns || !canAppendToExisting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona una base existente" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value={EXISTING_CAMPAIGN_PLACEHOLDER} disabled>
+                        Selecciona una base existente
+                      </SelectItem>
+                      {availableCampaigns.map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.id}>
+                          {(campaign.display_name?.trim() || `Campaña ${campaign.prefix}`) +
+                            ` · ${campaign.prefix}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <p className="mt-2 text-xs text-muted">
+                    {selectedCampaign
+                      ? `Los clientes se anexarán a ${selectedCampaign.display_name?.trim() || `Campaña ${selectedCampaign.prefix}`}.`
+                      : "Elige la base donde se anexarán los clientes importados."}
+                  </p>
+                </div>
+              )}
 
               <div className={cn(campaignInsetClass, "p-4")}>
                 <div className="mb-2 flex items-center justify-between">
@@ -1164,6 +1371,9 @@ export default function ImportClientsModal({
                       <div className="mt-1 text-sm text-emerald-900/80">
                         Se importaron <b>{result.success}</b> clientes
                         correctamente
+                        {importMode === "existing" && selectedCampaign
+                          ? ` en ${selectedCampaign.display_name?.trim() || `Campaña ${selectedCampaign.prefix}`}`
+                          : ""}
                         {result.campaign_prefix
                           ? ` (prefijo ${result.campaign_prefix})`
                           : ""}

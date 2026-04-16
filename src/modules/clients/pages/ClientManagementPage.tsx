@@ -46,6 +46,10 @@ export default function ClientManagementPage(
     setCampaignFilter,
     assignedAgentFilter,
     setAssignedAgentFilter,
+    countryFilter,
+    setCountryFilter,
+    balanceRangeFilter,
+    setBalanceRangeFilter,
     campaignFilterOptions,
     agentFilterOptions,
     activeFilterSummary,
@@ -80,6 +84,7 @@ export default function ClientManagementPage(
     unfilteredTotalClients,
     isSearchActive,
     isSearchPendingMinLength,
+    hasActiveFilters,
     rowsPerPage,
     setRowsPerPage,
     currentPage,
@@ -118,7 +123,7 @@ export default function ClientManagementPage(
   );
   const [updatesNoticeOpen, setUpdatesNoticeOpen] = useState(true);
 
-  const headerTotal = isSearchActive ? unfilteredTotalClients : totalClients;
+  const headerTotal = hasActiveFilters ? unfilteredTotalClients : totalClients;
   const selectedActionClient = useMemo(
     () => clients.find((client) => client.id === selectedActionClientId) ?? null,
     [clients, selectedActionClientId],
@@ -185,7 +190,7 @@ export default function ClientManagementPage(
         meta={
           <div className="text-xs text-muted">
             {headerTotal.toLocaleString()} clientes
-            {isSearchActive ? <> • {totalClients.toLocaleString()} filtrados</> : null}
+            {hasActiveFilters ? <> • {totalClients.toLocaleString()} filtrados</> : null}
             {" • "}actualizado hace {updatedSecs}s
           </div>
         }
@@ -267,7 +272,7 @@ export default function ClientManagementPage(
             <ClientsResultsHeader
               startItem={startItem}
               endItem={endItem}
-              isSearchActive={isSearchActive}
+              hasActiveFilters={hasActiveFilters}
               totalClients={totalClients}
               unfilteredTotalClients={unfilteredTotalClients}
               refreshing={refreshing}
@@ -287,6 +292,10 @@ export default function ClientManagementPage(
               assignedAgentFilter={assignedAgentFilter}
               onAssignedAgentFilterChange={setAssignedAgentFilter}
               agentOptions={agentFilterOptions}
+              countryFilter={countryFilter}
+              onCountryFilterChange={setCountryFilter}
+              balanceRangeFilter={balanceRangeFilter}
+              onBalanceRangeFilterChange={setBalanceRangeFilter}
               activeFilterSummary={activeFilterSummary}
               isAdmin={isAdmin}
               rowsPerPage={rowsPerPage}

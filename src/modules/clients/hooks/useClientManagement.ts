@@ -20,6 +20,10 @@ import {
 } from "../../calendar/types/calendar.types";
 import { campaigns } from "../../campaigns/services/campaigns.service";
 import { clients as clientsService } from "../services/clients.service";
+import {
+  getClientBalanceRangeLabel,
+  type ClientBalanceRangeFilter,
+} from "../lib/clientFilters";
 import type { Client } from "../../../shared/types/crm";
 
 const NOTICE_COOLDOWN_KEY = "general_notice_last_seen_v1";
@@ -28,6 +32,8 @@ const CLIENTS_SEARCH_KEY = "clients_search_v1";
 const CLIENTS_STATUS_FILTER_KEY = "clients_status_filter_v1";
 const CLIENTS_CAMPAIGN_FILTER_KEY = "clients_campaign_filter_v1";
 const CLIENTS_AGENT_FILTER_KEY = "clients_agent_filter_v1";
+const CLIENTS_COUNTRY_FILTER_KEY = "clients_country_filter_v1";
+const CLIENTS_BALANCE_FILTER_KEY = "clients_balance_filter_v1";
 const CLIENTS_PAGE_SIZE_KEY = "clients_page_size_v1";
 const CLIENTS_VIEW_STATE_KEY = "clients_view_state_v1";
 const CLIENTS_SEARCH_DEBOUNCE_MS = 400;
@@ -37,6 +43,7 @@ const CLIENTS_FOCUS_REFRESH_STALE_MS = 90_000;
 export type ClientStatusFilter = "all" | ClientStatusCode;
 export type ClientCampaignFilter = "all" | string;
 export type ClientAgentFilter = "all" | string;
+export type ClientCountryFilter = string;
 const UNASSIGNED_AGENT_FILTER = "__unassigned__";
 
 export interface ClientManagementProps {
@@ -108,6 +115,9 @@ export function useClientManagement(
     useState<ClientCampaignFilter>("all");
   const [assignedAgentFilter, setAssignedAgentFilter] =
     useState<ClientAgentFilter>("all");
+  const [countryFilter, setCountryFilter] = useState<ClientCountryFilter>("");
+  const [balanceRangeFilter, setBalanceRangeFilter] =
+    useState<ClientBalanceRangeFilter>("all");
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -247,6 +257,22 @@ export function useClientManagement(
         setAssignedAgentFilter(savedAgentFilter);
       }
 
+      const savedCountryFilter = localStorage.getItem(CLIENTS_COUNTRY_FILTER_KEY);
+      if (savedCountryFilter) {
+        setCountryFilter(savedCountryFilter);
+      }
+
+      const savedBalanceFilter = localStorage.getItem(CLIENTS_BALANCE_FILTER_KEY);
+      if (
+        savedBalanceFilter === "all" ||
+        savedBalanceFilter === "negative" ||
+        savedBalanceFilter === "zero_to_999" ||
+        savedBalanceFilter === "1000_to_4999" ||
+        savedBalanceFilter === "5000_plus"
+      ) {
+        setBalanceRangeFilter(savedBalanceFilter);
+      }
+
       const savedPageSize = localStorage.getItem(CLIENTS_PAGE_SIZE_KEY);
       if (savedPageSize) {
         const parsed = Number(savedPageSize);
@@ -339,6 +365,22 @@ export function useClientManagement(
 
   useEffect(() => {
     try {
+      localStorage.setItem(CLIENTS_COUNTRY_FILTER_KEY, countryFilter);
+    } catch {
+      //
+    }
+  }, [countryFilter]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CLIENTS_BALANCE_FILTER_KEY, balanceRangeFilter);
+    } catch {
+      //
+    }
+  }, [balanceRangeFilter]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem(CLIENTS_PAGE_SIZE_KEY, String(rowsPerPage));
     } catch {
       //
@@ -368,6 +410,8 @@ export function useClientManagement(
     statusFilter,
     campaignFilter,
     assignedAgentFilter,
+    countryFilter,
+    balanceRangeFilter,
     rowsPerPage,
     activeOperationId,
     operationId,
@@ -492,11 +536,14 @@ export function useClientManagement(
         }
 
         const query = effectiveSearchQuery;
+        const trimmedCountryFilter = countryFilter.trim();
         const hasScopedFilters =
           query.length > 0 ||
           statusFilter !== "all" ||
           campaignFilter !== "all" ||
-          assignedAgentFilter !== "all";
+          assignedAgentFilter !== "all" ||
+          trimmedCountryFilter.length > 0 ||
+          balanceRangeFilter !== "all";
 
         const result = await (
           query
@@ -506,17 +553,24 @@ export function useClientManagement(
                 campaignId: campaignFilter === "all" ? null : campaignFilter,
                 assignedAgentId:
                   assignedAgentFilter === "all" ? null : assignedAgentFilter,
+                country: trimmedCountryFilter || null,
+                balanceRange:
+                  balanceRangeFilter === "all" ? null : balanceRangeFilter,
                 page: currentPage,
                 pageSize: rowsPerPage,
               })
-            : clientsService.getAll(
-                targetOperationId,
-                currentPage,
-                rowsPerPage,
-                statusFilter === "all" ? null : statusFilter,
-                campaignFilter === "all" ? null : campaignFilter,
-                assignedAgentFilter === "all" ? null : assignedAgentFilter,
-              )
+            : clientsService.getAll({
+                operationId: targetOperationId,
+                page: currentPage,
+                pageSize: rowsPerPage,
+                statusCode: statusFilter === "all" ? null : statusFilter,
+                campaignId: campaignFilter === "all" ? null : campaignFilter,
+                assignedAgentId:
+                  assignedAgentFilter === "all" ? null : assignedAgentFilter,
+                country: trimmedCountryFilter || null,
+                balanceRange:
+                  balanceRangeFilter === "all" ? null : balanceRangeFilter,
+              })
         );
 
         if (result.error) {
@@ -549,10 +603,13 @@ export function useClientManagement(
       }
 
       const query = effectiveSearchQuery;
+      const trimmedCountryFilter = countryFilter.trim();
       const hasScopedFilters =
         query.length > 0 ||
         statusFilter !== "all" ||
-        campaignFilter !== "all";
+        campaignFilter !== "all" ||
+        trimmedCountryFilter.length > 0 ||
+        balanceRangeFilter !== "all";
 
       const { data: assignedClients, error, count } =
         await agentAssignments.getAssignedClientsPage(user.id, {
@@ -560,6 +617,9 @@ export function useClientManagement(
           searchQuery: query,
           statusCode: statusFilter === "all" ? null : statusFilter,
           campaignId: campaignFilter === "all" ? null : campaignFilter,
+          country: trimmedCountryFilter || null,
+          balanceRange:
+            balanceRangeFilter === "all" ? null : balanceRangeFilter,
           page: currentPage,
           pageSize: rowsPerPage,
         });
@@ -660,6 +720,8 @@ export function useClientManagement(
     statusFilter,
     campaignFilter,
     assignedAgentFilter,
+    countryFilter,
+    balanceRangeFilter,
     viewHydrated,
   ]);
 
@@ -1246,6 +1308,9 @@ export function useClientManagement(
   const isStatusFilterActive = statusFilter !== "all";
   const isCampaignFilterActive = campaignFilter !== "all";
   const isAgentFilterActive = assignedAgentFilter !== "all";
+  const trimmedCountryFilter = countryFilter.trim();
+  const isCountryFilterActive = trimmedCountryFilter.length > 0;
+  const isBalanceRangeFilterActive = balanceRangeFilter !== "all";
   const activeFilterSummary = [
     isSearchActive ? trimmedSearchQuery : null,
     statusFilter !== "all"
@@ -1270,7 +1335,12 @@ export function useClientManagement(
       ? agentFilterOptions.find((agent) => agent.id === assignedAgentFilter)?.name ??
         "Agente"
       : null,
+    isCountryFilterActive ? `Pais: ${trimmedCountryFilter}` : null,
+    isBalanceRangeFilterActive
+      ? getClientBalanceRangeLabel(balanceRangeFilter)
+      : null,
   ].filter(Boolean) as string[];
+  const hasActiveFilters = activeFilterSummary.length > 0;
   const headerSubtitle = useMemo(() => {
     if (opLocked) return "Selecciona operación para habilitar clientes";
     return "Busca, revisa comentarios y gestiona la cartera";
@@ -1328,6 +1398,10 @@ export function useClientManagement(
     setCampaignFilter,
     assignedAgentFilter,
     setAssignedAgentFilter,
+    countryFilter,
+    setCountryFilter,
+    balanceRangeFilter,
+    setBalanceRangeFilter,
     campaignFilterOptions,
     agentFilterOptions,
     selectedClient,
@@ -1363,9 +1437,12 @@ export function useClientManagement(
     unfilteredTotalClients,
     isSearchActive,
     isSearchPendingMinLength,
+    hasActiveFilters,
     isStatusFilterActive,
     isCampaignFilterActive,
     isAgentFilterActive,
+    isCountryFilterActive,
+    isBalanceRangeFilterActive,
     activeFilterSummary,
     rowsPerPage,
     setRowsPerPage,

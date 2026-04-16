@@ -1,7 +1,16 @@
 import { supabase } from "../../../integrations/supabase/client";
+import type { ClientBalanceRangeFilter } from "../lib/clientFilters";
 import type { Client } from "../../../shared/types/crm";
 
 const UNASSIGNED_AGENT_FILTER = "__unassigned__";
+
+export type ClientListFilters = {
+  operationId?: string | null;
+  statusCode?: string | null;
+  campaignId?: string | null;
+  country?: string | null;
+  balanceRange?: ClientBalanceRangeFilter | null;
+};
 
 export const CLIENT_LIST_SELECT = `
   id,
@@ -33,6 +42,50 @@ export const CLIENT_LIST_SELECT = `
   agent:agents!clients_last_comment_agent_fkey(name)
 `;
 
+function applyClientBalanceRangeFilter(
+  request: any,
+  balanceRange?: ClientBalanceRangeFilter | null,
+) {
+  switch (balanceRange) {
+    case "negative":
+      return request.lt("user_balance", 0);
+    case "zero_to_999":
+      return request.gte("user_balance", 0).lt("user_balance", 1000);
+    case "1000_to_4999":
+      return request.gte("user_balance", 1000).lt("user_balance", 5000);
+    case "5000_plus":
+      return request.gte("user_balance", 5000);
+    default:
+      return request;
+  }
+}
+
+export function applyClientListFilters(
+  request: any,
+  filters?: ClientListFilters,
+) {
+  let nextRequest = request;
+  const countryQuery = filters?.country?.trim();
+
+  if (filters?.operationId) {
+    nextRequest = nextRequest.eq("operation_id", filters.operationId);
+  }
+
+  if (filters?.statusCode) {
+    nextRequest = nextRequest.eq("status_code", filters.statusCode);
+  }
+
+  if (filters?.campaignId) {
+    nextRequest = nextRequest.eq("campaign_id", filters.campaignId);
+  }
+
+  if (countryQuery) {
+    nextRequest = nextRequest.ilike("country", `%${countryQuery}%`);
+  }
+
+  return applyClientBalanceRangeFilter(nextRequest, filters?.balanceRange);
+}
+
 export const clients = {
   getCount: async (operationId?: string | null) => {
     let request = supabase
@@ -55,13 +108,10 @@ export const clients = {
     query: string,
     params?: {
       agentId?: string;
-      operationId?: string | null;
-      statusCode?: string | null;
-      campaignId?: string | null;
       assignedAgentId?: string | null;
       page?: number;
       pageSize?: number;
-    },
+    } & ClientListFilters,
   ) => {
     const q = query.trim();
 
@@ -85,24 +135,14 @@ export const clients = {
       request = request.eq("assigned_to", params.agentId);
     }
 
-    if (params?.operationId) {
-      request = request.eq("operation_id", params.operationId);
-    }
-
-    if (params?.statusCode) {
-      request = request.eq("status_code", params.statusCode);
-    }
-
-    if (params?.campaignId) {
-      request = request.eq("campaign_id", params.campaignId);
-    }
-
     if (params?.assignedAgentId) {
       request =
         params.assignedAgentId === UNASSIGNED_AGENT_FILTER
           ? request.is("assigned_to", null)
           : request.eq("assigned_to", params.assignedAgentId);
     }
+
+    request = applyClientListFilters(request, params);
 
     const { data, error, count } = await request
       .order("created_at", { ascending: false })
@@ -116,13 +156,14 @@ export const clients = {
   },
 
   getAll: async (
-    operationId?: string | null,
-    page: number = 1,
-    pageSize: number = 15,
-    statusCode?: string | null,
-    campaignId?: string | null,
-    assignedAgentId?: string | null,
+    params?: {
+      assignedAgentId?: string | null;
+      page?: number;
+      pageSize?: number;
+    } & ClientListFilters,
   ) => {
+    const page = params?.page ?? 1;
+    const pageSize = params?.pageSize ?? 15;
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
@@ -130,24 +171,14 @@ export const clients = {
       .from("clients")
       .select(CLIENT_LIST_SELECT, { count: "exact" });
 
-    if (operationId) {
-      request = request.eq("operation_id", operationId);
-    }
-
-    if (statusCode) {
-      request = request.eq("status_code", statusCode);
-    }
-
-    if (campaignId) {
-      request = request.eq("campaign_id", campaignId);
-    }
-
-    if (assignedAgentId) {
+    if (params?.assignedAgentId) {
       request =
-        assignedAgentId === UNASSIGNED_AGENT_FILTER
+        params.assignedAgentId === UNASSIGNED_AGENT_FILTER
           ? request.is("assigned_to", null)
-          : request.eq("assigned_to", assignedAgentId);
+          : request.eq("assigned_to", params.assignedAgentId);
     }
+
+    request = applyClientListFilters(request, params);
 
     const { data, error, count } = await request
       .order("created_at", { ascending: false })

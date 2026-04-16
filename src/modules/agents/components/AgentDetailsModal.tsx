@@ -22,6 +22,7 @@ import {
 
 import { supabase, Agent, Client, Call } from "../../../lib/supabase";
 import {
+  CLIENT_STATUS_OPTIONS,
   formatDate,
   formatDuration,
   getStatusColor,
@@ -29,10 +30,18 @@ import {
   resolveClientStatus,
   getCallStatusText,
   formatCurrency,
+  type ClientStatusCode,
 } from "../../../lib/utils";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import ClientCommentsDropdown from "../../../shared/components/client/ClientCommentsDropdown";
 import Input from "../../../shared/components/ui/Input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../shared/components/ui/Select";
 import {
   ModalBody,
   ModalFooter,
@@ -47,6 +56,11 @@ import {
   agentModalHeaderClass,
   agentModalPanelClass,
 } from "./agentUi";
+import {
+  CLIENT_BALANCE_RANGE_OPTIONS,
+  getClientBalanceRangeBounds,
+  type ClientBalanceRangeFilter,
+} from "../../clients/lib/clientFilters";
 
 interface AgentDetailsModalProps {
   agent: Agent;
@@ -60,6 +74,7 @@ function cn(...classes: Array<string | false | null | undefined>) {
 
 const ASSIGNED_CLIENTS_PAGE_SIZE = 12;
 const AGENT_CALLS_PAGE_SIZE = 25;
+const ASSIGNED_STATUS_PLACEHOLDER = "__assigned_status_placeholder__";
 
 type AgentDetailsClient = Pick<
   Client,
@@ -68,7 +83,10 @@ type AgentDetailsClient = Pick<
   | "last_name"
   | "serial"
   | "email"
+  | "phone_number"
+  | "country"
   | "deposit_amount"
+  | "user_balance"
   | "attempts"
   | "status_color"
   | "status_code"
@@ -112,6 +130,13 @@ export default function AgentDetailsModal({
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0],
   );
+  const [assignedSearchQuery, setAssignedSearchQuery] = useState("");
+  const [assignedStatusFilter, setAssignedStatusFilter] = useState<
+    "all" | ClientStatusCode
+  >("all");
+  const [assignedCountryFilter, setAssignedCountryFilter] = useState("");
+  const [assignedBalanceRangeFilter, setAssignedBalanceRangeFilter] =
+    useState<ClientBalanceRangeFilter>("all");
   const [error, setError] = useState("");
 
   const loadAgentData = useCallback(
@@ -146,15 +171,43 @@ export default function AgentDetailsModal({
       try {
         const from = (page - 1) * ASSIGNED_CLIENTS_PAGE_SIZE;
         const to = from + ASSIGNED_CLIENTS_PAGE_SIZE;
+        const trimmedAssignedSearchQuery = assignedSearchQuery.trim();
+        const trimmedAssignedCountryFilter = assignedCountryFilter.trim();
+        const balanceBounds = getClientBalanceRangeBounds(
+          assignedBalanceRangeFilter,
+        );
 
-        const { data, error } = await supabase
+        let request = supabase
           .from("clients")
           .select(
-            "id, first_name, last_name, serial, email, deposit_amount, attempts, status_color, status_code, comment_count",
+            "id, first_name, last_name, serial, email, phone_number, country, deposit_amount, user_balance, attempts, status_color, status_code, comment_count",
           )
           .eq("assigned_to", agent.id)
-          .order("serial", { ascending: true })
-          .range(from, to);
+          .order("serial", { ascending: true });
+
+        if (trimmedAssignedSearchQuery) {
+          request = request.or(
+            `first_name.ilike.%${trimmedAssignedSearchQuery}%,last_name.ilike.%${trimmedAssignedSearchQuery}%,serial.ilike.%${trimmedAssignedSearchQuery}%,email.ilike.%${trimmedAssignedSearchQuery}%,phone_number.ilike.%${trimmedAssignedSearchQuery}%`,
+          );
+        }
+
+        if (assignedStatusFilter !== "all") {
+          request = request.eq("status_code", assignedStatusFilter);
+        }
+
+        if (trimmedAssignedCountryFilter) {
+          request = request.ilike("country", `%${trimmedAssignedCountryFilter}%`);
+        }
+
+        if (balanceBounds.min !== null) {
+          request = request.gte("user_balance", balanceBounds.min);
+        }
+
+        if (balanceBounds.max !== null) {
+          request = request.lt("user_balance", balanceBounds.max);
+        }
+
+        const { data, error } = await request.range(from, to);
 
         if (error) {
           console.error("Error cargando clientes asignados:", error);
@@ -198,7 +251,16 @@ export default function AgentDetailsModal({
         }
       }
     },
-    [agent.id, reportBackendIssue, reportBackendSuccess, shouldReduceLoad],
+    [
+      agent.id,
+      assignedBalanceRangeFilter,
+      assignedCountryFilter,
+      assignedSearchQuery,
+      assignedStatusFilter,
+      reportBackendIssue,
+      reportBackendSuccess,
+      shouldReduceLoad,
+    ],
   );
 
   const loadAgentCalls = useCallback(
@@ -323,6 +385,10 @@ export default function AgentDetailsModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    setAssignedSearchQuery("");
+    setAssignedStatusFilter("all");
+    setAssignedCountryFilter("");
+    setAssignedBalanceRangeFilter("all");
     void loadAgentData(1, { reset: true });
   }, [isOpen, agent.id, loadAgentData]);
 
@@ -437,6 +503,106 @@ export default function AgentDetailsModal({
               </span>
             </div>
 
+            <div className={cn(agentInsetClass, "p-4")}>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
+                <div className="lg:col-span-2">
+                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    Buscar
+                  </div>
+                  <Input
+                    type="text"
+                    value={assignedSearchQuery}
+                    onChange={(event) => setAssignedSearchQuery(event.target.value)}
+                    placeholder="Nombre, serial, email o telefono"
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    Estatus
+                  </div>
+                  <Select
+                    value={assignedStatusFilter}
+                    onValueChange={(value) => {
+                      if (value === ASSIGNED_STATUS_PLACEHOLDER) return;
+                      setAssignedStatusFilter(value as "all" | ClientStatusCode);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos los estatus" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value={ASSIGNED_STATUS_PLACEHOLDER} disabled>
+                        Todos los estatus
+                      </SelectItem>
+                      <SelectItem value="all">Todos los estatus</SelectItem>
+                      {CLIENT_STATUS_OPTIONS.map((status) => (
+                        <SelectItem key={status.code} value={status.code}>
+                          {status.shortLabel} · {status.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    Pais
+                  </div>
+                  <Input
+                    type="text"
+                    value={assignedCountryFilter}
+                    onChange={(event) => setAssignedCountryFilter(event.target.value)}
+                    placeholder="Ej. Mexico"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,16rem)_auto]">
+                <div>
+                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    Rango de saldo
+                  </div>
+                  <Select
+                    value={assignedBalanceRangeFilter}
+                    onValueChange={(value) =>
+                      setAssignedBalanceRangeFilter(
+                        value as ClientBalanceRangeFilter,
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos los saldos" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      {CLIENT_BALANCE_RANGE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-end justify-start md:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssignedSearchQuery("");
+                      setAssignedStatusFilter("all");
+                      setAssignedCountryFilter("");
+                      setAssignedBalanceRangeFilter("all");
+                    }}
+                    className={modalSecondaryActionClassName}
+                  >
+                    Restablecer filtros
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {loading ? (
               <div className="flex justify-center py-12">
                 <LoadingSpinner
@@ -502,11 +668,34 @@ export default function AgentDetailsModal({
                             </div>
                           ) : null}
 
+                          {client.phone_number ? (
+                            <div className="flex min-w-0 items-center gap-2">
+                              <Phone className="h-4 w-4 text-muted" />
+                              <span className="truncate">{client.phone_number}</span>
+                            </div>
+                          ) : null}
+
+                          {client.country ? (
+                            <div className="flex min-w-0 items-center gap-2">
+                              <User className="h-4 w-4 text-muted" />
+                              <span className="truncate">{client.country}</span>
+                            </div>
+                          ) : null}
+
                           {client.deposit_amount ? (
                             <div className="flex items-center gap-2">
                               <DollarSign className="h-4 w-4 text-muted" />
                               <span className="font-semibold text-ink/80">
                                 {formatCurrency(client.deposit_amount)}
+                              </span>
+                            </div>
+                          ) : null}
+
+                          {client.user_balance ? (
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-muted" />
+                              <span className="font-semibold text-ink/80">
+                                Balance: {formatCurrency(client.user_balance)}
                               </span>
                             </div>
                           ) : null}

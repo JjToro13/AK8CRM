@@ -12,6 +12,10 @@ import {
   type ClientStatusCode,
 } from "../../../lib/utils";
 import {
+  CLIENT_BALANCE_RANGE_OPTIONS,
+  type ClientBalanceRangeFilter,
+} from "../lib/clientFilters";
+import {
   clientGhostButtonClass,
   clientInsetClass,
   clientMutedPillClass,
@@ -39,6 +43,10 @@ type ClientsFiltersCardProps = {
   assignedAgentFilter: "all" | string;
   onAssignedAgentFilterChange: (value: "all" | string) => void;
   agentOptions: Array<{ id: string; name: string }>;
+  countryFilter: string;
+  onCountryFilterChange: (value: string) => void;
+  balanceRangeFilter: ClientBalanceRangeFilter;
+  onBalanceRangeFilterChange: (value: ClientBalanceRangeFilter) => void;
   activeFilterSummary: string[];
   isAdmin: boolean;
   rowsPerPage: number;
@@ -63,6 +71,10 @@ export default function ClientsFiltersCard({
   assignedAgentFilter,
   onAssignedAgentFilterChange,
   agentOptions,
+  countryFilter,
+  onCountryFilterChange,
+  balanceRangeFilter,
+  onBalanceRangeFilterChange,
   activeFilterSummary,
   isAdmin,
   rowsPerPage,
@@ -79,9 +91,18 @@ export default function ClientsFiltersCard({
     return (
       statusFilter !== "all" ||
       campaignFilter !== "all" ||
+      countryFilter.trim().length > 0 ||
+      balanceRangeFilter !== "all" ||
       (isAdmin && assignedAgentFilter !== "all")
     );
-  }, [assignedAgentFilter, campaignFilter, isAdmin, statusFilter]);
+  }, [
+    assignedAgentFilter,
+    balanceRangeFilter,
+    campaignFilter,
+    countryFilter,
+    isAdmin,
+    statusFilter,
+  ]);
   const isTrayOpen = isHoverOpen || isPinnedOpen;
   const filterSummaryText =
     activeFilterSummary.length > 0
@@ -272,6 +293,8 @@ export default function ClientsFiltersCard({
                     onClick={() => {
                       onStatusFilterChange("all");
                       onCampaignFilterChange("all");
+                      onCountryFilterChange("");
+                      onBalanceRangeFilterChange("all");
                       if (isAdmin) onAssignedAgentFilterChange("all");
                     }}
                     className={cn(clientGhostButtonClass, "px-3 py-1.5 text-xs")}
@@ -342,8 +365,48 @@ export default function ClientsFiltersCard({
                   </Select>
                 </div>
 
+                <div className={cn(clientInsetClass, "p-3")}>
+                  <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+                    Pais
+                  </div>
+                  <Input
+                    type="text"
+                    value={countryFilter}
+                    onChange={(event) => onCountryFilterChange(event.target.value)}
+                    placeholder="Escribe pais o region"
+                    disabled={opLocked}
+                    className="rounded-full border-white/0 bg-white/68 py-2.5 shadow-none backdrop-blur-xl"
+                    containerClassName="w-full"
+                  />
+                </div>
+
+                <div className={cn(clientInsetClass, "p-3")}>
+                  <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+                    Rango de saldo
+                  </div>
+                  <Select
+                    value={balanceRangeFilter}
+                    onValueChange={(value) =>
+                      onBalanceRangeFilterChange(value as ClientBalanceRangeFilter)
+                    }
+                    disabled={opLocked}
+                  >
+                    <SelectTrigger className={compactTriggerClassName}>
+                      <SelectValue placeholder="Todos los saldos" />
+                    </SelectTrigger>
+
+                    <SelectContent className="clients-filter-select-content">
+                      {CLIENT_BALANCE_RANGE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {isAdmin ? (
-                  <div className={cn(clientInsetClass, "p-3 md:col-span-2")}>
+                  <div className={cn(clientInsetClass, "p-3")}>
                     <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
                       Agente
                     </div>

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { Info, AlertTriangle, XCircle, X } from "lucide-react";
 
 type Variant = "info" | "warning" | "danger";
@@ -61,14 +61,14 @@ export default function GeneralNoticeModal({
   dismissKey,
   primaryText = "Entendido",
 }: GeneralNoticeModalProps) {
-  const dismissed = useMemo(() => {
+  const dismissed = (() => {
     if (!dismissKey) return false;
     try {
       return localStorage.getItem(dismissKey) === "1";
     } catch {
       return false;
     }
-  }, [dismissKey]);
+  })();
 
   if (!open || dismissed) return null;
 

@@ -1,7 +1,11 @@
 import { supabase } from "../../../integrations/supabase/client";
 import type { AgentAssignment } from "../../../shared/types/crm";
 import { agentNameMap } from "../../../shared/services/agent-name-map";
-import { CLIENT_LIST_SELECT } from "../../clients/services/clients.service";
+import {
+  applyClientListFilters,
+  CLIENT_LIST_SELECT,
+  type ClientListFilters,
+} from "../../clients/services/clients.service";
 
 export const agentAssignments = {
   getAll: async () => {
@@ -106,13 +110,10 @@ export const agentAssignments = {
   getAssignedClientsPage: async (
     agentId: string,
     params?: {
-      operationId?: string | null;
       searchQuery?: string;
-      statusCode?: string | null;
-      campaignId?: string | null;
       page?: number;
       pageSize?: number;
-    },
+    } & ClientListFilters,
   ) => {
     const query = params?.searchQuery?.trim() ?? "";
     const page = Math.max(1, params?.page ?? 1);
@@ -125,23 +126,13 @@ export const agentAssignments = {
       .select(CLIENT_LIST_SELECT, { count: "exact" })
       .eq("assigned_to", agentId);
 
-    if (params?.operationId) {
-      request = request.eq("operation_id", params.operationId);
-    }
-
     if (query) {
       request = request.or(
         `first_name.ilike.%${query}%,last_name.ilike.%${query}%,serial.ilike.%${query}%,email.ilike.%${query}%,source.ilike.%${query}%`,
       );
     }
 
-    if (params?.statusCode) {
-      request = request.eq("status_code", params.statusCode);
-    }
-
-    if (params?.campaignId) {
-      request = request.eq("campaign_id", params.campaignId);
-    }
+    request = applyClientListFilters(request, params);
 
     const { data, error, count } = await request
       .order("created_at", { ascending: false })
@@ -189,6 +180,38 @@ export const agentAssignments = {
       p_campaign_id: params.campaign_id ?? null,
       p_campaign_prefix: params.campaign_prefix ?? null,
     });
+
+    return { data, error };
+  },
+
+  assignLeadsFiltered: async (params: {
+    agent_id: string;
+    count: number;
+    assigned_by: string;
+    campaign_id?: string | null;
+    campaign_prefix?: string | null;
+    status_codes?: string[] | null;
+    country?: string | null;
+    balance_min?: number | null;
+    balance_max?: number | null;
+  }) => {
+    const { data, error } = await supabase.rpc(
+      "assign_leads_atomic_filtered_v1",
+      {
+        p_agent_id: params.agent_id,
+        p_count: params.count,
+        p_assigned_by: params.assigned_by,
+        p_campaign_id: params.campaign_id ?? null,
+        p_campaign_prefix: params.campaign_prefix ?? null,
+        p_status_codes:
+          params.status_codes && params.status_codes.length > 0
+            ? params.status_codes
+            : null,
+        p_country: params.country?.trim() || null,
+        p_balance_min: params.balance_min ?? null,
+        p_balance_max: params.balance_max ?? null,
+      },
+    );
 
     return { data, error };
   },

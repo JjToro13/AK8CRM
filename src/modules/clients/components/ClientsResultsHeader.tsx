@@ -8,7 +8,7 @@ import {
 type ClientsResultsHeaderProps = {
   startItem: number;
   endItem: number;
-  isSearchActive: boolean;
+  hasActiveFilters: boolean;
   totalClients: number;
   unfilteredTotalClients: number;
   refreshing: boolean;
@@ -17,7 +17,7 @@ type ClientsResultsHeaderProps = {
 export default function ClientsResultsHeader({
   startItem,
   endItem,
-  isSearchActive,
+  hasActiveFilters,
   totalClients,
   unfilteredTotalClients,
   refreshing,
@@ -44,11 +44,11 @@ export default function ClientsResultsHeader({
             {totalClients.toLocaleString()}
           </div>
           <div className="mt-1 text-xs text-muted">
-            {isSearchActive ? "resultados filtrados" : "resultados visibles"}
+            {hasActiveFilters ? "resultados filtrados" : "resultados visibles"}
           </div>
         </div>
 
-        <div className={clientMetricCardClass(isSearchActive ? "brand" : "success")}>
+        <div className={clientMetricCardClass(hasActiveFilters ? "brand" : "success")}>
           <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
             Tramo
           </div>
@@ -56,7 +56,7 @@ export default function ClientsResultsHeader({
             {startItem}-{endItem}
           </div>
           <div className="mt-1 text-xs text-muted">
-            {isSearchActive
+            {hasActiveFilters
               ? `base ${unfilteredTotalClients.toLocaleString()}`
               : "listado actual"}
           </div>

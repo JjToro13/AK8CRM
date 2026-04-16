@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Solicitudes de Mejora CRM</title>
+    <style>
+      :root {
+        --bg: #f4f0e8;
+        --paper: #fffdf9;
+        --ink: #1e2430;
+        --muted: #667085;
+        --line: #ddd3c4;
+        --brand: #1f4b99;
+        --brand-soft: #e8f0ff;
+        --high-bg: #feeceb;
+        --high-ink: #a33a2b;
+        --med-bg: #fff4db;
+        --med-ink: #9a6400;
+        --low-bg: #e8f6ec;
+        --low-ink: #28754a;
+      }
+
+      @page {
+        size: A4;
+        margin: 18mm 15mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Aptos", "Segoe UI", "Trebuchet MS", sans-serif;
+        line-height: 1.45;
+      }
+
+      body {
+        padding: 24px;
+      }
+
+      .page {
+        max-width: 900px;
+        margin: 0 auto;
+        background: var(--paper);
+        border: 1px solid rgba(31, 75, 153, 0.08);
+        box-shadow: 0 18px 50px rgba(40, 42, 54, 0.08);
+        border-radius: 24px;
+        overflow: hidden;
+      }
+
+      .hero {
+        padding: 34px 38px 28px;
+        background:
+          radial-gradient(
+            circle at top right,
+            rgba(31, 75, 153, 0.16),
+            transparent 34%
+          ),
+          radial-gradient(
+            circle at left center,
+            rgba(170, 132, 63, 0.12),
+            transparent 28%
+          ),
+          linear-gradient(135deg, #173a77, #2b5fb7 55%, #4b7dd0);
+        color: #fff;
+      }
+
+      .eyebrow {
+        display: inline-block;
+        padding: 6px 10px;
+        margin-bottom: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 34px;
+        line-height: 1.1;
+      }
+
+      .subtitle {
+        max-width: 720px;
+        margin: 0;
+        font-size: 15px;
+        color: rgba(255, 255, 255, 0.88);
+      }
+
+      .content {
+        padding: 28px 38px 34px;
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin: -14px 0 26px;
+      }
+
+      .summary-card {
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: linear-gradient(180deg, #fff, #fbf8f2);
+      }
+
+      .summary-card strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 22px;
+        color: var(--brand);
+      }
+
+      .summary-card span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .section {
+        margin-bottom: 28px;
+        break-inside: avoid;
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--line);
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 20px;
+        color: var(--brand);
+      }
+
+      .section-note {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px 16px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #fff;
+        break-inside: avoid;
+      }
+
+      .item-title {
+        margin: 0 0 6px;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .item p {
+        margin: 0;
+        font-size: 13px;
+        color: #374151;
+      }
+
+      .chip {
+        align-self: start;
+        min-width: 88px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .chip-high {
+        background: var(--high-bg);
+        color: var(--high-ink);
+      }
+
+      .chip-medium {
+        background: var(--med-bg);
+        color: var(--med-ink);
+      }
+
+      .chip-low {
+        background: var(--low-bg);
+        color: var(--low-ink);
+      }
+
+      .priority-box {
+        padding: 18px 18px 8px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: linear-gradient(180deg, #fffefc, #faf6ee);
+      }
+
+      .priority-box h3 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        color: var(--ink);
+      }
+
+      .priority-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .priority-list li {
+        display: grid;
+        grid-template-columns: 92px 1fr;
+        gap: 12px;
+        align-items: start;
+        padding: 9px 0;
+        border-top: 1px solid rgba(221, 211, 196, 0.7);
+        font-size: 13px;
+      }
+
+      .priority-list li:first-child {
+        border-top: 0;
+      }
+
+      .priority-label {
+        font-weight: 700;
+      }
+
+      .footer-note {
+        margin-top: 24px;
+        padding: 16px 18px;
+        border-left: 4px solid #d8aa55;
+        border-radius: 0 14px 14px 0;
+        background: #fff8eb;
+        color: #5e4b24;
+        font-size: 13px;
+      }
+
+      @media print {
+        body {
+          padding: 0;
+          background: #fff;
+        }
+
+        .page {
+          max-width: none;
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div class="eyebrow">Documento Ejecutivo</div>
+        <h1>Solicitudes de mejora y ajustes del CRM</h1>
+        <p class="subtitle">
+          Documento organizado por módulos y nivel de prioridad, redactado en un
+          lenguaje claro para facilitar su revisión y validación por parte del
+          equipo operativo y administrativo.
+        </p>
+      </section>
+
+      <section class="content">
+        <div class="summary">
+          <div class="summary-card">
+            <strong>4</strong>
+            <span>Módulos incluidos</span>
+          </div>
+          <div class="summary-card">
+            <strong>21</strong>
+            <span>Solicitudes organizadas</span>
+          </div>
+          <div class="summary-card">
+            <strong>Alta / Media / Baja</strong>
+            <span>Priorización sugerida</span>
+          </div>
+        </div>
+
+        <section class="section">
+          <div class="section-header">
+            <h2>Módulo de Campañas</h2>
+            <div class="section-note">
+              Enfoque en carga, asignación y control de bases
+            </div>
+          </div>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Corrección de carga incompleta en campañas grandes
+              </h3>
+              <p>
+                Resolver el problema actual que ocurre al subir bases de datos
+                grandes, ya que en algunos casos las campañas quedan
+                incompletas.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Seleccionar y repartir clientes desde campañas
+              </h3>
+              <p>
+                Permitir la selección y distribución de clientes directamente
+                desde la vista de campañas, para asignarlos correctamente.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">Anexar clientes a bases existentes</h3>
+              <p>
+                Permitir agregar nuevos clientes a una base ya creada, sin
+                necesidad de crear una base nueva.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Informe de registros repetidos al subir una base
+              </h3>
+              <p>
+                Al cargar una base, se requiere mostrar un informe o aviso con
+                los registros duplicados detectados.
+              </p>
+            </div>
+            <div class="chip chip-medium">Media</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Ver listado de clientes desde las bases con filtros avanzados
+              </h3>
+              <p>
+                Al hacer doble clic sobre una base, se debe poder ver el listado
+                de clientes y aplicar filtros más diversos, como país, rango de
+                saldo y estatus.
+              </p>
+            </div>
+            <div class="chip chip-medium">Media</div>
+          </article>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <h2>Módulo de Usuario</h2>
+            <div class="section-note">
+              Mejoras para filtros y revisión de asignaciones
+            </div>
+          </div>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">Filtros al asignar en campañas</h3>
+              <p>
+                En la ventana de asignación de campañas, se necesitan filtros
+                que faciliten la selección de clientes o criterios de
+                asignación.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">Filtros más diversos</h3>
+              <p>
+                Se solicita agregar filtros por país, rango de saldo y estatus.
+              </p>
+            </div>
+            <div class="chip chip-medium">Media</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Filtrar dentro del detalle de asignados
+              </h3>
+              <p>
+                Se requiere poder buscar y filtrar mejor dentro del detalle de
+                los clientes ya asignados.
+              </p>
+            </div>
+            <div class="chip chip-medium">Media</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Ver número de teléfono en detalle de asignados
+              </h3>
+              <p>
+                Se necesita visualizar el número de teléfono directamente en el
+                detalle de los asignados.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <h2>Módulo de Clientes</h2>
+            <div class="section-note">
+              Ajustes para gestión, seguimiento y eficiencia operativa
+            </div>
+          </div>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Filtros avanzados en detalle de clientes
+              </h3>
+              <p>
+                En la vista de detalles se requieren filtros más completos, como
+                país, rango de saldo y estatus. Nota interna: hace falta anexar
+                paginación.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Elegir qué columnas se desean ver en la tabla
+              </h3>
+              <p>
+                Se solicita que el usuario pueda seleccionar qué columnas quiere
+                ver en la vista de clientes, para agilizar la gestión.
+              </p>
+            </div>
+            <div class="chip chip-medium">Media</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">Ordenar comentarios por fecha</h3>
+              <p>
+                Se necesita poder ordenar los comentarios desde los más antiguos
+                hasta los más nuevos, o viceversa.
+              </p>
+            </div>
+            <div class="chip chip-medium">Media</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">Buscar y filtrar desde las columnas</h3>
+              <p>
+                Se requiere poder buscar y filtrar directamente desde los
+                encabezados o casillas de las columnas en la vista de clientes.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Asignar valor depositado solo para administrador
+              </h3>
+              <p>
+                Se solicita permitir que el administrador pueda registrar el
+                valor depositado en el balance del cliente.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Ver número y correo dentro de actualizar cliente
+              </h3>
+              <p>
+                Se necesita mostrar el número de teléfono y el correo
+                electrónico en la pantalla de actualización de cliente.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Organizar por fecha de edición y priorizar seguimiento
+              </h3>
+              <p>
+                Se solicita poder filtrar y organizar por fecha de edición, de
+                forma que si un cliente no tiene comentario o gestión del día,
+                quede identificado como urgente. La idea es facilitar la gestión
+                de los clientes que deben volver a llamarse de un día para otro.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Mantener abierta la ventana al guardar comentarios
+              </h3>
+              <p>
+                En lugar de cerrar la ventana al guardar un comentario, se
+                requiere que permanezca abierta y solo muestre una confirmación.
+              </p>
+            </div>
+            <div class="chip chip-medium">Media</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Cambiar botones de estatus por un selector más compacto
+              </h3>
+              <p>
+                Se solicita reemplazar los botones de estatus por un selector
+                más compacto para ahorrar espacio en la edición del cliente.
+              </p>
+            </div>
+            <div class="chip chip-low">Baja</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Botones de siguiente y atrás en editar cliente
+              </h3>
+              <p>
+                Se requiere poder avanzar o retroceder entre clientes desde la
+                misma pantalla de edición, sin tener que volver al listado.
+              </p>
+            </div>
+            <div class="chip chip-medium">Media</div>
+          </article>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <h2>Módulo de Calendario</h2>
+            <div class="section-note">
+              Seguimiento, alertas y reagendamiento
+            </div>
+          </div>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Notificaciones visibles desde cualquier vista
+              </h3>
+              <p>
+                Se solicita agregar una notificación del calendario para apoyar
+                el cambio correcto de estatus, y que pueda verse sin importar en
+                qué vista se encuentre el usuario.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+
+          <article class="item">
+            <div>
+              <h3 class="item-title">
+                Revisión del proceso de seguimiento y reagendamiento
+              </h3>
+              <p>
+                Se debe revisar el funcionamiento del calendario para asegurar
+                que el seguimiento opere correctamente y que se pueda reagendar
+                de forma directa.
+              </p>
+            </div>
+            <div class="chip chip-high">Alta</div>
+          </article>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <h2>Resumen general de prioridades</h2>
+            <div class="section-note">
+              Criterio sugerido para ordenar la ejecución
+            </div>
+          </div>
+
+          <div class="priority-box">
+            <h3>Clasificación sugerida</h3>
+            <ul class="priority-list">
+              <li>
+                <div class="priority-label">Alta</div>
+                <div>
+                  Correcciones que afectan la operación, la asignación de
+                  clientes, el seguimiento comercial y la visualización de datos
+                  clave.
+                </div>
+              </li>
+              <li>
+                <div class="priority-label">Media</div>
+                <div>
+                  Mejoras relacionadas con filtros, consulta de información y
+                  facilidad de uso en la operación diaria.
+                </div>
+              </li>
+              <li>
+                <div class="priority-label">Baja</div>
+                <div>
+                  Ajustes visuales o de optimización del espacio que mejoran la
+                  experiencia, pero no detienen la operación.
+                </div>
+              </li>
+            </ul>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,26 +1,22 @@
-// AssignmentModal.tsx - Modal para asignar clientes a un agente usando RPC assign_leads_atomic
-// ✅ Portal (no se bloquea por pointer-events-none del modal padre)
-// ✅ Overlay + panel premium (mismo estilo)
-// ✅ Carga SOLO campañas de la operación actual
-// ✅ ESC y click fuera cierran (si no está asignando)
-// ✅ Icono Tag alineado
-
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Users, AlertCircle, Tag } from "lucide-react";
-import { cn } from "../../../lib/utils";
+import { AlertCircle, Tag, Users } from "lucide-react";
+import {
+  CLIENT_STATUS_OPTIONS,
+  cn,
+  type ClientStatusCode,
+} from "../../../lib/utils";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import { supabase, Agent, agentAssignments } from "../../../lib/supabase";
 import { useAuth } from "../../../hooks/useAuth";
 import { notify } from "../../../shared/lib/notify";
-import { agentManagement } from "../services/agent-management.service";
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "../../../shared/components/ui/Select";
 import Input from "../../../shared/components/ui/Input";
 import {
@@ -30,6 +26,14 @@ import {
   modalPrimaryActionClassName,
   modalSecondaryActionClassName,
 } from "../../../shared/components/layout/ModalLayout";
+import {
+  CLIENT_BALANCE_RANGE_OPTIONS,
+  getClientBalanceRangeBounds,
+  getClientBalanceRangeLabel,
+  type ClientBalanceRangeFilter,
+} from "../../clients/lib/clientFilters";
+import { applyClientListFilters } from "../../clients/services/clients.service";
+import { agentManagement } from "../services/agent-management.service";
 import {
   agentInsetClass,
   agentModalFooterClass,
@@ -59,6 +63,12 @@ type CampaignStats = {
   display_name: string | null;
   available: number;
 };
+
+type AssignmentStatusFilter = "all" | ClientStatusCode;
+
+const ALL_CAMPAIGNS_VALUE = "__ALL__";
+const CAMPAIGN_PLACEHOLDER_VALUE = "__campaign_placeholder__";
+const STATUS_PLACEHOLDER_VALUE = "__status_placeholder__";
 
 const overlayV = {
   initial: { opacity: 0 },
@@ -110,14 +120,19 @@ export default function AssignmentModal({
 
   const [loading, setLoading] = useState(false);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  const [loadingAssignableCount, setLoadingAssignableCount] = useState(false);
   const [error, setError] = useState("");
-
   const [count, setCount] = useState<number>(50);
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(
+    null,
+  );
   const [campaigns, setCampaigns] = useState<CampaignStats[]>([]);
-
-  const ALL_CAMPAIGNS_VALUE = "__ALL__";
-  const CAMPAIGN_PLACEHOLDER_VALUE = "__campaign_placeholder__";
+  const [statusFilter, setStatusFilter] =
+    useState<AssignmentStatusFilter>("all");
+  const [countryFilter, setCountryFilter] = useState("");
+  const [balanceRangeFilter, setBalanceRangeFilter] =
+    useState<ClientBalanceRangeFilter>("all");
+  const [assignableCount, setAssignableCount] = useState(0);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -138,6 +153,10 @@ export default function AssignmentModal({
     setCount(50);
     setSelectedCampaignId(null);
     setCampaigns([]);
+    setStatusFilter("all");
+    setCountryFilter("");
+    setBalanceRangeFilter("all");
+    setAssignableCount(0);
 
     void loadCampaigns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,63 +169,63 @@ export default function AssignmentModal({
     try {
       if (!effectiveOperationId) {
         setCampaigns([]);
-        setError("No hay una operación seleccionada.");
+        setError("No hay una operacion seleccionada.");
         return;
       }
 
-      const campaignsQuery = supabase
+      const { data: campRows, error: campErr } = await supabase
         .from("campaigns")
         .select("id, prefix, display_name, created_at, operation_id")
         .eq("operation_id", effectiveOperationId)
         .order("prefix", { ascending: true });
 
-      const { data: campRows, error: campErr } = await campaignsQuery;
       if (campErr) throw campErr;
 
-      const list = (campRows || []) as CampaignRow[];
+      const list = (campRows ?? []) as CampaignRow[];
       const {
         data: availableRows,
         error: availableErr,
       } = await agentManagement.getAvailableCampaigns([effectiveOperationId]);
+
       if (availableErr) throw availableErr;
 
       const availableByCampaignId = new Map(
-        (availableRows || []).map((row) => [row.id, Number(row.available || 0)]),
+        (availableRows ?? []).map((row) => [row.id, Number(row.available || 0)]),
       );
 
       const seen = new Set<string>();
       const merged: CampaignStats[] = [];
 
-      for (const c of list) {
-        const campaignId = c.id;
-        const prefix = c.prefix;
-        seen.add(campaignId);
-
+      for (const campaign of list) {
+        seen.add(campaign.id);
         merged.push({
-          id: campaignId,
-          prefix,
-          display_name: (c.display_name?.trim() ||
-            `Campaña ${prefix}`) as string,
-          available: Math.max(0, Number(availableByCampaignId.get(campaignId) || 0)),
+          id: campaign.id,
+          prefix: campaign.prefix,
+          display_name:
+            campaign.display_name?.trim() || `Campana ${campaign.prefix}`,
+          available: Math.max(
+            0,
+            Number(availableByCampaignId.get(campaign.id) || 0),
+          ),
         });
       }
 
-      for (const row of availableRows || []) {
+      for (const row of availableRows ?? []) {
         if (seen.has(row.id)) continue;
 
         merged.push({
           id: row.id,
           prefix: row.prefix,
-          display_name: row.display_name?.trim() || `Campaña ${row.prefix}`,
+          display_name: row.display_name?.trim() || `Campana ${row.prefix}`,
           available: Math.max(0, Number(row.available || 0)),
         });
       }
 
-      merged.sort((a, b) => a.prefix.localeCompare(b.prefix));
+      merged.sort((left, right) => left.prefix.localeCompare(right.prefix));
       setCampaigns(merged);
-    } catch (e: any) {
-      console.error("[AssignmentModal] loadCampaigns error:", e);
-      setError(e?.message || "Error cargando campañas");
+    } catch (loadError: any) {
+      console.error("[AssignmentModal] loadCampaigns error:", loadError);
+      setError(loadError?.message || "Error cargando campanas");
       setCampaigns([]);
     } finally {
       setLoadingCampaigns(false);
@@ -214,21 +233,77 @@ export default function AssignmentModal({
   };
 
   const totalAvailableAll = useMemo(
-    () => campaigns.reduce((acc, c) => acc + (c.available || 0), 0),
+    () => campaigns.reduce((acc, campaign) => acc + (campaign.available || 0), 0),
     [campaigns],
   );
 
   const selectedCampaign = useMemo(() => {
     if (!selectedCampaignId) return null;
-    return campaigns.find((c) => c.id === selectedCampaignId) ?? null;
+    return campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null;
   }, [campaigns, selectedCampaignId]);
 
   const campaignSelectValue = selectedCampaignId ?? ALL_CAMPAIGNS_VALUE;
+  const trimmedCountryFilter = countryFilter.trim();
+  const hasActiveExtraFilters =
+    statusFilter !== "all" ||
+    trimmedCountryFilter.length > 0 ||
+    balanceRangeFilter !== "all";
 
-  const maxAllowed = useMemo(() => {
-    if (selectedCampaign) return selectedCampaign.available;
-    return totalAvailableAll;
-  }, [selectedCampaign, totalAvailableAll]);
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadAssignableCount = async () => {
+      if (!effectiveOperationId) {
+        setAssignableCount(0);
+        return;
+      }
+
+      setLoadingAssignableCount(true);
+      setError("");
+
+      try {
+        let request = supabase
+          .from("clients")
+          .select("id", { count: "exact", head: true })
+          .is("assigned_to", null)
+          .or("status.eq.new,status.is.null");
+
+        request = applyClientListFilters(request, {
+          operationId: effectiveOperationId,
+          campaignId: selectedCampaignId,
+          statusCode: statusFilter === "all" ? null : statusFilter,
+          country: trimmedCountryFilter || null,
+          balanceRange:
+            balanceRangeFilter === "all" ? null : balanceRangeFilter,
+        });
+
+        const { count: nextCount, error: countError } = await request;
+
+        if (countError) throw countError;
+
+        setAssignableCount(Number(nextCount ?? 0));
+      } catch (countError: any) {
+        console.error("[AssignmentModal] loadAssignableCount error:", countError);
+        setError(
+          countError?.message || "No se pudo calcular la cantidad asignable.",
+        );
+        setAssignableCount(0);
+      } finally {
+        setLoadingAssignableCount(false);
+      }
+    };
+
+    void loadAssignableCount();
+  }, [
+    balanceRangeFilter,
+    effectiveOperationId,
+    isOpen,
+    selectedCampaignId,
+    statusFilter,
+    trimmedCountryFilter,
+  ]);
+
+  const maxAllowed = assignableCount;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -239,13 +314,13 @@ export default function AssignmentModal({
     }
 
     setCount((prev) => Math.min(Math.max(1, prev || 1), maxAllowed));
-  }, [maxAllowed, isOpen]);
+  }, [isOpen, maxAllowed]);
 
   const handleAssign = async () => {
     setError("");
 
     if (!effectiveOperationId) {
-      setError("No hay una operación seleccionada.");
+      setError("No hay una operacion seleccionada.");
       return;
     }
 
@@ -265,21 +340,33 @@ export default function AssignmentModal({
     try {
       const { data: currentUser } = await supabase.auth.getUser();
       const adminId = currentUser?.user?.id;
+
       if (!adminId) {
         setError("No se pudo obtener el usuario administrador.");
         return;
       }
 
-      const { error: rpcErr } = await agentAssignments.assignLeadsAtomic({
+      const assignmentRequest = {
         agent_id: agent.id,
         count: safeCount,
         assigned_by: adminId,
         campaign_id: selectedCampaignId ?? null,
         campaign_prefix: selectedCampaign?.prefix ?? null,
-      });
+      };
+
+      const balanceBounds = getClientBalanceRangeBounds(balanceRangeFilter);
+      const { error: rpcErr } = hasActiveExtraFilters
+        ? await agentAssignments.assignLeadsFiltered({
+            ...assignmentRequest,
+            status_codes: statusFilter === "all" ? null : [statusFilter],
+            country: trimmedCountryFilter || null,
+            balance_min: balanceBounds.min,
+            balance_max: balanceBounds.max,
+          })
+        : await agentAssignments.assignLeadsAtomic(assignmentRequest);
 
       if (rpcErr) {
-        console.error("assignLeadsAtomic error:", rpcErr);
+        console.error("[AssignmentModal] assign error:", rpcErr);
         setError(rpcErr.message || "Error asignando clientes.");
         return;
       }
@@ -289,9 +376,9 @@ export default function AssignmentModal({
         `Se asignaron ${safeCount} cliente${safeCount === 1 ? "" : "s"} a ${agent.name}.`,
       );
       onSuccess();
-    } catch (e: any) {
-      console.error("Error asignando:", e);
-      setError(e?.message || "Error inesperado asignando clientes.");
+    } catch (assignError: any) {
+      console.error("[AssignmentModal] unexpected assign error:", assignError);
+      setError(assignError?.message || "Error inesperado asignando clientes.");
     } finally {
       setLoading(false);
     }
@@ -299,17 +386,22 @@ export default function AssignmentModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !loading) onClose();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !loading) onClose();
     };
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose, loading]);
+  }, [isOpen, loading, onClose]);
 
   if (!isOpen) return null;
 
   const canAssign =
-    !loading && !!effectiveOperationId && maxAllowed > 0 && (count ?? 0) > 0;
+    !loading &&
+    !loadingAssignableCount &&
+    !!effectiveOperationId &&
+    maxAllowed > 0 &&
+    (count ?? 0) > 0;
 
   return createPortal(
     <AnimatePresence mode="wait">
@@ -319,9 +411,9 @@ export default function AssignmentModal({
         initial="initial"
         animate="animate"
         exit="exit"
-        onMouseDown={(e) => {
+        onMouseDown={(event) => {
           if (loading) return;
-          if (e.target === e.currentTarget) onClose();
+          if (event.target === event.currentTarget) onClose();
         }}
         role="dialog"
         aria-modal="true"
@@ -331,7 +423,7 @@ export default function AssignmentModal({
         <motion.div
           className={cn(
             agentModalPanelClass,
-            "my-auto flex max-h-[min(92vh,880px)] w-full max-w-2xl flex-col",
+            "my-auto flex max-h-[min(92vh,920px)] w-full max-w-3xl flex-col",
           )}
           variants={panelV}
           initial="initial"
@@ -339,7 +431,7 @@ export default function AssignmentModal({
           exit="exit"
         >
           <ModalHeader
-            icon={<Users className="w-5 h-5 text-brand" />}
+            icon={<Users className="h-5 w-5 text-brand" />}
             title="Asignar clientes"
             description={
               <>
@@ -358,14 +450,14 @@ export default function AssignmentModal({
           />
 
           <ModalBody className="crm-scrollbar crm-scrollbar-shell min-h-0 space-y-5 overflow-y-auto overscroll-contain">
-            {error && (
-              <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-red-700 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 mt-0.5" />
+            {error ? (
+              <div className="flex items-start gap-2 rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4" />
                 <span className="font-semibold">{error}</span>
               </div>
-            )}
+            ) : null}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className={cn(agentInsetClass, "p-5")}>
                 <div className="text-sm font-semibold text-ink/80">
                   Cantidad a asignar
@@ -377,30 +469,33 @@ export default function AssignmentModal({
                     min={maxAllowed > 0 ? 1 : 0}
                     max={maxAllowed > 0 ? maxAllowed : 0}
                     value={count}
-                    onChange={(e) => {
-                      const v = Number(e.target.value || 0);
-                      if (!Number.isFinite(v)) return;
+                    onChange={(event) => {
+                      const nextValue = Number(event.target.value || 0);
+                      if (!Number.isFinite(nextValue)) return;
 
                       if (maxAllowed <= 0) {
                         setCount(0);
                         return;
                       }
-                      setCount(Math.min(Math.max(1, v), maxAllowed));
+
+                      setCount(Math.min(Math.max(1, nextValue), maxAllowed));
                     }}
-                    disabled={loading || maxAllowed <= 0}
+                    disabled={loading || loadingAssignableCount || maxAllowed <= 0}
                   />
 
                   <p className="mt-2 text-xs text-muted">
-                    Máximo asignable ahora:{" "}
+                    Coincidencias asignables ahora:{" "}
                     <span className="font-semibold text-ink/70">
-                      {maxAllowed.toLocaleString()}
+                      {loadingAssignableCount
+                        ? "Calculando..."
+                        : maxAllowed.toLocaleString()}
                     </span>{" "}
                     {selectedCampaign
-                      ? `(solo ${
+                      ? `(campana ${
                           selectedCampaign.display_name ??
-                          `Campaña ${selectedCampaign.prefix}`
+                          `Campana ${selectedCampaign.prefix}`
                         })`
-                      : "(todas las campañas de la operación actual)"}
+                      : "(toda la operacion actual)"}
                   </p>
                 </div>
               </div>
@@ -408,48 +503,146 @@ export default function AssignmentModal({
               <div className={cn(agentInsetClass, "p-5")}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-ink/80">
-                    Campaña (opcional)
+                    Campana (opcional)
                   </div>
                   {loadingCampaigns ? (
-                    <span className="text-xs text-muted">Cargando…</span>
+                    <span className="text-xs text-muted">Cargando...</span>
                   ) : null}
                 </div>
 
                 <div className="mt-3">
                   <Select
                     value={campaignSelectValue}
-                    onValueChange={(v) => {
-                      if (v === CAMPAIGN_PLACEHOLDER_VALUE) return;
-                      if (v === ALL_CAMPAIGNS_VALUE) setSelectedCampaignId(null);
-                      else setSelectedCampaignId(v);
+                    onValueChange={(value) => {
+                      if (value === CAMPAIGN_PLACEHOLDER_VALUE) return;
+                      if (value === ALL_CAMPAIGNS_VALUE) setSelectedCampaignId(null);
+                      else setSelectedCampaignId(value);
                     }}
                     disabled={loading || loadingCampaigns || !effectiveOperationId}
                   >
                     <SelectTrigger leftIcon={<Tag className="h-4 w-4" />}>
-                      <SelectValue placeholder="Todas las campañas" />
+                      <SelectValue placeholder="Todas las campanas" />
                     </SelectTrigger>
 
                     <SelectContent>
                       <SelectItem value={CAMPAIGN_PLACEHOLDER_VALUE} disabled>
-                        Todas las campañas
+                        Todas las campanas
                       </SelectItem>
                       <SelectItem value={ALL_CAMPAIGNS_VALUE}>
-                        Todas las campañas
+                        Todas las campanas
                       </SelectItem>
 
-                      {campaigns.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {(c.display_name ?? `Campaña ${c.prefix}`) +
-                            ` · Disponibles: ${c.available}`}
+                      {campaigns.map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.id}>
+                          {(campaign.display_name ?? `Campana ${campaign.prefix}`) +
+                            ` · Disponibles: ${campaign.available}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
 
                   <p className="mt-2 text-xs text-muted">
-                    Si eliges una campaña, solo se asignarán clientes de ese
-                    prefijo dentro de la operación actual.
+                    Si eliges una campana, solo se revisara esa base dentro de la
+                    operacion actual.
                   </p>
+                </div>
+              </div>
+            </div>
+
+            <div className={cn(agentInsetClass, "p-5")}>
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-ink/80">
+                    Filtros de asignacion
+                  </div>
+                  <p className="mt-1 text-xs text-muted">
+                    Estos filtros se aplican solo al lote que se va a repartir.
+                  </p>
+                </div>
+
+                {hasActiveExtraFilters ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("all");
+                      setCountryFilter("");
+                      setBalanceRangeFilter("all");
+                    }}
+                    disabled={loading}
+                    className={modalSecondaryActionClassName}
+                  >
+                    Restablecer
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                    Estatus
+                  </div>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(value) => {
+                      if (value === STATUS_PLACEHOLDER_VALUE) return;
+                      setStatusFilter(value as AssignmentStatusFilter);
+                    }}
+                    disabled={loading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos los estatus" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value={STATUS_PLACEHOLDER_VALUE} disabled>
+                        Todos los estatus
+                      </SelectItem>
+                      <SelectItem value="all">Todos los estatus</SelectItem>
+                      {CLIENT_STATUS_OPTIONS.map((status) => (
+                        <SelectItem key={status.code} value={status.code}>
+                          {status.shortLabel} · {status.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                    Pais
+                  </div>
+                  <Input
+                    type="text"
+                    value={countryFilter}
+                    onChange={(event) => setCountryFilter(event.target.value)}
+                    placeholder="Ej. Colombia"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                    Saldo
+                  </div>
+                  <Select
+                    value={balanceRangeFilter}
+                    onValueChange={(value) =>
+                      setBalanceRangeFilter(value as ClientBalanceRangeFilter)
+                    }
+                    disabled={loading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos los saldos" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      {CLIENT_BALANCE_RANGE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -462,23 +655,52 @@ export default function AssignmentModal({
                 </span>
               </div>
 
-              {selectedCampaign && (
-                <div className="flex items-center justify-between text-sm mt-2">
+              <div className="mt-2 flex items-center justify-between text-sm">
+                <span className="text-muted">Coincidencias para asignar</span>
+                <span className="font-semibold text-ink">
+                  {loadingAssignableCount
+                    ? "Calculando..."
+                    : maxAllowed.toLocaleString()}
+                </span>
+              </div>
+
+              {selectedCampaign ? (
+                <div className="mt-2 flex items-center justify-between text-sm">
                   <span className="text-muted">
-                    Disponibles en{" "}
-                    <span className="font-semibold">
-                      {selectedCampaign.prefix}
-                    </span>
+                    Disponibles en <span className="font-semibold">{selectedCampaign.prefix}</span>
                   </span>
                   <span className="font-semibold text-ink">
                     {selectedCampaign.available.toLocaleString()}
                   </span>
                 </div>
-              )}
+              ) : null}
+
+              {hasActiveExtraFilters ? (
+                <div className="mt-2 flex items-center justify-between gap-4 text-sm">
+                  <span className="text-muted">Filtros activos</span>
+                  <span className="text-right font-semibold text-ink">
+                    {[
+                      statusFilter !== "all"
+                        ? CLIENT_STATUS_OPTIONS.find(
+                            (option) => option.code === statusFilter,
+                          )?.label ?? statusFilter
+                        : null,
+                      trimmedCountryFilter ? `Pais: ${trimmedCountryFilter}` : null,
+                      balanceRangeFilter !== "all"
+                        ? getClientBalanceRangeLabel(balanceRangeFilter)
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </div>
+              ) : null}
             </div>
           </ModalBody>
 
-          <ModalFooter className={cn("justify-end gap-2 max-sm:flex-wrap", agentModalFooterClass)}>
+          <ModalFooter
+            className={cn("justify-end gap-2 max-sm:flex-wrap", agentModalFooterClass)}
+          >
             <button
               type="button"
               onClick={onClose}
