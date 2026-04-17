@@ -162,7 +162,6 @@ export function shouldOpenScheduledCallFollowUp(
   event: Pick<ScheduledCall, "status" | "scheduled_for">,
   now: Date = new Date(),
 ) {
-  if (event.status !== "scheduled") return true;
   return isScheduledCallOverdue(event, now);
 }
 

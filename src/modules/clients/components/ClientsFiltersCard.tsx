@@ -16,6 +16,10 @@ import {
   type ClientBalanceRangeFilter,
 } from "../lib/clientFilters";
 import {
+  CLIENT_DAILY_MANAGEMENT_OPTIONS,
+  type ClientDailyManagementFilter,
+} from "../lib/clientFollowUp";
+import {
   clientGhostButtonClass,
   clientInsetClass,
   clientMutedPillClass,
@@ -47,6 +51,9 @@ type ClientsFiltersCardProps = {
   onCountryFilterChange: (value: string) => void;
   balanceRangeFilter: ClientBalanceRangeFilter;
   onBalanceRangeFilterChange: (value: ClientBalanceRangeFilter) => void;
+  dailyManagementFilter: ClientDailyManagementFilter;
+  onDailyManagementFilterChange: (value: ClientDailyManagementFilter) => void;
+  onResetTableTextFilters: () => void;
   activeFilterSummary: string[];
   isAdmin: boolean;
   rowsPerPage: number;
@@ -75,6 +82,9 @@ export default function ClientsFiltersCard({
   onCountryFilterChange,
   balanceRangeFilter,
   onBalanceRangeFilterChange,
+  dailyManagementFilter,
+  onDailyManagementFilterChange,
+  onResetTableTextFilters,
   activeFilterSummary,
   isAdmin,
   rowsPerPage,
@@ -87,22 +97,10 @@ export default function ClientsFiltersCard({
   const filterAnchorRef = useRef<HTMLDivElement | null>(null);
 
   const hasSearchValue = searchQuery.trim().length > 0;
-  const hasActiveFilters = useMemo(() => {
-    return (
-      statusFilter !== "all" ||
-      campaignFilter !== "all" ||
-      countryFilter.trim().length > 0 ||
-      balanceRangeFilter !== "all" ||
-      (isAdmin && assignedAgentFilter !== "all")
-    );
-  }, [
-    assignedAgentFilter,
-    balanceRangeFilter,
-    campaignFilter,
-    countryFilter,
-    isAdmin,
-    statusFilter,
-  ]);
+  const hasActiveFilters = useMemo(
+    () => activeFilterSummary.length > 0,
+    [activeFilterSummary],
+  );
   const isTrayOpen = isHoverOpen || isPinnedOpen;
   const filterSummaryText =
     activeFilterSummary.length > 0
@@ -295,6 +293,8 @@ export default function ClientsFiltersCard({
                       onCampaignFilterChange("all");
                       onCountryFilterChange("");
                       onBalanceRangeFilterChange("all");
+                      onDailyManagementFilterChange("all");
+                      onResetTableTextFilters();
                       if (isAdmin) onAssignedAgentFilterChange("all");
                     }}
                     className={cn(clientGhostButtonClass, "px-3 py-1.5 text-xs")}
@@ -397,6 +397,33 @@ export default function ClientsFiltersCard({
 
                     <SelectContent className="clients-filter-select-content">
                       {CLIENT_BALANCE_RANGE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className={cn(clientInsetClass, "p-3")}>
+                  <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+                    Gestion del dia
+                  </div>
+                  <Select
+                    value={dailyManagementFilter}
+                    onValueChange={(value) =>
+                      onDailyManagementFilterChange(
+                        value as ClientDailyManagementFilter,
+                      )
+                    }
+                    disabled={opLocked}
+                  >
+                    <SelectTrigger className={compactTriggerClassName}>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+
+                    <SelectContent className="clients-filter-select-content">
+                      {CLIENT_DAILY_MANAGEMENT_OPTIONS.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
                         </SelectItem>

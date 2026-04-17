@@ -3,6 +3,7 @@ import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import CampaignReportExporter from "./CampaignReportExporter";
 import EditCampaignNameModal from "./EditCampaignNameModal";
 import ImportClientsModal from "./ImportClientsModal";
+import CampaignClientsModal from "./CampaignClientsModal";
 import { cn } from "../../../lib/utils";
 import {
   useCampaignManagement,
@@ -35,8 +36,11 @@ export default function CampaignManagementView(
     exportCampaignId,
     isAdmin,
     loading,
+    openClientsModal,
     savingName,
+    selectedCampaignForClients,
     selectedOperationId,
+    showClientsModal,
     showImportModal,
     syncing,
     sortDirection,
@@ -51,7 +55,9 @@ export default function CampaignManagementView(
     setExportOpen,
     setShowImportModal,
     syncNow,
+    closeClientsModal,
     handleSortChange,
+    handleClientsMoved,
     handleDeleteCampaign,
     handleImportSuccess,
     handleToggleLock,
@@ -111,6 +117,7 @@ export default function CampaignManagementView(
         onDelete={handleDeleteCampaign}
         onEditName={openEditName}
         onExport={openExport}
+        onOpenClients={openClientsModal}
         onToggleLock={handleToggleLock}
       />
 
@@ -140,6 +147,15 @@ export default function CampaignManagementView(
         onClose={() => setShowImportModal(false)}
         onImport={handleImportSuccess}
         selectedOperationId={selectedOperationId}
+      />
+
+      <CampaignClientsModal
+        campaign={selectedCampaignForClients}
+        campaignsList={campaignRows}
+        isOpen={showClientsModal}
+        selectedOperationId={selectedOperationId}
+        onClose={closeClientsModal}
+        onMoved={handleClientsMoved}
       />
     </div>
   );

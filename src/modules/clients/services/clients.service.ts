@@ -1,8 +1,18 @@
 import { supabase } from "../../../integrations/supabase/client";
 import type { ClientBalanceRangeFilter } from "../lib/clientFilters";
+import {
+  getTodayRangeForQueries,
+  type ClientDailyManagementFilter,
+} from "../lib/clientFollowUp";
+import type {
+  ClientTableSortDirection,
+  ClientTableSortKey,
+  ClientTableTextFilters,
+} from "../components/clientTableColumns";
 import type { Client } from "../../../shared/types/crm";
 
 const UNASSIGNED_AGENT_FILTER = "__unassigned__";
+const ASSIGNED_ONLY_FILTER = "__assigned_only__";
 
 export type ClientListFilters = {
   operationId?: string | null;
@@ -10,6 +20,10 @@ export type ClientListFilters = {
   campaignId?: string | null;
   country?: string | null;
   balanceRange?: ClientBalanceRangeFilter | null;
+  dailyManagement?: ClientDailyManagementFilter | null;
+  textFilters?: Partial<ClientTableTextFilters> | null;
+  orderBy?: ClientTableSortKey | null;
+  orderDirection?: ClientTableSortDirection | null;
 };
 
 export const CLIENT_LIST_SELECT = `
@@ -66,6 +80,13 @@ export function applyClientListFilters(
 ) {
   let nextRequest = request;
   const countryQuery = filters?.country?.trim();
+  const firstNameQuery = filters?.textFilters?.first_name?.trim();
+  const lastNameQuery = filters?.textFilters?.last_name?.trim();
+  const emailQuery = filters?.textFilters?.email?.trim();
+  const phoneQuery = filters?.textFilters?.phone_number?.trim();
+  const sourceQuery = filters?.textFilters?.source?.trim();
+  const serialQuery = filters?.textFilters?.serial?.trim();
+  const { startIso, endIso } = getTodayRangeForQueries();
 
   if (filters?.operationId) {
     nextRequest = nextRequest.eq("operation_id", filters.operationId);
@@ -83,7 +104,55 @@ export function applyClientListFilters(
     nextRequest = nextRequest.ilike("country", `%${countryQuery}%`);
   }
 
+  if (firstNameQuery) {
+    nextRequest = nextRequest.ilike("first_name", `%${firstNameQuery}%`);
+  }
+
+  if (lastNameQuery) {
+    nextRequest = nextRequest.ilike("last_name", `%${lastNameQuery}%`);
+  }
+
+  if (emailQuery) {
+    nextRequest = nextRequest.ilike("email", `%${emailQuery}%`);
+  }
+
+  if (phoneQuery) {
+    nextRequest = nextRequest.ilike("phone_number", `%${phoneQuery}%`);
+  }
+
+  if (sourceQuery) {
+    nextRequest = nextRequest.ilike("source", `%${sourceQuery}%`);
+  }
+
+  if (serialQuery) {
+    nextRequest = nextRequest.ilike("serial", `%${serialQuery}%`);
+  }
+
+  if (filters?.dailyManagement === "commented_today") {
+    nextRequest = nextRequest
+      .gte("last_comment_at", startIso)
+      .lt("last_comment_at", endIso);
+  }
+
+  if (filters?.dailyManagement === "pending_today") {
+    nextRequest = nextRequest.or(`last_comment_at.is.null,last_comment_at.lt.${startIso}`);
+  }
+
   return applyClientBalanceRangeFilter(nextRequest, filters?.balanceRange);
+}
+
+function applyClientListOrder(
+  request: any,
+  orderBy?: ClientTableSortKey | null,
+  orderDirection?: ClientTableSortDirection | null,
+) {
+  const sortColumn = orderBy ?? "created_at";
+  const ascending = (orderDirection ?? "desc") === "asc";
+
+  return request.order(sortColumn, {
+    ascending,
+    nullsFirst: ascending,
+  });
 }
 
 export const clients = {
@@ -128,7 +197,7 @@ export const clients = {
       .from("clients")
       .select(CLIENT_LIST_SELECT, { count: "exact" })
       .or(
-        `first_name.ilike.%${q}%,last_name.ilike.%${q}%,serial.ilike.%${q}%,email.ilike.%${q}%,source.ilike.%${q}%`,
+        `first_name.ilike.%${q}%,last_name.ilike.%${q}%,serial.ilike.%${q}%,email.ilike.%${q}%,phone_number.ilike.%${q}%,source.ilike.%${q}%`,
       );
 
     if (params?.agentId) {
@@ -139,14 +208,18 @@ export const clients = {
       request =
         params.assignedAgentId === UNASSIGNED_AGENT_FILTER
           ? request.is("assigned_to", null)
+          : params.assignedAgentId === ASSIGNED_ONLY_FILTER
+            ? request.not("assigned_to", "is", null)
           : request.eq("assigned_to", params.assignedAgentId);
     }
 
     request = applyClientListFilters(request, params);
 
-    const { data, error, count } = await request
-      .order("created_at", { ascending: false })
-      .range(from, to);
+    const { data, error, count } = await applyClientListOrder(
+      request,
+      params?.orderBy,
+      params?.orderDirection,
+    ).range(from, to);
 
     return {
       data: (data ?? []) as Client[],
@@ -175,14 +248,18 @@ export const clients = {
       request =
         params.assignedAgentId === UNASSIGNED_AGENT_FILTER
           ? request.is("assigned_to", null)
+          : params.assignedAgentId === ASSIGNED_ONLY_FILTER
+            ? request.not("assigned_to", "is", null)
           : request.eq("assigned_to", params.assignedAgentId);
     }
 
     request = applyClientListFilters(request, params);
 
-    const { data, error, count } = await request
-      .order("created_at", { ascending: false })
-      .range(from, to);
+    const { data, error, count } = await applyClientListOrder(
+      request,
+      params?.orderBy,
+      params?.orderDirection,
+    ).range(from, to);
 
     return {
       data: (data ?? []) as Client[],

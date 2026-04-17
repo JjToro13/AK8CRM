@@ -128,14 +128,17 @@ export const agentAssignments = {
 
     if (query) {
       request = request.or(
-        `first_name.ilike.%${query}%,last_name.ilike.%${query}%,serial.ilike.%${query}%,email.ilike.%${query}%,source.ilike.%${query}%`,
+        `first_name.ilike.%${query}%,last_name.ilike.%${query}%,serial.ilike.%${query}%,email.ilike.%${query}%,phone_number.ilike.%${query}%,source.ilike.%${query}%`,
       );
     }
 
     request = applyClientListFilters(request, params);
 
+    const sortColumn = params?.orderBy ?? "created_at";
+    const ascending = (params?.orderDirection ?? "desc") === "asc";
+
     const { data, error, count } = await request
-      .order("created_at", { ascending: false })
+      .order(sortColumn, { ascending, nullsFirst: ascending })
       .range(from, to);
 
     return {

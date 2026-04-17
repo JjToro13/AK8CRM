@@ -4,12 +4,18 @@ import { agentNameMap } from "../../../shared/services/agent-name-map";
 export const clientComments = {
   getByClient: async (
     clientId: string,
-    params?: { page?: number; pageSize?: number; includeCount?: boolean },
+    params?: {
+      page?: number;
+      pageSize?: number;
+      includeCount?: boolean;
+      orderDirection?: "asc" | "desc";
+    },
   ) => {
     try {
       const page = Math.max(1, params?.page ?? 1);
       const pageSize = Math.max(1, params?.pageSize ?? 10);
       const includeCount = params?.includeCount ?? false;
+      const orderDirection = params?.orderDirection ?? "desc";
       const from = (page - 1) * pageSize;
       const to = from + pageSize;
 
@@ -20,7 +26,7 @@ export const clientComments = {
           includeCount ? { count: "exact" } : undefined,
         )
         .eq("client_id", clientId)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: orderDirection === "asc" })
         .range(from, to);
 
       if (error) {

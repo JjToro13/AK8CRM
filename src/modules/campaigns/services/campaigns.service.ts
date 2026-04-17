@@ -116,4 +116,24 @@ export const campaigns = {
 
     return { error };
   },
+
+  moveClientsToCampaign: async (params: {
+    clientIds: string[];
+    targetCampaignId: string;
+    reason?: string | null;
+    notes?: string | null;
+  }) => {
+    const { data, error } = await supabase.rpc("move_clients_to_campaign", {
+      p_client_ids: params.clientIds,
+      p_target_campaign_id: params.targetCampaignId,
+      p_reason: params.reason ?? null,
+      p_notes: params.notes ?? null,
+    });
+
+    const movedCount = Array.isArray(data)
+      ? Number((data[0] as { moved_count?: number } | undefined)?.moved_count ?? 0)
+      : 0;
+
+    return { data, error, movedCount };
+  },
 };

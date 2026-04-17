@@ -24,6 +24,18 @@ import {
   getClientBalanceRangeLabel,
   type ClientBalanceRangeFilter,
 } from "../lib/clientFilters";
+import {
+  type ClientDailyManagementFilter,
+} from "../lib/clientFollowUp";
+import {
+  CLIENT_TABLE_DEFAULT_TEXT_FILTERS,
+  CLIENT_TABLE_DEFAULT_VISIBLE_COLUMNS,
+  type ClientTableColumnKey,
+  type ClientTableSortDirection,
+  type ClientTableSortKey,
+  type ClientTableTextFilterKey,
+  type ClientTableTextFilters,
+} from "../components/clientTableColumns";
 import type { Client } from "../../../shared/types/crm";
 
 const NOTICE_COOLDOWN_KEY = "general_notice_last_seen_v1";
@@ -34,6 +46,13 @@ const CLIENTS_CAMPAIGN_FILTER_KEY = "clients_campaign_filter_v1";
 const CLIENTS_AGENT_FILTER_KEY = "clients_agent_filter_v1";
 const CLIENTS_COUNTRY_FILTER_KEY = "clients_country_filter_v1";
 const CLIENTS_BALANCE_FILTER_KEY = "clients_balance_filter_v1";
+const CLIENTS_DAILY_MANAGEMENT_FILTER_KEY = "clients_daily_management_filter_v1";
+const CLIENTS_TABLE_VISIBLE_COLUMNS_KEY = "clients_table_visible_columns_v1";
+const CLIENTS_TABLE_SORT_KEY = "clients_table_sort_key_v1";
+const CLIENTS_TABLE_SORT_DIRECTION_KEY = "clients_table_sort_direction_v1";
+const CLIENTS_TABLE_TEXT_FILTERS_KEY = "clients_table_text_filters_v1";
+const CLIENTS_TABLE_SHOW_COLUMN_FILTERS_KEY =
+  "clients_table_show_column_filters_v1";
 const CLIENTS_PAGE_SIZE_KEY = "clients_page_size_v1";
 const CLIENTS_VIEW_STATE_KEY = "clients_view_state_v1";
 const CLIENTS_SEARCH_DEBOUNCE_MS = 400;
@@ -118,6 +137,20 @@ export function useClientManagement(
   const [countryFilter, setCountryFilter] = useState<ClientCountryFilter>("");
   const [balanceRangeFilter, setBalanceRangeFilter] =
     useState<ClientBalanceRangeFilter>("all");
+  const [dailyManagementFilter, setDailyManagementFilter] =
+    useState<ClientDailyManagementFilter>("all");
+  const [visibleColumns, setVisibleColumns] = useState<ClientTableColumnKey[]>(
+    CLIENT_TABLE_DEFAULT_VISIBLE_COLUMNS,
+  );
+  const [tableTextFilters, setTableTextFilters] = useState<ClientTableTextFilters>(
+    CLIENT_TABLE_DEFAULT_TEXT_FILTERS,
+  );
+  const [debouncedTableTextFilters, setDebouncedTableTextFilters] =
+    useState<ClientTableTextFilters>(CLIENT_TABLE_DEFAULT_TEXT_FILTERS);
+  const [showColumnFilters, setShowColumnFilters] = useState(true);
+  const [sortKey, setSortKey] = useState<ClientTableSortKey>("created_at");
+  const [sortDirection, setSortDirection] =
+    useState<ClientTableSortDirection>("desc");
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -273,6 +306,105 @@ export function useClientManagement(
         setBalanceRangeFilter(savedBalanceFilter);
       }
 
+      const savedDailyManagementFilter = localStorage.getItem(
+        CLIENTS_DAILY_MANAGEMENT_FILTER_KEY,
+      );
+      if (
+        savedDailyManagementFilter === "all" ||
+        savedDailyManagementFilter === "commented_today" ||
+        savedDailyManagementFilter === "pending_today"
+      ) {
+        setDailyManagementFilter(savedDailyManagementFilter);
+      }
+
+      const savedVisibleColumnsRaw = localStorage.getItem(
+        CLIENTS_TABLE_VISIBLE_COLUMNS_KEY,
+      );
+      if (savedVisibleColumnsRaw) {
+        const parsed = JSON.parse(savedVisibleColumnsRaw) as ClientTableColumnKey[];
+        const validColumns = parsed.filter((column) =>
+          CLIENT_TABLE_DEFAULT_VISIBLE_COLUMNS.includes(column) ||
+          [
+            "status",
+            "first_name",
+            "last_name",
+            "email",
+            "phone_number",
+            "country",
+            "source",
+            "assigned_agent",
+            "funnel",
+            "deposit_amount",
+            "net_deposit",
+            "user_balance",
+            "investment_date",
+            "serial",
+            "attempts",
+            "comments",
+            "created_at",
+          ].includes(column),
+        ) as ClientTableColumnKey[];
+
+        if (validColumns.length > 0) {
+          setVisibleColumns(validColumns);
+        }
+      }
+
+      const savedSortKey = localStorage.getItem(CLIENTS_TABLE_SORT_KEY);
+      if (
+        savedSortKey === "first_name" ||
+        savedSortKey === "last_name" ||
+        savedSortKey === "email" ||
+        savedSortKey === "phone_number" ||
+        savedSortKey === "country" ||
+        savedSortKey === "source" ||
+        savedSortKey === "funnel" ||
+        savedSortKey === "deposit_amount" ||
+        savedSortKey === "net_deposit" ||
+        savedSortKey === "user_balance" ||
+        savedSortKey === "investment_date" ||
+        savedSortKey === "serial" ||
+        savedSortKey === "attempts" ||
+        savedSortKey === "created_at"
+      ) {
+        setSortKey(savedSortKey);
+      }
+
+      const savedSortDirection = localStorage.getItem(
+        CLIENTS_TABLE_SORT_DIRECTION_KEY,
+      );
+      if (savedSortDirection === "asc" || savedSortDirection === "desc") {
+        setSortDirection(savedSortDirection);
+      }
+
+      const savedShowColumnFilters = localStorage.getItem(
+        CLIENTS_TABLE_SHOW_COLUMN_FILTERS_KEY,
+      );
+      if (savedShowColumnFilters === "true" || savedShowColumnFilters === "false") {
+        setShowColumnFilters(savedShowColumnFilters === "true");
+      }
+
+      const savedTableTextFiltersRaw = localStorage.getItem(
+        CLIENTS_TABLE_TEXT_FILTERS_KEY,
+      );
+      if (savedTableTextFiltersRaw) {
+        const parsed = JSON.parse(
+          savedTableTextFiltersRaw,
+        ) as Partial<ClientTableTextFilters>;
+
+        setTableTextFilters({
+          first_name:
+            typeof parsed.first_name === "string" ? parsed.first_name : "",
+          last_name:
+            typeof parsed.last_name === "string" ? parsed.last_name : "",
+          email: typeof parsed.email === "string" ? parsed.email : "",
+          phone_number:
+            typeof parsed.phone_number === "string" ? parsed.phone_number : "",
+          source: typeof parsed.source === "string" ? parsed.source : "",
+          serial: typeof parsed.serial === "string" ? parsed.serial : "",
+        });
+      }
+
       const savedPageSize = localStorage.getItem(CLIENTS_PAGE_SIZE_KEY);
       if (savedPageSize) {
         const parsed = Number(savedPageSize);
@@ -340,6 +472,14 @@ export function useClientManagement(
   }, [searchQuery]);
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedTableTextFilters(tableTextFilters);
+    }, CLIENTS_SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [tableTextFilters]);
+
+  useEffect(() => {
     try {
       localStorage.setItem(CLIENTS_STATUS_FILTER_KEY, statusFilter);
     } catch {
@@ -381,6 +521,66 @@ export function useClientManagement(
 
   useEffect(() => {
     try {
+      localStorage.setItem(
+        CLIENTS_DAILY_MANAGEMENT_FILTER_KEY,
+        dailyManagementFilter,
+      );
+    } catch {
+      //
+    }
+  }, [dailyManagementFilter]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        CLIENTS_TABLE_VISIBLE_COLUMNS_KEY,
+        JSON.stringify(visibleColumns),
+      );
+    } catch {
+      //
+    }
+  }, [visibleColumns]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CLIENTS_TABLE_SORT_KEY, sortKey);
+    } catch {
+      //
+    }
+  }, [sortKey]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CLIENTS_TABLE_SORT_DIRECTION_KEY, sortDirection);
+    } catch {
+      //
+    }
+  }, [sortDirection]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        CLIENTS_TABLE_TEXT_FILTERS_KEY,
+        JSON.stringify(tableTextFilters),
+      );
+    } catch {
+      //
+    }
+  }, [tableTextFilters]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        CLIENTS_TABLE_SHOW_COLUMN_FILTERS_KEY,
+        String(showColumnFilters),
+      );
+    } catch {
+      //
+    }
+  }, [showColumnFilters]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem(CLIENTS_PAGE_SIZE_KEY, String(rowsPerPage));
     } catch {
       //
@@ -412,6 +612,15 @@ export function useClientManagement(
     assignedAgentFilter,
     countryFilter,
     balanceRangeFilter,
+    dailyManagementFilter,
+    debouncedTableTextFilters.first_name,
+    debouncedTableTextFilters.last_name,
+    debouncedTableTextFilters.email,
+    debouncedTableTextFilters.phone_number,
+    debouncedTableTextFilters.source,
+    debouncedTableTextFilters.serial,
+    sortKey,
+    sortDirection,
     rowsPerPage,
     activeOperationId,
     operationId,
@@ -543,7 +752,11 @@ export function useClientManagement(
           campaignFilter !== "all" ||
           assignedAgentFilter !== "all" ||
           trimmedCountryFilter.length > 0 ||
-          balanceRangeFilter !== "all";
+          balanceRangeFilter !== "all" ||
+          dailyManagementFilter !== "all" ||
+          Object.values(debouncedTableTextFilters).some(
+            (value) => value.trim().length > 0,
+          );
 
         const result = await (
           query
@@ -556,6 +769,11 @@ export function useClientManagement(
                 country: trimmedCountryFilter || null,
                 balanceRange:
                   balanceRangeFilter === "all" ? null : balanceRangeFilter,
+                dailyManagement:
+                  dailyManagementFilter === "all" ? null : dailyManagementFilter,
+                textFilters: debouncedTableTextFilters,
+                orderBy: sortKey,
+                orderDirection: sortDirection,
                 page: currentPage,
                 pageSize: rowsPerPage,
               })
@@ -570,6 +788,11 @@ export function useClientManagement(
                 country: trimmedCountryFilter || null,
                 balanceRange:
                   balanceRangeFilter === "all" ? null : balanceRangeFilter,
+                dailyManagement:
+                  dailyManagementFilter === "all" ? null : dailyManagementFilter,
+                textFilters: debouncedTableTextFilters,
+                orderBy: sortKey,
+                orderDirection: sortDirection,
               })
         );
 
@@ -609,7 +832,10 @@ export function useClientManagement(
         statusFilter !== "all" ||
         campaignFilter !== "all" ||
         trimmedCountryFilter.length > 0 ||
-        balanceRangeFilter !== "all";
+        balanceRangeFilter !== "all" ||
+        Object.values(debouncedTableTextFilters).some(
+          (value) => value.trim().length > 0,
+        );
 
       const { data: assignedClients, error, count } =
         await agentAssignments.getAssignedClientsPage(user.id, {
@@ -620,6 +846,9 @@ export function useClientManagement(
           country: trimmedCountryFilter || null,
           balanceRange:
             balanceRangeFilter === "all" ? null : balanceRangeFilter,
+          textFilters: debouncedTableTextFilters,
+          orderBy: sortKey,
+          orderDirection: sortDirection,
           page: currentPage,
           pageSize: rowsPerPage,
         });
@@ -722,6 +951,15 @@ export function useClientManagement(
     assignedAgentFilter,
     countryFilter,
     balanceRangeFilter,
+    dailyManagementFilter,
+    debouncedTableTextFilters.first_name,
+    debouncedTableTextFilters.last_name,
+    debouncedTableTextFilters.email,
+    debouncedTableTextFilters.phone_number,
+    debouncedTableTextFilters.source,
+    debouncedTableTextFilters.serial,
+    sortKey,
+    sortDirection,
     viewHydrated,
   ]);
 
@@ -1293,6 +1531,59 @@ export function useClientManagement(
     setPageInput(String(safePage));
   };
 
+  const handleToggleColumn = (column: ClientTableColumnKey) => {
+    setVisibleColumns((current) => {
+      if (current.includes(column)) {
+        if (current.length === 1) {
+          return current;
+        }
+
+        return current.filter((item) => item !== column);
+      }
+
+      const next = [...current, column];
+      return CLIENT_TABLE_DEFAULT_VISIBLE_COLUMNS.filter((key) =>
+        next.includes(key),
+      ).concat(
+        next.filter((key) => !CLIENT_TABLE_DEFAULT_VISIBLE_COLUMNS.includes(key)),
+      ) as ClientTableColumnKey[];
+    });
+  };
+
+  const handleSortChange = (nextSortKey: ClientTableSortKey) => {
+    if (sortKey === nextSortKey) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortKey(nextSortKey);
+    setSortDirection("asc");
+  };
+
+  const handleTableTextFilterChange = (
+    filterKey: ClientTableTextFilterKey,
+    value: string,
+  ) => {
+    setTableTextFilters((current) => ({
+      ...current,
+      [filterKey]: value,
+    }));
+  };
+
+  const resetTableTextFilters = () => {
+    setTableTextFilters(CLIENT_TABLE_DEFAULT_TEXT_FILTERS);
+  };
+
+  const resetColumnFilters = () => {
+    setStatusFilter("all");
+    setCountryFilter("");
+    setTableTextFilters(CLIENT_TABLE_DEFAULT_TEXT_FILTERS);
+  };
+
+  const toggleColumnFiltersVisibility = () => {
+    setShowColumnFilters((current) => !current);
+  };
+
   const handleTableScroll = () => {
     if (!tableScrollRef.current) return;
 
@@ -1311,6 +1602,7 @@ export function useClientManagement(
   const trimmedCountryFilter = countryFilter.trim();
   const isCountryFilterActive = trimmedCountryFilter.length > 0;
   const isBalanceRangeFilterActive = balanceRangeFilter !== "all";
+  const isDailyManagementFilterActive = dailyManagementFilter !== "all";
   const activeFilterSummary = [
     isSearchActive ? trimmedSearchQuery : null,
     statusFilter !== "all"
@@ -1336,11 +1628,38 @@ export function useClientManagement(
         "Agente"
       : null,
     isCountryFilterActive ? `Pais: ${trimmedCountryFilter}` : null,
+    debouncedTableTextFilters.first_name.trim()
+      ? `Nombre: ${debouncedTableTextFilters.first_name.trim()}`
+      : null,
+    debouncedTableTextFilters.last_name.trim()
+      ? `Apellido: ${debouncedTableTextFilters.last_name.trim()}`
+      : null,
+    debouncedTableTextFilters.email.trim()
+      ? `Email: ${debouncedTableTextFilters.email.trim()}`
+      : null,
+    debouncedTableTextFilters.phone_number.trim()
+      ? `Telefono: ${debouncedTableTextFilters.phone_number.trim()}`
+      : null,
+    debouncedTableTextFilters.source.trim()
+      ? `Empresa: ${debouncedTableTextFilters.source.trim()}`
+      : null,
+    debouncedTableTextFilters.serial.trim()
+      ? `Serie: ${debouncedTableTextFilters.serial.trim()}`
+      : null,
     isBalanceRangeFilterActive
       ? getClientBalanceRangeLabel(balanceRangeFilter)
       : null,
+    dailyManagementFilter === "commented_today"
+      ? "Gestionados hoy"
+      : dailyManagementFilter === "pending_today"
+        ? "Pendientes de hoy"
+        : null,
   ].filter(Boolean) as string[];
   const hasActiveFilters = activeFilterSummary.length > 0;
+  const hasActiveColumnFilters =
+    statusFilter !== "all" ||
+    countryFilter.trim().length > 0 ||
+    Object.values(tableTextFilters).some((value) => value.trim().length > 0);
   const headerSubtitle = useMemo(() => {
     if (opLocked) return "Selecciona operación para habilitar clientes";
     return "Busca, revisa comentarios y gestiona la cartera";
@@ -1402,6 +1721,13 @@ export function useClientManagement(
     setCountryFilter,
     balanceRangeFilter,
     setBalanceRangeFilter,
+    dailyManagementFilter,
+    setDailyManagementFilter,
+    visibleColumns,
+    tableTextFilters,
+    showColumnFilters,
+    sortKey,
+    sortDirection,
     campaignFilterOptions,
     agentFilterOptions,
     selectedClient,
@@ -1438,17 +1764,25 @@ export function useClientManagement(
     isSearchActive,
     isSearchPendingMinLength,
     hasActiveFilters,
+    hasActiveColumnFilters,
     isStatusFilterActive,
     isCampaignFilterActive,
     isAgentFilterActive,
     isCountryFilterActive,
     isBalanceRangeFilterActive,
+    isDailyManagementFilterActive,
     activeFilterSummary,
     rowsPerPage,
     setRowsPerPage,
     currentPage,
     pageInput,
     setPageInput,
+    resetColumnFilters,
+    toggleColumnFiltersVisibility,
+    resetTableTextFilters,
+    handleTableTextFilterChange,
+    handleToggleColumn,
+    handleSortChange,
     tableScrollRef,
     lastTableViewportHeightRef,
     totalPages,

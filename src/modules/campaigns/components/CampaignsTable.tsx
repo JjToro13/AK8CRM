@@ -24,6 +24,7 @@ type CampaignsTableProps = {
   onDelete: (campaign: CampaignViewRow) => void;
   onEditName: (campaign: CampaignViewRow) => void;
   onExport: (campaignId: string) => void;
+  onOpenClients: (campaign: CampaignViewRow) => void;
   onToggleLock: (campaign: CampaignViewRow) => void;
 };
 
@@ -37,6 +38,7 @@ export default function CampaignsTable({
   onDelete,
   onEditName,
   onExport,
+  onOpenClients,
   onToggleLock,
 }: CampaignsTableProps) {
   const renderSortIcon = (column: CampaignSortKey) => {
@@ -56,12 +58,12 @@ export default function CampaignsTable({
 
   return (
     <section className={campaignCardClass}>
-      <div className="flex items-center justify-between gap-4 mb-4">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <div className={campaignEyebrowClass}>Vista activa</div>
-          <h3 className={cn(campaignTitleClass, "mt-4")}>Campañas activas</h3>
+          <h3 className={cn(campaignTitleClass, "mt-4")}>Campanas activas</h3>
           <p className={cn(campaignSubTextClass, "mt-1")}>
-            Importa listas, exporta reportes y gestiona bloqueo por campaña.
+            Importa listas, exporta reportes, revisa clientes y gestiona bloqueo por campana.
           </p>
         </div>
       </div>
@@ -71,11 +73,9 @@ export default function CampaignsTable({
           <div className="crm-shell-pill mx-auto flex h-14 w-14 items-center justify-center rounded-[1.35rem] border border-white/78 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
             <Users className="h-6 w-6 text-brand" />
           </div>
-          <div className="mt-3 text-sm font-semibold text-ink">
-            No hay campañas
-          </div>
+          <div className="mt-3 text-sm font-semibold text-ink">No hay campanas</div>
           <div className="mt-1 text-sm text-muted">
-            Aparecerán al importar listas.
+            Apareceran al importar listas.
           </div>
         </div>
       ) : (
@@ -169,6 +169,7 @@ export default function CampaignsTable({
                     onDelete={onDelete}
                     onEditName={onEditName}
                     onExport={onExport}
+                    onOpenClients={onOpenClients}
                     onToggleLock={onToggleLock}
                   />
                 ))}
@@ -177,7 +178,7 @@ export default function CampaignsTable({
           </div>
 
           <div className="crm-table-footer border-t border-white/72 bg-white/42 px-4 py-3 text-xs text-muted">
-            Tip: puedes hacer scroll horizontal si la tabla no cabe completa.
+            Tip: puedes hacer doble clic en una campana para abrir su base y mover clientes.
           </div>
         </div>
       )}

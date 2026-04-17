@@ -50,6 +50,13 @@ export default function ClientManagementPage(
     setCountryFilter,
     balanceRangeFilter,
     setBalanceRangeFilter,
+    dailyManagementFilter,
+    setDailyManagementFilter,
+    visibleColumns,
+    tableTextFilters,
+    showColumnFilters,
+    sortKey,
+    sortDirection,
     campaignFilterOptions,
     agentFilterOptions,
     activeFilterSummary,
@@ -85,11 +92,18 @@ export default function ClientManagementPage(
     isSearchActive,
     isSearchPendingMinLength,
     hasActiveFilters,
+    hasActiveColumnFilters,
     rowsPerPage,
     setRowsPerPage,
     currentPage,
     pageInput,
     setPageInput,
+    resetColumnFilters,
+    toggleColumnFiltersVisibility,
+    resetTableTextFilters,
+    handleTableTextFilterChange,
+    handleToggleColumn,
+    handleSortChange,
     tableScrollRef,
     lastTableViewportHeightRef,
     totalPages,
@@ -118,9 +132,9 @@ export default function ClientManagementPage(
     searchMinLength,
   } = useClientManagement(props);
   const clientsWorkspaceRef = useRef<HTMLElement | null>(null);
-  const [selectedActionClientId, setSelectedActionClientId] = useState<string | null>(
-    null,
-  );
+  const [selectedActionClientId, setSelectedActionClientId] = useState<
+    string | null
+  >(null);
   const [updatesNoticeOpen, setUpdatesNoticeOpen] = useState(true);
 
   const headerTotal = hasActiveFilters ? unfilteredTotalClients : totalClients;
@@ -128,6 +142,28 @@ export default function ClientManagementPage(
     () => clients.find((client) => client.id === selectedActionClientId) ?? null,
     [clients, selectedActionClientId],
   );
+  const modalClientIndex = useMemo(
+    () => clients.findIndex((client) => client.id === modalClient?.id),
+    [clients, modalClient?.id],
+  );
+  const previousModalClient =
+    modalClientIndex > 0 ? clients[modalClientIndex - 1] : null;
+  const nextModalClient =
+    modalClientIndex >= 0 && modalClientIndex < clients.length - 1
+      ? clients[modalClientIndex + 1]
+      : null;
+
+  const handleOpenPreviousClient = () => {
+    if (!previousModalClient) return;
+    setSelectedActionClientId(previousModalClient.id);
+    handleEditClient(previousModalClient);
+  };
+
+  const handleOpenNextClient = () => {
+    if (!nextModalClient) return;
+    setSelectedActionClientId(nextModalClient.id);
+    handleEditClient(nextModalClient);
+  };
 
   useEffect(() => {
     if (!clients.some((client) => client.id === selectedActionClientId)) {
@@ -158,9 +194,9 @@ export default function ClientManagementPage(
     <div className="min-h-screen bg-bg flex flex-col">
       <PageHeader
         icon={<Users className="h-5 w-5 text-brand" />}
-        title="Gestión de Clientes"
+        title="Gestion de Clientes"
         subtitle={
-          <span className="text-xs text-muted hidden sm:inline">
+          <span className="hidden text-xs text-muted sm:inline">
             {headerSubtitle}
           </span>
         }
@@ -190,8 +226,13 @@ export default function ClientManagementPage(
         meta={
           <div className="text-xs text-muted">
             {headerTotal.toLocaleString()} clientes
-            {hasActiveFilters ? <> • {totalClients.toLocaleString()} filtrados</> : null}
-            {" • "}actualizado hace {updatedSecs}s
+            {hasActiveFilters ? (
+              <>
+                {" - "}
+                {totalClients.toLocaleString()} filtrados
+              </>
+            ) : null}
+            {" - "}actualizado hace {updatedSecs}s
           </div>
         }
       />
@@ -199,13 +240,17 @@ export default function ClientManagementPage(
       <main className="flex-1 w-full">
         <PageStage tone="brand" contentClassName="space-y-6">
           {opLocked ? (
-            <div className={`${clientInsetClass} border-amber-200/90 bg-[linear-gradient(180deg,rgba(254,243,199,0.76),rgba(255,255,255,0.6))] p-4 text-sm text-amber-900`}>
-              Debes seleccionar una operación para ver clientes.
+            <div
+              className={`${clientInsetClass} border-amber-200/90 bg-[linear-gradient(180deg,rgba(254,243,199,0.76),rgba(255,255,255,0.6))] p-4 text-sm text-amber-900`}
+            >
+              Debes seleccionar una operacion para ver clientes.
             </div>
           ) : null}
 
           {error ? (
-            <div className={`${clientInsetClass} border-red-200/90 bg-[linear-gradient(180deg,rgba(254,226,226,0.8),rgba(255,255,255,0.62))] p-4`}>
+            <div
+              className={`${clientInsetClass} border-red-200/90 bg-[linear-gradient(180deg,rgba(254,226,226,0.8),rgba(255,255,255,0.62))] p-4`}
+            >
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-red-600" />
                 <p className="text-red-700 text-sm font-semibold">{error}</p>
@@ -221,7 +266,7 @@ export default function ClientManagementPage(
                 <AlertCircle className="h-5 w-5 text-amber-700" />
                 <p className="text-sm font-semibold text-amber-900">
                   Modo reducido activo. Se pausaron lecturas pesadas de cartera,
-                  bÃºsqueda y recargas para mantener el CRM accesible.
+                  busqueda y recargas para mantener el CRM accesible.
                 </p>
               </div>
             </div>
@@ -237,14 +282,14 @@ export default function ClientManagementPage(
               <ul className="list-disc space-y-2 pl-5 text-sm">
                 <li>
                   Ahora selecciona una fila para activar los botones de acciones
-                  rápidas en la parte inferior.
+                  rapidas en la parte inferior.
                 </li>
                 <li>
                   Los filtros se abren desde <strong>Sin filtros activos</strong>.
                 </li>
                 <li>
-                  Un doble clic en una fila abre la edición del cliente de forma
-                  rápida.
+                  Un doble clic en una fila abre la edicion del cliente de forma
+                  rapida.
                 </li>
               </ul>
             }
@@ -255,12 +300,12 @@ export default function ClientManagementPage(
             open={callNoticeOpen}
             onClose={closeCallNotice}
             variant="warning"
-            title="Función en revisión"
+            title="Funcion en revision"
             message={
               <>
-                <p className="mb-2">Esta función está en revisión.</p>
+                <p className="mb-2">Esta funcion esta en revision.</p>
                 <p className="text-sm">
-                  Si tienes dudas de cómo realizar tus llamadas, comunícate con tu
+                  Si tienes dudas de como realizar tus llamadas, comunicate con tu
                   Team Leader.
                 </p>
               </>
@@ -273,9 +318,17 @@ export default function ClientManagementPage(
               startItem={startItem}
               endItem={endItem}
               hasActiveFilters={hasActiveFilters}
+              hasActiveColumnFilters={hasActiveColumnFilters}
               totalClients={totalClients}
               unfilteredTotalClients={unfilteredTotalClients}
               refreshing={refreshing}
+              visibleColumns={visibleColumns}
+              showColumnFilters={showColumnFilters}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onToggleColumn={handleToggleColumn}
+              onToggleColumnFilters={toggleColumnFiltersVisibility}
+              onResetColumnFilters={resetColumnFilters}
             />
 
             <ClientsFiltersCard
@@ -296,6 +349,9 @@ export default function ClientManagementPage(
               onCountryFilterChange={setCountryFilter}
               balanceRangeFilter={balanceRangeFilter}
               onBalanceRangeFilterChange={setBalanceRangeFilter}
+              dailyManagementFilter={dailyManagementFilter}
+              onDailyManagementFilterChange={setDailyManagementFilter}
+              onResetTableTextFilters={resetTableTextFilters}
               activeFilterSummary={activeFilterSummary}
               isAdmin={isAdmin}
               rowsPerPage={rowsPerPage}
@@ -308,6 +364,13 @@ export default function ClientManagementPage(
               initialLoading={initialLoading}
               opLocked={opLocked}
               isSearchActive={isSearchActive}
+              visibleColumns={visibleColumns}
+              tableTextFilters={tableTextFilters}
+              showColumnFilters={showColumnFilters}
+              statusFilter={statusFilter}
+              countryFilter={countryFilter}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
               selectedClientId={selectedActionClientId}
               tableScrollRef={tableScrollRef}
               lastTableViewportHeight={lastTableViewportHeightRef.current}
@@ -315,6 +378,10 @@ export default function ClientManagementPage(
               onSelectClient={setSelectedActionClientId}
               onEditClient={handleEditClient}
               onCopy={handleCopy}
+              onStatusFilterChange={setStatusFilter}
+              onCountryFilterChange={setCountryFilter}
+              onTableTextFilterChange={handleTableTextFilterChange}
+              onSortChange={handleSortChange}
             />
 
             <ClientsPagination
@@ -362,6 +429,10 @@ export default function ClientManagementPage(
           onScheduleClient={handleScheduleClient}
           canAssignClient={isAdmin}
           onAssignClient={handleAssignClient}
+          hasPreviousClient={Boolean(previousModalClient)}
+          hasNextClient={Boolean(nextModalClient)}
+          onPrevClient={handleOpenPreviousClient}
+          onNextClient={handleOpenNextClient}
         />
       ) : null}
 
@@ -412,7 +483,6 @@ export default function ClientManagementPage(
           onUpdate={handleScheduleUpdated}
         />
       ) : null}
-
     </div>
   );
 }

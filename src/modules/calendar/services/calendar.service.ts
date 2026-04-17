@@ -55,6 +55,19 @@ type ClientEventQuery = {
   operationId?: string | null;
 };
 
+type AlertQuery = {
+  operationId?: string | null;
+  agentId?: string | null;
+  lookAheadMinutes?: number;
+};
+
+export type CalendarGlobalAlertsSummary = {
+  total: number;
+  overdueCount: number;
+  upcomingCount: number;
+  nextEvent: ScheduledCall | null;
+};
+
 export const calendar = {
   listWeek: async ({ weekStart, operationId, agentId }: WeekQuery) => {
     const from = addDays(weekStart, -1).toISOString();
@@ -84,23 +97,108 @@ export const calendar = {
   },
 
   findOpenByClient: async ({ clientId, operationId }: ClientEventQuery) => {
-    let request = supabase
+    let scheduledRequest = supabase
       .from("scheduled_calls")
       .select(SCHEDULED_CALL_SELECT)
       .eq("client_id", clientId)
+      .eq("status", "scheduled")
+      .order("scheduled_for", { ascending: true })
+      .limit(1);
+
+    if (operationId) {
+      scheduledRequest = scheduledRequest.eq("operation_id", operationId);
+    }
+
+    const { data: scheduledData, error: scheduledError } = await scheduledRequest;
+    const normalizedScheduled = normalizeScheduledCalls(scheduledData);
+
+    if (scheduledError || normalizedScheduled[0]) {
+      return {
+        data: normalizedScheduled[0] ?? null,
+        error: scheduledError,
+      };
+    }
+
+    let postponedRequest = supabase
+      .from("scheduled_calls")
+      .select(SCHEDULED_CALL_SELECT)
+      .eq("client_id", clientId)
+      .eq("status", "postponed")
+      .order("updated_at", { ascending: false })
       .order("scheduled_for", { ascending: false })
-      .limit(12);
+      .limit(1);
+
+    if (operationId) {
+      postponedRequest = postponedRequest.eq("operation_id", operationId);
+    }
+
+    const { data: postponedData, error: postponedError } = await postponedRequest;
+    const normalizedPostponed = normalizeScheduledCalls(postponedData);
+
+    return {
+      data: normalizedPostponed[0] ?? null,
+      error: postponedError,
+    };
+  },
+
+  listGlobalAlerts: async ({
+    operationId,
+    agentId,
+    lookAheadMinutes = 120,
+  }: AlertQuery) => {
+    const now = new Date();
+    const from = addDays(now, -7).toISOString();
+    const to = new Date(
+      now.getTime() + Math.max(15, lookAheadMinutes) * 60 * 1000,
+    ).toISOString();
+
+    let request = supabase
+      .from("scheduled_calls")
+      .select(SCHEDULED_CALL_SELECT)
+      .eq("status", "scheduled")
+      .gte("scheduled_for", from)
+      .lt("scheduled_for", to)
+      .order("scheduled_for", { ascending: true });
 
     if (operationId) {
       request = request.eq("operation_id", operationId);
     }
 
+    if (agentId) {
+      request = request.eq("agent_id", agentId);
+    }
+
     const { data, error } = await request;
     const normalized = normalizeScheduledCalls(data);
 
+    if (error) {
+      return {
+        data: {
+          total: 0,
+          overdueCount: 0,
+          upcomingCount: 0,
+          nextEvent: null,
+        } satisfies CalendarGlobalAlertsSummary,
+        error,
+      };
+    }
+
+    const overdue = normalized.filter(
+      (event) => new Date(event.scheduled_for).getTime() < now.getTime(),
+    );
+    const upcoming = normalized.filter((event) => {
+      const scheduledAt = new Date(event.scheduled_for).getTime();
+      return scheduledAt >= now.getTime();
+    });
+
     return {
-      data: normalized[0] ?? null,
-      error,
+      data: {
+        total: overdue.length + upcoming.length,
+        overdueCount: overdue.length,
+        upcomingCount: upcoming.length,
+        nextEvent: overdue[0] ?? upcoming[0] ?? null,
+      } satisfies CalendarGlobalAlertsSummary,
+      error: null,
     };
   },
 

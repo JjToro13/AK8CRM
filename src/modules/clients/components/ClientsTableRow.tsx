@@ -8,11 +8,14 @@ import {
   getStatusText,
   resolveClientStatus,
 } from "../../../lib/utils";
+import { hasCommentToday } from "../lib/clientFollowUp";
 import type { Client } from "../../../shared/types/crm";
-import { CLIENTS_GRID_TEMPLATE } from "./clientsTableLayout";
+import type { ClientTableColumnKey } from "./clientTableColumns";
 
 type ClientsTableRowProps = {
   client: Client;
+  visibleColumns: ClientTableColumnKey[];
+  gridTemplate: string;
   selected: boolean;
   onSelect: () => void;
   onOpenEdit: (client: Client) => void;
@@ -79,6 +82,8 @@ function isInteractiveElementTarget(target: EventTarget | null) {
 
 export default function ClientsTableRow({
   client,
+  visibleColumns,
+  gridTemplate,
   selected,
   onSelect,
   onOpenEdit,
@@ -90,11 +95,14 @@ export default function ClientsTableRow({
   const isManyAttempts = (client.attempts ?? 0) >= 3;
   const company = client.source || client.trading_company || "-";
   const assignedAgentName = client.assigned_agent?.name?.trim() || "Sin asignar";
+  const isPendingToday = !hasCommentToday(client.last_comment_at);
   const rowAccentClass = isManyAttempts
     ? "before:bg-red-400"
     : isHighValue
       ? "before:bg-blue-400"
-      : "";
+      : isPendingToday
+        ? "before:bg-amber-400"
+        : "";
 
   const handleRowDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
     if (isInteractiveElementTarget(event.target)) {
@@ -122,119 +130,172 @@ export default function ClientsTableRow({
         rowAccentClass,
         selected && "crm-client-row-selected",
       )}
-      style={{ gridTemplateColumns: CLIENTS_GRID_TEMPLATE }}
+      style={{ gridTemplateColumns: gridTemplate }}
       aria-selected={selected}
     >
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div className="flex min-w-0 items-center gap-3">
-          <div
-            className={cn(
-              "status-indicator shrink-0 !mr-0",
-              getStatusColor(client),
-              selected && "ring-4 ring-brand/10",
-            )}
-          />
-          <div className="min-w-0">
-            <div className="truncate text-sm text-ink">{getStatusText(client)}</div>
-            <div className="text-[11px] font-semibold text-muted">
-              {resolvedStatus.shortLabel}
-            </div>
-          </div>
-        </div>
-      </SheetCell>
-
-      <SheetCell className={cn("font-medium", selected && "crm-client-row-cell-selected")}>
-        <div className="truncate">{client.first_name || client.name || "Sin nombre"}</div>
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div className="truncate">{client.last_name || "-"}</div>
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <CopyableText label="Email" value={client.email} onCopy={onCopy} />
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <CopyableText
-          label="Telefono"
-          value={client.phone_number}
-          onCopy={onCopy}
-        />
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div className="truncate">{client.country || "-"}</div>
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div className="truncate" title={company}>
-          {company}
-        </div>
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div
-          className={cn(
-            "truncate",
-            !client.assigned_agent?.name && "text-muted",
-          )}
-          title={assignedAgentName}
-        >
-          {assignedAgentName}
-        </div>
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div className="truncate">{client.funnel || "-"}</div>
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div className="truncate">
-          {client.deposit_amount ? formatCurrency(client.deposit_amount) : "-"}
-        </div>
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div className="truncate">
-          {client.net_deposit ? formatCurrency(client.net_deposit) : "-"}
-        </div>
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div className="truncate">
-          {client.user_balance ? formatCurrency(client.user_balance) : "-"}
-        </div>
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div className="truncate">{client.investment_date || "-"}</div>
-      </SheetCell>
-
-      <SheetCell className={cn("font-mono text-[13px]", selected && "crm-client-row-cell-selected")}>
-        <div className="truncate">{client.serial}</div>
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div>{client.attempts ?? 0}</div>
-      </SheetCell>
-
-      <SheetCell className={cn("items-start py-2.5", selected && "crm-client-row-cell-selected")}>
-        <div className="w-full min-w-0">
-          <ClientCommentsCell
-            clientId={client.id}
-            lastComment={client.last_comment}
-            lastCommentAt={client.last_comment_at}
-            lastCommentAgent={client.last_comment_agent}
-            commentCount={client.comment_count}
-            agent={client.agent}
-          />
-        </div>
-      </SheetCell>
-
-      <SheetCell className={cn(selected && "crm-client-row-cell-selected")}>
-        <div className="truncate">{formatDate(client.created_at)}</div>
-      </SheetCell>
+      {visibleColumns.map((column) => {
+        switch (column) {
+          case "status":
+            return (
+              <SheetCell
+                key={column}
+                className={cn(selected && "crm-client-row-cell-selected")}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div
+                    className={cn(
+                      "status-indicator shrink-0 !mr-0",
+                      getStatusColor(client),
+                      selected && "ring-4 ring-brand/10",
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm text-ink">{getStatusText(client)}</div>
+                    <div className="text-[11px] font-semibold text-muted">
+                      {resolvedStatus.shortLabel}
+                    </div>
+                  </div>
+                </div>
+              </SheetCell>
+            );
+          case "first_name":
+            return (
+              <SheetCell
+                key={column}
+                className={cn("font-medium", selected && "crm-client-row-cell-selected")}
+              >
+                <div className="min-w-0">
+                  <div className="truncate">{client.first_name || client.name || "Sin nombre"}</div>
+                  {isPendingToday ? (
+                    <div className="mt-1 text-[11px] font-semibold text-amber-700">
+                      Urgente · sin comentario hoy
+                    </div>
+                  ) : null}
+                </div>
+              </SheetCell>
+            );
+          case "last_name":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div className="truncate">{client.last_name || "-"}</div>
+              </SheetCell>
+            );
+          case "email":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <CopyableText label="Email" value={client.email} onCopy={onCopy} />
+              </SheetCell>
+            );
+          case "phone_number":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <CopyableText label="Telefono" value={client.phone_number} onCopy={onCopy} />
+              </SheetCell>
+            );
+          case "country":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div className="truncate">{client.country || "-"}</div>
+              </SheetCell>
+            );
+          case "source":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div className="truncate" title={company}>
+                  {company}
+                </div>
+              </SheetCell>
+            );
+          case "assigned_agent":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div
+                  className={cn("truncate", !client.assigned_agent?.name && "text-muted")}
+                  title={assignedAgentName}
+                >
+                  {assignedAgentName}
+                </div>
+              </SheetCell>
+            );
+          case "funnel":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div className="truncate">{client.funnel || "-"}</div>
+              </SheetCell>
+            );
+          case "deposit_amount":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div className="truncate">
+                  {client.deposit_amount ? formatCurrency(client.deposit_amount) : "-"}
+                </div>
+              </SheetCell>
+            );
+          case "net_deposit":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div className="truncate">
+                  {client.net_deposit ? formatCurrency(client.net_deposit) : "-"}
+                </div>
+              </SheetCell>
+            );
+          case "user_balance":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div className="truncate">
+                  {client.user_balance ? formatCurrency(client.user_balance) : "-"}
+                </div>
+              </SheetCell>
+            );
+          case "investment_date":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div className="truncate">{client.investment_date || "-"}</div>
+              </SheetCell>
+            );
+          case "serial":
+            return (
+              <SheetCell
+                key={column}
+                className={cn("font-mono text-[13px]", selected && "crm-client-row-cell-selected")}
+              >
+                <div className="truncate">{client.serial}</div>
+              </SheetCell>
+            );
+          case "attempts":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div>{client.attempts ?? 0}</div>
+              </SheetCell>
+            );
+          case "comments":
+            return (
+              <SheetCell
+                key={column}
+                className={cn("items-start py-2.5", selected && "crm-client-row-cell-selected")}
+              >
+                <div className="w-full min-w-0">
+                  <ClientCommentsCell
+                    clientId={client.id}
+                    lastComment={client.last_comment}
+                    lastCommentAt={client.last_comment_at}
+                    lastCommentAgent={client.last_comment_agent}
+                    commentCount={client.comment_count}
+                    agent={client.agent}
+                  />
+                </div>
+              </SheetCell>
+            );
+          case "created_at":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div className="truncate">{formatDate(client.created_at)}</div>
+              </SheetCell>
+            );
+          default:
+            return null;
+        }
+      })}
     </div>
   );
 }

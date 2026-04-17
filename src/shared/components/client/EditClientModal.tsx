@@ -12,6 +12,10 @@ import {
   Phone,
   UserPlus,
   RefreshCw,
+  ArrowDownUp,
+  Copy,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { supabase, ClientComment, clientComments } from "../../../lib/supabase";
 import { Client } from "../../../lib/supabase";
@@ -29,7 +33,13 @@ import { useAuth } from "../../../hooks/useAuth";
 import Input from "../ui/Input";
 import Textarea from "../ui/Textarea";
 import {
-  ModalHeader,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/Select";
+import {
   ModalBody,
   ModalFooter,
   ModalPanel,
@@ -60,16 +70,15 @@ interface EditClientModalProps {
   onScheduleClient?: (client: Client) => void;
   canAssignClient?: boolean;
   onAssignClient?: (client: Client) => void;
+  hasPreviousClient?: boolean;
+  hasNextClient?: boolean;
+  onPrevClient?: () => void;
+  onNextClient?: () => void;
 }
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
-
-type StatusGroup = {
-  title: string;
-  items: Array<(typeof CLIENT_STATUS_OPTIONS)[number]>;
-};
 
 const COMMENTS_PAGE_SIZE = 10;
 
@@ -88,10 +97,20 @@ export default function EditClientModal({
   onScheduleClient,
   canAssignClient = false,
   onAssignClient,
+  hasPreviousClient = false,
+  hasNextClient = false,
+  onPrevClient,
+  onNextClient,
 }: EditClientModalProps) {
   const { user } = useAuth();
 
   const [statusCode, setStatusCode] = useState<ClientStatusCode>("NU");
+  const [baselineStatusCode, setBaselineStatusCode] =
+    useState<ClientStatusCode>("NU");
+  const [userBalanceInput, setUserBalanceInput] = useState("");
+  const [baselineUserBalance, setBaselineUserBalance] = useState<
+    number | null
+  >(null);
 
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState<ClientComment[]>([]);
@@ -101,16 +120,52 @@ export default function EditClientModal({
   const [commentsTotalCount, setCommentsTotalCount] = useState(0);
   const [hasMoreComments, setHasMoreComments] = useState(false);
   const [commentsHistoryOpen, setCommentsHistoryOpen] = useState(false);
+  const [commentsSortDirection, setCommentsSortDirection] = useState<
+    "asc" | "desc"
+  >("desc");
 
   const [loading, setLoading] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
   const [loadingMoreComments, setLoadingMoreComments] = useState(false);
   const [error, setError] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState("");
+  const [copyFeedbackMessage, setCopyFeedbackMessage] = useState("");
+  const [contentVisible, setContentVisible] = useState(true);
+
+  useEffect(() => {
+    if (!isOpen || !client?.id) return;
+
+    setContentVisible(false);
+
+    let frameId = 0;
+    const timeoutId = window.setTimeout(() => {
+      frameId = window.requestAnimationFrame(() => {
+        setContentVisible(true);
+      });
+    }, 18);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [client?.id, isOpen]);
 
   useEffect(() => {
     if (client && isOpen) {
-      setStatusCode(getStatusCode(client));
+      const currentCode = getStatusCode(client);
+      setStatusCode(currentCode);
+      setBaselineStatusCode(currentCode);
+      const currentBalance =
+        typeof client.user_balance === "number" ? client.user_balance : null;
+      setBaselineUserBalance(currentBalance);
+      setUserBalanceInput(
+        currentBalance === null || Number.isNaN(currentBalance)
+          ? ""
+          : String(currentBalance),
+      );
       setNewComment("");
       setComments([]);
       setEditingCommentId(null);
@@ -119,40 +174,18 @@ export default function EditClientModal({
       setCommentsTotalCount(client.comment_count ?? 0);
       setHasMoreComments((client.comment_count ?? 0) > COMMENTS_PAGE_SIZE);
       setCommentsHistoryOpen(false);
+      setCommentsSortDirection("desc");
+      setSaveSuccessMessage("");
+      setCopyFeedbackMessage("");
+      setError("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, isOpen]);
 
-  const selectableStatusOptions = useMemo(() => {
-    return CLIENT_STATUS_OPTIONS.filter((status) => status.code !== "NU");
-  }, []);
-
-  const statusGroups = useMemo<StatusGroup[]>(() => {
-    const byCode = new Map(
-      selectableStatusOptions.map((status) => [status.code, status]),
-    );
-
-    return [
-      {
-        title: "No contacto",
-        items: ["NC", "NX", "NE"]
-          .map((code) => byCode.get(code as ClientStatusCode))
-          .filter(Boolean) as Array<(typeof CLIENT_STATUS_OPTIONS)[number]>,
-      },
-      {
-        title: "Gestión activa",
-        items: ["LD", "SG", "RA"]
-          .map((code) => byCode.get(code as ClientStatusCode))
-          .filter(Boolean) as Array<(typeof CLIENT_STATUS_OPTIONS)[number]>,
-      },
-      {
-        title: "Cierre comercial",
-        items: ["DP", "NI", "FS"]
-          .map((code) => byCode.get(code as ClientStatusCode))
-          .filter(Boolean) as Array<(typeof CLIENT_STATUS_OPTIONS)[number]>,
-      },
-    ];
-  }, [selectableStatusOptions]);
+  const selectableStatusOptions = useMemo(
+    () => CLIENT_STATUS_OPTIONS.filter((status) => status.code !== "NU"),
+    [],
+  );
 
   const loadCommentsPage = async (
     page: number,
@@ -177,6 +210,7 @@ export default function EditClientModal({
           page,
           pageSize: COMMENTS_PAGE_SIZE,
           includeCount: false,
+          orderDirection: commentsSortDirection,
         },
       );
 
@@ -231,6 +265,44 @@ export default function EditClientModal({
     }
 
     await loadComments();
+  };
+
+  const toggleCommentsSortDirection = async () => {
+    const nextDirection = commentsSortDirection === "desc" ? "asc" : "desc";
+    setCommentsSortDirection(nextDirection);
+
+    if (commentsHistoryOpen) {
+      await loadCommentsPage(1, { reset: true });
+    }
+  };
+
+  const copyFieldValue = async (label: string, value?: string | null) => {
+    const nextValue = (value ?? "").trim();
+    if (!nextValue) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(nextValue);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = nextValue;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+
+      setCopyFeedbackMessage(`${label} copiado.`);
+      window.setTimeout(() => {
+        setCopyFeedbackMessage("");
+      }, 2200);
+    } catch {
+      setError(`No se pudo copiar ${label.toLowerCase()}.`);
+    }
   };
 
   const startEditComment = (comment: ClientComment) => {
@@ -293,18 +365,44 @@ export default function EditClientModal({
     }
   };
 
+  const parseUserBalanceInput = () => {
+    const trimmed = userBalanceInput.trim();
+
+    if (!trimmed) return { value: null as number | null, isValid: true };
+
+    if (!/^-?\d+([.,]\d+)?$/.test(trimmed)) {
+      return { value: null as number | null, isValid: false };
+    }
+
+    const parsed = Number(trimmed.replace(",", "."));
+    if (Number.isNaN(parsed)) {
+      return { value: null as number | null, isValid: false };
+    }
+
+    return { value: parsed, isValid: true };
+  };
+
   const handleSave = async () => {
     if (!client || !user) return;
 
     setLoading(true);
     setError("");
+    setSaveSuccessMessage("");
 
     try {
-      const currentStatus = getStatusCode(client);
+      const currentStatus = baselineStatusCode;
       const statusChanged = statusCode !== currentStatus;
       const hasNewComment = !!newComment.trim();
+      const { value: parsedUserBalance, isValid: isUserBalanceValid } =
+        parseUserBalanceInput();
+      const balanceChanged = isAdmin && parsedUserBalance !== baselineUserBalance;
 
-      if (!statusChanged && !hasNewComment) {
+      if (isAdmin && !isUserBalanceValid) {
+        setError("El valor depositado debe ser un numero valido.");
+        return;
+      }
+
+      if (!statusChanged && !hasNewComment && !balanceChanged) {
         onClose();
         return;
       }
@@ -314,14 +412,23 @@ export default function EditClientModal({
         return;
       }
 
-      if (statusChanged) {
+      if (statusChanged || balanceChanged) {
+        const nextUpdate: Record<string, unknown> = {
+          updated_at: new Date().toISOString(),
+        };
+
+        if (statusChanged) {
+          nextUpdate.status_code = statusCode;
+          nextUpdate.status_color = getLegacyStatusColor(statusCode);
+        }
+
+        if (balanceChanged) {
+          nextUpdate.user_balance = parsedUserBalance;
+        }
+
         let updateRequest = supabase
           .from("clients")
-          .update({
-            status_code: statusCode,
-            status_color: getLegacyStatusColor(statusCode),
-            updated_at: new Date().toISOString(),
-          })
+          .update(nextUpdate)
           .eq("id", client.id);
 
         if (client.operation_id) {
@@ -354,8 +461,34 @@ export default function EditClientModal({
         }
       }
 
-      onSave();
-      onClose();
+      if (statusChanged) {
+        setBaselineStatusCode(statusCode);
+      }
+
+      if (balanceChanged) {
+        setBaselineUserBalance(parsedUserBalance);
+        setUserBalanceInput(
+          parsedUserBalance === null ? "" : String(parsedUserBalance),
+        );
+      }
+
+      if (hasNewComment) {
+        setNewComment("");
+        setCommentsHistoryOpen(true);
+        await loadCommentsPage(1, { reset: true });
+        setCommentsTotalCount((prev) => prev + 1);
+      }
+
+      await Promise.resolve(onSave());
+      setSaveSuccessMessage(
+        hasNewComment
+          ? statusChanged
+            ? "Cliente actualizado y comentario guardado. La ventana permanece abierta."
+            : "Comentario guardado. La ventana permanece abierta."
+          : statusChanged || balanceChanged
+            ? "Cliente actualizado correctamente."
+            : "Cambios guardados correctamente.",
+      );
     } catch (e) {
       console.error(e);
       setError("Error inesperado al guardar");
@@ -370,9 +503,9 @@ export default function EditClientModal({
 
   if (!isOpen || !client) return null;
 
-  const currentResolvedText = getStatusText(client);
+  const currentResolvedText = getStatusText(baselineStatusCode);
   const selectedResolvedText = getStatusText(statusCode);
-  const currentStatusCode = getStatusCode(client);
+  const currentStatusCode = baselineStatusCode;
   const currentStatusIsSC = currentStatusCode === "NU";
   const statusChanged = statusCode !== currentStatusCode;
   const canCall =
@@ -391,18 +524,116 @@ export default function EditClientModal({
         aria-label="Cerrar modal de cliente"
       />
       <ModalPanel className={cn(clientModalPanelClass, "max-h-[90vh] max-w-5xl")}>
-        <ModalHeader
-          icon={<MessageSquare className="h-5 w-5 text-brand" />}
-          title="Editar cliente"
-          description={`${client.first_name || client.name || "Cliente"} - ${client.serial}`}
-          onClose={onClose}
-          className={clientModalHeaderClass}
-        />
+        <div
+          className={cn(
+            clientModalHeaderClass,
+            "flex items-center justify-between gap-4 border-b border-border bg-surface2 px-6 py-5",
+          )}
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand/10">
+              <MessageSquare className="h-5 w-5 text-brand" />
+            </div>
+
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-semibold text-ink sm:text-lg">
+                Editar cliente
+              </h2>
+              <p className="truncate text-xs text-muted">
+                {`${client.first_name || client.name || "Cliente"} - ${client.serial}`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {onPrevClient || onNextClient ? (
+              <div className="flex items-center gap-2 rounded-full border border-white/70 bg-white/68 px-2 py-1 shadow-[0_12px_28px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+                <button
+                  type="button"
+                  onClick={onPrevClient}
+                  disabled={loading || !hasPreviousClient}
+                  className={cn(
+                    modalSecondaryActionClassName,
+                    "min-w-[5.5rem] justify-center border-0 bg-transparent px-3 py-1.5 text-sm shadow-none",
+                  )}
+                >
+                  <ChevronLeft className="mr-1.5 h-4 w-4" />
+                  Atras
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onNextClient}
+                  disabled={loading || !hasNextClient}
+                  className={cn(
+                    modalSecondaryActionClassName,
+                    "min-w-[6.2rem] justify-center border-0 bg-transparent px-3 py-1.5 text-sm shadow-none",
+                  )}
+                >
+                  Siguiente
+                  <ChevronRight className="ml-1.5 h-4 w-4" />
+                </button>
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-surface text-muted transition hover:bg-surface2 hover:text-ink disabled:opacity-50"
+              aria-label="Cerrar"
+              title="Cerrar"
+              disabled={loading}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
         {/* Body */}
         <ModalBody className="crm-scrollbar crm-scrollbar-shell max-h-[calc(90vh-86px-78px)] overflow-y-auto">
+          <div
+            className={cn(
+              "space-y-6 transition-all duration-200 ease-out",
+              contentVisible
+                ? "translate-y-0 opacity-100"
+                : "translate-y-2 opacity-0",
+            )}
+          >
           {/* Info básica */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {saveSuccessMessage ? (
+            <div className="rounded-3xl border border-emerald-200/90 bg-[linear-gradient(180deg,rgba(220,252,231,0.86),rgba(255,255,255,0.72))] p-4">
+              <div className="flex items-start gap-2">
+                <Check className="mt-0.5 h-5 w-5 text-emerald-600" />
+                <p className="text-sm font-semibold text-emerald-800">
+                  {saveSuccessMessage}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {copyFeedbackMessage ? (
+            <div className="rounded-3xl border border-sky-200/90 bg-[linear-gradient(180deg,rgba(224,242,254,0.86),rgba(255,255,255,0.72))] p-4">
+              <div className="flex items-start gap-2">
+                <Copy className="mt-0.5 h-4.5 w-4.5 text-sky-600" />
+                <p className="text-sm font-semibold text-sky-800">
+                  {copyFeedbackMessage}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div>
               <div className="block text-xs font-semibold text-muted mb-2">
                 Nombre
@@ -426,6 +657,81 @@ export default function EditClientModal({
                 className="border-white/70 bg-white/72 backdrop-blur-xl"
               />
             </div>
+
+            <div>
+              <div className="block text-xs font-semibold text-muted mb-2">
+                Telefono
+              </div>
+              <Input
+                type="text"
+                value={client.phone_number || ""}
+                disabled
+                className="border-white/70 bg-white/72 backdrop-blur-xl"
+                rightSlot={
+                  client.phone_number ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void copyFieldValue("Telefono", client.phone_number)
+                      }
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/88 text-muted shadow-[0_10px_20px_rgba(15,23,42,0.06)] transition hover:border-brand/18 hover:text-ink"
+                      title="Copiar telefono"
+                      aria-label="Copiar telefono"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  ) : null
+                }
+              />
+            </div>
+
+            <div>
+              <div className="block text-xs font-semibold text-muted mb-2">
+                Email
+              </div>
+              <Input
+                type="text"
+                value={client.email || ""}
+                disabled
+                className="border-white/70 bg-white/72 backdrop-blur-xl"
+                rightSlot={
+                  client.email ? (
+                    <button
+                      type="button"
+                      onClick={() => void copyFieldValue("Email", client.email)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/88 text-muted shadow-[0_10px_20px_rgba(15,23,42,0.06)] transition hover:border-brand/18 hover:text-ink"
+                      title="Copiar email"
+                      aria-label="Copiar email"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  ) : null
+                }
+              />
+            </div>
+
+            {isAdmin ? (
+              <div className="md:col-span-2 xl:col-span-4">
+                <div className="block text-xs font-semibold text-muted mb-2">
+                  Valor depositado
+                </div>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={userBalanceInput}
+                  onChange={(event) => {
+                    setSaveSuccessMessage("");
+                    setUserBalanceInput(event.target.value);
+                  }}
+                  placeholder="Ej. 1500 o 1500.50"
+                  className="border-white/70 bg-white/72 backdrop-blur-xl"
+                />
+                <p className="mt-2 text-xs text-muted">
+                  Campo editable solo para administrador. Se guarda en
+                  <span className="font-semibold text-ink/80"> user_balance</span>.
+                </p>
+              </div>
+            ) : null}
           </div>
 
           {/* Estado */}
@@ -438,13 +744,25 @@ export default function EditClientModal({
               <div className={cn(clientInsetClass, "px-3 py-2 text-xs text-muted")}>
                 <div>
                   Actual:{" "}
-                  <span className="font-semibold text-ink/80">
+                  <span className="inline-flex items-center gap-2 font-semibold text-ink/80">
+                    <span
+                      className={cn(
+                        "h-2.5 w-2.5 rounded-full",
+                        getStatusDotClass(currentStatusCode),
+                      )}
+                    />
                     {currentResolvedText}
                   </span>
                 </div>
                 <div className="mt-0.5">
                   Seleccionada:{" "}
-                  <span className="font-semibold text-ink/80">
+                  <span className="inline-flex items-center gap-2 font-semibold text-ink/80">
+                    <span
+                      className={cn(
+                        "h-2.5 w-2.5 rounded-full",
+                        getStatusDotClass(statusCode),
+                      )}
+                    />
                     {selectedResolvedText}
                   </span>
                 </div>
@@ -459,67 +777,70 @@ export default function EditClientModal({
               </p>
             </div>
 
-            <div className="space-y-3">
-              {statusGroups.map((group) => (
-                <div
-                  key={group.title}
-                  className={cn(clientInsetClass, "p-3")}
-                >
-                  <div className="mb-2">
-                    <h3 className="text-xs font-semibold text-ink/85">
-                      {group.title}
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {group.items.map((status) => {
-                      const active = statusCode === status.code;
-
-                      return (
-                        <button
-                          key={status.code}
-                          type="button"
-                          onClick={() => setStatusCode(status.code)}
-                          className={cn(
-                            "rounded-xl border px-3 py-2.5 text-left transition",
-                            active
-                              ? "border-brand/24 bg-brand/[0.08] shadow-[0_16px_28px_rgba(15,23,42,0.06)]"
-                              : "border-white/74 bg-white/72 hover:bg-white/84",
-                            "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15",
-                          )}
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <span
-                              className={cn(
-                                "mt-1 h-3 w-3 rounded-full shrink-0",
-                                getStatusDotClass(status.code),
-                              )}
-                            />
-
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-xs font-bold tracking-wide text-ink/90">
-                                  {status.shortLabel}
-                                </span>
-
-                                <span className="h-3 w-px bg-border/80 rounded-full" />
-
-                                <span className="text-xs font-semibold text-ink/80">
-                                  {status.label}
-                                </span>
-                              </div>
-
-                              <p className="mt-1 text-[11px] leading-snug text-muted">
-                                {status.description}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+            <div
+              className={cn(
+                clientInsetClass,
+                "grid gap-4 p-4 md:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]",
+              )}
+            >
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted">
+                  <ArrowDownUp className="h-3.5 w-3.5" />
+                  Estado nuevo
                 </div>
-              ))}
+
+                <Select
+                  value={statusCode === "NU" ? undefined : statusCode}
+                  onValueChange={(value) => {
+                    setSaveSuccessMessage("");
+                    setStatusCode(value as ClientStatusCode);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona un estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectableStatusOptions.map((status) => (
+                      <SelectItem key={status.code} value={status.code}>
+                        <span className="inline-flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "h-2.5 w-2.5 rounded-full",
+                              getStatusDotClass(status.code),
+                            )}
+                          />
+                          <span>
+                            {status.shortLabel} · {status.label}
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="rounded-2xl border border-white/74 bg-white/72 p-4">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "h-3 w-3 rounded-full shrink-0",
+                      getStatusDotClass(statusCode),
+                    )}
+                  />
+                  <span className="text-sm font-semibold text-ink/85">
+                    {selectedResolvedText}
+                  </span>
+                  <span className="text-xs font-semibold text-muted">
+                    {statusCode}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-muted">
+                  {selectableStatusOptions.find(
+                    (status) => status.code === statusCode,
+                  )?.description ??
+                    "Selecciona el estado que mejor represente la gestion actual."}
+                </p>
+              </div>
             </div>
 
             {currentStatusIsSC && !statusChanged && (
@@ -559,6 +880,16 @@ export default function EditClientModal({
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                   Actualizar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void toggleCommentsSortDirection()}
+                  className={cn(clientGhostButtonClass, "gap-2 px-3 py-1.5 text-xs")}
+                >
+                  <ArrowDownUp className="h-3.5 w-3.5" />
+                  {commentsSortDirection === "desc"
+                    ? "Mas recientes"
+                    : "Mas antiguos"}
                 </button>
               </div>
             </div>
@@ -701,7 +1032,10 @@ export default function EditClientModal({
 
             <Textarea
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              onChange={(e) => {
+                setSaveSuccessMessage("");
+                setNewComment(e.target.value);
+              }}
               placeholder="Escribe un nuevo comentario sobre este cliente..."
               className="h-32 resize-none"
               rows={4}
@@ -755,6 +1089,7 @@ export default function EditClientModal({
               </div>
             </div>
           )}
+          </div>
 
         </ModalBody>
 
@@ -763,7 +1098,7 @@ export default function EditClientModal({
           <div className="flex w-full items-center justify-between gap-4">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <div className="hidden text-[11px] font-semibold uppercase tracking-[0.24em] text-muted xl:block">
-                Acciones rÃ¡pidas
+                Acciones rapidas
               </div>
 
               <button

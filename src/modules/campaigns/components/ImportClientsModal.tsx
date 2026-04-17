@@ -9,6 +9,7 @@ import {
   AlertCircle,
   CheckCircle,
   UploadCloud,
+  Download,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
@@ -40,7 +41,7 @@ import {
 interface ImportClientsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: () => void;
+  onImport: () => Promise<void> | void;
   selectedOperationId?: string | null;
 }
 
@@ -49,6 +50,21 @@ interface ImportResult {
   errors: string[];
   campaign_prefix?: string;
   campaign_id?: string;
+  skipped_count?: number;
+  duplicate_rows?: ImportDuplicateRow[];
+}
+
+interface ImportDuplicateRow {
+  row_number: number;
+  duplicate_type: string;
+  duplicate_reason: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  phone_number?: string | null;
+  country?: string | null;
+  source?: string | null;
+  serial?: string | null;
 }
 
 interface ParsedClient {
@@ -66,6 +82,7 @@ interface ParsedClient {
 }
 
 type ImportMode = "new" | "existing";
+type ImportPhase = "form" | "processing" | "result";
 
 type CampaignOption = {
   id: string;
@@ -75,6 +92,25 @@ type CampaignOption = {
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+function escapeCsvValue(value: unknown) {
+  const text = String(value ?? "");
+  if (text.includes('"') || text.includes(",") || text.includes("\n")) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 const overlayV = {
@@ -106,6 +142,10 @@ const MIN_RECOGNIZED_HEADERS = 2;
 const MAX_SUSPICIOUS_ROWS_BEFORE_FAIL = 5;
 const MAX_HEADER_ROWS_INSIDE_DATA = 1;
 const EXISTING_CAMPAIGN_PLACEHOLDER = "__campaign_placeholder__";
+const DUPLICATE_TYPE_LABELS: Record<string, string> = {
+  batch_duplicate: "Duplicado dentro del archivo",
+  existing_duplicate: "Ya existe en la operacion",
+};
 
 const HEADER_TOKENS = new Set([
   "nombre",
@@ -163,11 +203,15 @@ export default function ImportClientsModal({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState("");
+  const [phase, setPhase] = useState<ImportPhase>("form");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canAppendToExisting = Boolean(selectedOperationId);
   const selectedCampaign =
     availableCampaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null;
+  const duplicateRows = result?.duplicate_rows ?? [];
+  const skippedCount = result?.skipped_count ?? 0;
+  const hasPartialImport = Boolean(result && skippedCount > 0);
 
   const loadAvailableCampaigns = useCallback(async () => {
     if (!selectedOperationId) {
@@ -206,6 +250,7 @@ export default function ImportClientsModal({
     if (!isOpen) return;
     setError("");
     setResult(null);
+    setPhase("form");
     void loadAvailableCampaigns();
   }, [isOpen, loadAvailableCampaigns]);
 
@@ -221,15 +266,17 @@ export default function ImportClientsModal({
       selectedFile.name.toLowerCase().endsWith(".xls");
 
     if (!isExcel) {
-      setError("Por favor, selecciona un archivo Excel válido (.xlsx o .xls).");
+      setError("Por favor, selecciona un archivo Excel valido (.xlsx o .xls).");
       setFile(null);
       setResult(null);
+      setPhase("form");
       return;
     }
 
     setFile(selectedFile);
     setError("");
     setResult(null);
+    setPhase("form");
   };
 
   const formatImportErrors = (errors: string[] = []) => {
@@ -442,6 +489,95 @@ export default function ImportClientsModal({
     return message;
   };
 
+  const downloadDuplicateReport = useCallback(() => {
+    if (!duplicateRows.length) return;
+
+    const header = [
+      "fila_original",
+      "tipo_repetido",
+      "detalle",
+      "nombre",
+      "apellido",
+      "email",
+      "telefono",
+      "pais",
+      "fuente",
+    ];
+
+    const lines = duplicateRows.map((row) =>
+      [
+        row.row_number,
+        DUPLICATE_TYPE_LABELS[row.duplicate_type] || row.duplicate_reason,
+        row.duplicate_reason,
+        row.first_name ?? "",
+        row.last_name ?? "",
+        row.email ?? "",
+        row.phone_number ?? "",
+        row.country ?? "",
+        row.source ?? "",
+      ]
+        .map(escapeCsvValue)
+        .join(","),
+    );
+
+    const csvContent = [header.join(","), ...lines].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const suffix =
+      importMode === "existing"
+        ? selectedCampaign?.prefix || "base-existente"
+        : result?.campaign_prefix || "nueva-base";
+
+    downloadBlob(blob, `repetidos-importacion-${suffix}.csv`);
+  }, [duplicateRows, importMode, result?.campaign_prefix, selectedCampaign?.prefix]);
+
+  const downloadDuplicateReportXlsx = useCallback(async () => {
+    if (!duplicateRows.length) return;
+
+    const suffix =
+      importMode === "existing"
+        ? selectedCampaign?.prefix || "base-existente"
+        : result?.campaign_prefix || "nueva-base";
+
+    const rows = duplicateRows.map((row) => ({
+      fila_original: row.row_number,
+      tipo_repetido:
+        DUPLICATE_TYPE_LABELS[row.duplicate_type] || row.duplicate_reason,
+      detalle: row.duplicate_reason,
+      nombre: row.first_name ?? "",
+      apellido: row.last_name ?? "",
+      email: row.email ?? "",
+      telefono: row.phone_number ?? "",
+      pais: row.country ?? "",
+      fuente: row.source ?? "",
+    }));
+
+    const XLSX = await import("xlsx");
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!freeze"] = { xSplit: 0, ySplit: 1 };
+    ws["!autofilter"] = { ref: ws["!ref"] || "A1:A1" };
+    ws["!cols"] = [
+      { wch: 12 },
+      { wch: 28 },
+      { wch: 28 },
+      { wch: 18 },
+      { wch: 22 },
+      { wch: 34 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 18 },
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, "Repetidos");
+
+    const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([out], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    downloadBlob(blob, `repetidos-importacion-${suffix}.xlsx`);
+  }, [duplicateRows, importMode, result?.campaign_prefix, selectedCampaign?.prefix]);
+
   const handleImport = async () => {
     if (!file) return;
     if (importMode === "existing" && !selectedCampaignId) {
@@ -449,6 +585,7 @@ export default function ImportClientsModal({
       return;
     }
 
+    setPhase("processing");
     setLoading(true);
     setError("");
     setResult(null);
@@ -457,6 +594,7 @@ export default function ImportClientsModal({
       const clientsData = await processExcelFile(file);
 
       if (clientsData.length === 0) {
+        setPhase("form");
         setError(
           [
             "No se encontraron datos válidos en el archivo.",
@@ -484,6 +622,7 @@ export default function ImportClientsModal({
             });
 
       if (importError) {
+        setPhase("form");
         setError(
           formatFrontendParseError(
             importError.message || "Error al ejecutar la importación.",
@@ -500,6 +639,7 @@ export default function ImportClientsModal({
       }
 
       if ((importResult as { error?: unknown }).error) {
+        setPhase("form");
         setError(
           formatFrontendParseError(
             String((importResult as { error?: unknown }).error),
@@ -509,17 +649,26 @@ export default function ImportClientsModal({
       }
 
       if ((importResult.success ?? 0) <= 0) {
+        if ((importResult.skipped_count ?? 0) > 0) {
+          setResult(importResult);
+          setPhase("result");
+          return;
+        }
+
+        setPhase("form");
         setError(
           formatImportErrors(
-            Array.isArray(importResult.errors) ? importResult.errors : [],
+            Array.isArray(importResult.errors) ? importResult.errors : [], 
           ),
         );
         return;
       }
 
       setResult(importResult);
-      onImport();
+      setPhase("result");
+      await onImport();
     } catch (err: any) {
+      setPhase("form");
       setError(
         formatFrontendParseError(
           err?.message || "Error inesperado al importar el archivo.",
@@ -1082,6 +1231,7 @@ export default function ImportClientsModal({
     setSelectedCampaignId("");
     setError("");
     setResult(null);
+    setPhase("form");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -1106,7 +1256,7 @@ export default function ImportClientsModal({
       f.name.toLowerCase().endsWith(".xls");
 
     if (!isExcel) {
-      setError("Por favor, selecciona un archivo Excel válido (.xlsx o .xls).");
+      setError("Por favor, selecciona un archivo Excel valido (.xlsx o .xls).");
       setFile(null);
       setResult(null);
       return;
@@ -1115,6 +1265,7 @@ export default function ImportClientsModal({
     setFile(f);
     setError("");
     setResult(null);
+    setPhase("form");
   };
 
   if (!isOpen) return null;
@@ -1155,7 +1306,7 @@ export default function ImportClientsModal({
             />
 
             <ModalBody className="space-y-6">
-              <div className={cn(campaignInsetClass, "p-4")}>
+              <div className={cn(campaignInsetClass, "p-4", phase !== "form" && "hidden")}>
                 <div className="mb-2 block text-sm font-semibold text-ink/80">
                   Destino de la importación
                 </div>
@@ -1222,7 +1373,7 @@ export default function ImportClientsModal({
               </div>
 
               {importMode === "new" ? (
-                <div className={cn(campaignInsetClass, "p-4")}>
+                <div className={cn(campaignInsetClass, "p-4", phase !== "form" && "hidden")}>
                   <div className="mb-2 block text-sm font-semibold text-ink/80">
                     Nombre de campaña (opcional)
                   </div>
@@ -1238,7 +1389,7 @@ export default function ImportClientsModal({
                   </p>
                 </div>
               ) : (
-                <div className={cn(campaignInsetClass, "p-4")}>
+                <div className={cn(campaignInsetClass, "p-4", phase !== "form" && "hidden")}>
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div className="block text-sm font-semibold text-ink/80">
                       Base destino
@@ -1283,7 +1434,7 @@ export default function ImportClientsModal({
                 </div>
               )}
 
-              <div className={cn(campaignInsetClass, "p-4")}>
+              <div className={cn(campaignInsetClass, "p-4", phase !== "form" && "hidden")}>
                 <div className="mb-2 flex items-center justify-between">
                   <div className="block text-sm font-semibold text-ink/80">
                     Seleccionar archivo Excel
@@ -1344,7 +1495,27 @@ export default function ImportClientsModal({
                 </div>
               </div>
 
-              {error && (
+              {phase === "processing" ? (
+                <div className={cn(campaignInsetClass, "p-8")}>
+                  <div className="flex flex-col items-center justify-center gap-4 text-center">
+                    <LoadingSpinner
+                      size="lg"
+                      text="Procesando archivo..."
+                      fullScreen={false}
+                    />
+                    <div className="space-y-1">
+                      <div className="text-sm font-semibold text-ink/85">
+                        Estamos validando el archivo y preparando la importacion.
+                      </div>
+                      <div className="text-xs text-muted">
+                        Esto puede tardar un poco si la base es grande.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {error && phase === "form" && (
                 <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.8))] p-4">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="mt-0.5 h-5 w-5 text-red-600" />
@@ -1360,15 +1531,36 @@ export default function ImportClientsModal({
                 </div>
               )}
 
-              {result && (
-                <div className="rounded-[1.2rem] border border-emerald-200/90 bg-[linear-gradient(180deg,rgba(236,253,245,0.94),rgba(255,255,255,0.8))] p-4">
+              {result && phase === "result" && (
+                <div
+                  className={cn(
+                    "rounded-[1.2rem] p-4",
+                    hasPartialImport
+                      ? "border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82))]"
+                      : "border border-emerald-200/90 bg-[linear-gradient(180deg,rgba(236,253,245,0.94),rgba(255,255,255,0.8))]",
+                  )}
+                >
                   <div className="flex items-start gap-2">
-                    <CheckCircle className="mt-0.5 h-5 w-5 text-emerald-700" />
+                    {hasPartialImport ? (
+                      <AlertCircle className="mt-0.5 h-5 w-5 text-amber-700" />
+                    ) : (
+                      <CheckCircle className="mt-0.5 h-5 w-5 text-emerald-700" />
+                    )}
                     <div className="w-full">
-                      <div className="text-sm font-semibold text-emerald-900">
-                        Importacion completada
+                      <div
+                        className={cn(
+                          "text-sm font-semibold",
+                          hasPartialImport ? "text-amber-900" : "text-emerald-900",
+                        )}
+                      >
+                        {hasPartialImport ? "Carga parcial completada" : "Importacion completada"}
                       </div>
-                      <div className="mt-1 text-sm text-emerald-900/80">
+                      <div
+                        className={cn(
+                          "mt-1 text-sm",
+                          hasPartialImport ? "text-amber-900/85" : "text-emerald-900/80",
+                        )}
+                      >
                         Se importaron <b>{result.success}</b> clientes
                         correctamente
                         {importMode === "existing" && selectedCampaign
@@ -1378,6 +1570,9 @@ export default function ImportClientsModal({
                           ? ` (prefijo ${result.campaign_prefix})`
                           : ""}
                         .
+                        {hasPartialImport
+                          ? ` Se omitieron ${skippedCount} fila${skippedCount === 1 ? "" : "s"} durante la carga.`
+                          : ""}
                       </div>
 
                       {result.errors?.length > 0 && (
@@ -1392,6 +1587,43 @@ export default function ImportClientsModal({
                           </ul>
                         </div>
                       )}
+
+                      {duplicateRows.length > 0 ? (
+                        <div className="mt-3 rounded-xl border border-sky-200 bg-white/76 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-semibold text-sky-800">
+                                Reporte de repetidos disponible
+                              </div>
+                              <div className="mt-1 text-xs text-sky-800/80">
+                                Descarga el detalle de filas repetidas en CSV o Excel para revisarlas o reenviarlas corregidas.
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void downloadDuplicateReportXlsx();
+                                }}
+                                className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800 transition hover:bg-sky-100"
+                              >
+                                <FileSpreadsheet className="h-4 w-4" />
+                                Descargar Excel
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={downloadDuplicateReport}
+                                className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-2 text-xs font-semibold text-sky-800 transition hover:bg-sky-50"
+                              >
+                                <Download className="h-4 w-4" />
+                                Descargar CSV
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -1400,33 +1632,43 @@ export default function ImportClientsModal({
 
             <ModalFooter className={cn("justify-end gap-2", campaignModalFooterClass)}>
               <button
-                onClick={close}
+                onClick={phase === "result" ? hardReset : close}
                 className={modalSecondaryActionClassName}
                 disabled={loading}
                 type="button"
               >
-                Cancelar
+                {phase === "result" ? "Importar otro archivo" : "Cancelar"}
               </button>
 
-              <button
-                onClick={handleImport}
-                disabled={!file || loading}
-                className={modalPrimaryActionClassName}
-                type="button"
-              >
-                {loading ? (
-                  <LoadingSpinner
-                    size="sm"
-                    text="Importando..."
-                    fullScreen={false}
-                  />
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4" />
-                    Importar Clientes
-                  </>
-                )}
-              </button>
+              {phase === "result" ? (
+                <button
+                  onClick={close}
+                  className={modalPrimaryActionClassName}
+                  type="button"
+                >
+                  Cerrar
+                </button>
+              ) : phase === "processing" ? null : (
+                <button
+                  onClick={handleImport}
+                  disabled={!file || loading}
+                  className={modalPrimaryActionClassName}
+                  type="button"
+                >
+                  {loading ? (
+                    <LoadingSpinner
+                      size="sm"
+                      text="Importando..."
+                      fullScreen={false}
+                    />
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Importar Clientes
+                    </>
+                  )}
+                </button>
+              )}
             </ModalFooter>
           </m.div>
         </m.div>

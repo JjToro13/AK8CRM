@@ -25,6 +25,7 @@ import { useBackendHealth } from "./shared/resilience/BackendHealthProvider";
 import { resolveTenantBranding } from "./shared/branding/tenant-branding";
 import { dashboard } from "./modules/dashboard/services/dashboard.service";
 import type { BrandPreset } from "./shared/branding/brand-presets";
+import CalendarGlobalAlerts from "./modules/calendar/components/CalendarGlobalAlerts";
 
 const AgentManagementPage = lazy(() => import("./modules/agents/pages/AgentManagementPage"));
 const LoginPage = lazy(() => import("./modules/auth/pages/LoginPage"));
@@ -212,6 +213,7 @@ export default function App() {
           />
           {user ? <BackendHealthBanner /> : null}
           <BackendHealthDebugger />
+          {user ? <CalendarGlobalAlerts /> : null}
           <Toaster
             position="top-center"
             theme={branding.id === "atlas-finance" ? "dark" : "light"}

@@ -1,7 +1,15 @@
 import type { MutableRefObject } from "react";
-import { AlertCircle, Radar } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, Radar, X } from "lucide-react";
+import { CLIENT_STATUS_OPTIONS, type ClientStatusCode, cn } from "../../../lib/utils";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
-import { cn } from "../../../lib/utils";
+import Input from "../../../shared/components/ui/Input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../shared/components/ui/Select";
 import {
   clientInsetClass,
   clientTableShellClass,
@@ -9,15 +17,27 @@ import {
 import type { Client } from "../../../shared/types/crm";
 import ClientsTableRow from "./ClientsTableRow";
 import {
-  CLIENTS_GRID_HEADERS,
-  CLIENTS_GRID_TEMPLATE,
-} from "./clientsTableLayout";
+  buildClientsGridTemplate,
+  CLIENT_TABLE_COLUMNS,
+  type ClientTableColumnKey,
+  type ClientTableSortDirection,
+  type ClientTableSortKey,
+  type ClientTableTextFilterKey,
+  type ClientTableTextFilters,
+} from "./clientTableColumns";
 
 type ClientsTableProps = {
   clients: Client[];
   initialLoading: boolean;
   opLocked: boolean;
   isSearchActive: boolean;
+  visibleColumns: ClientTableColumnKey[];
+  tableTextFilters: ClientTableTextFilters;
+  showColumnFilters: boolean;
+  statusFilter: "all" | ClientStatusCode;
+  countryFilter: string;
+  sortKey: ClientTableSortKey;
+  sortDirection: ClientTableSortDirection;
   selectedClientId: string | null;
   tableScrollRef: MutableRefObject<HTMLDivElement | null>;
   lastTableViewportHeight: number | null;
@@ -25,16 +45,34 @@ type ClientsTableProps = {
   onSelectClient: (clientId: string) => void;
   onEditClient: (client: Client) => void;
   onCopy: (label: string, value?: string | null) => void;
+  onStatusFilterChange: (value: "all" | ClientStatusCode) => void;
+  onCountryFilterChange: (value: string) => void;
+  onTableTextFilterChange: (
+    filterKey: ClientTableTextFilterKey,
+    value: string,
+  ) => void;
+  onSortChange: (sortKey: ClientTableSortKey) => void;
 };
 
 const headerCellClass =
   "border-r border-white/55 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-muted";
+const headerInputClass =
+  "h-9 rounded-2xl border-slate-200/70 bg-white/80 px-3 py-2 text-[12px] font-medium normal-case tracking-normal text-ink shadow-none";
+const clearFilterButtonClass =
+  "inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/75 bg-white/88 text-muted shadow-[0_10px_20px_rgba(15,23,42,0.06)] transition hover:border-brand/20 hover:text-ink";
 
 export default function ClientsTable({
   clients,
   initialLoading,
   opLocked,
   isSearchActive,
+  visibleColumns,
+  tableTextFilters,
+  showColumnFilters,
+  statusFilter,
+  countryFilter,
+  sortKey,
+  sortDirection,
   selectedClientId,
   tableScrollRef,
   lastTableViewportHeight,
@@ -42,7 +80,16 @@ export default function ClientsTable({
   onSelectClient,
   onEditClient,
   onCopy,
+  onStatusFilterChange,
+  onCountryFilterChange,
+  onTableTextFilterChange,
+  onSortChange,
 }: ClientsTableProps) {
+  const visibleColumnConfigs = CLIENT_TABLE_COLUMNS.filter((column) =>
+    visibleColumns.includes(column.key),
+  );
+  const gridTemplate = buildClientsGridTemplate(visibleColumns);
+
   return (
     <div className={clientTableShellClass}>
       <div
@@ -96,17 +143,136 @@ export default function ClientsTable({
             <div className="crm-table-header sticky top-0 z-30 border-b border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.82))] backdrop-blur-xl">
               <div
                 className="grid flex-none"
-                style={{ gridTemplateColumns: CLIENTS_GRID_TEMPLATE }}
+                style={{ gridTemplateColumns: gridTemplate }}
               >
-                {CLIENTS_GRID_HEADERS.map((header, index) => (
+                {visibleColumnConfigs.map((column, index) => (
                   <div
-                    key={header}
+                    key={column.key}
                     className={cn(
                       headerCellClass,
-                      index === CLIENTS_GRID_HEADERS.length - 1 && "border-r-0",
+                      index === visibleColumnConfigs.length - 1 && "border-r-0",
                     )}
                   >
-                    {header}
+                    <div>
+                      {column.sortable && column.sortKey ? (
+                        <button
+                          type="button"
+                          onClick={() => onSortChange(column.sortKey!)}
+                          className="inline-flex items-center gap-1 transition hover:text-ink"
+                        >
+                          <span>{column.label}</span>
+                          {sortKey === column.sortKey ? (
+                            sortDirection === "asc" ? (
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            ) : (
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            )
+                          ) : null}
+                        </button>
+                      ) : (
+                        <span>{column.label}</span>
+                      )}
+
+                      {showColumnFilters && column.usesStatusFilter ? (
+                        <div className="mt-2 flex items-center gap-2">
+                          <Select
+                            value={statusFilter}
+                            onValueChange={(value) =>
+                              onStatusFilterChange(
+                                value as "all" | ClientStatusCode,
+                              )
+                            }
+                            disabled={opLocked}
+                          >
+                            <SelectTrigger className={cn(headerInputClass, "min-h-0 flex-1")}>
+                              <SelectValue placeholder="Todos" />
+                            </SelectTrigger>
+                            <SelectContent className="clients-filter-select-content">
+                              <SelectItem value="all">Todos</SelectItem>
+                              {CLIENT_STATUS_OPTIONS.map((option) => (
+                                <SelectItem key={option.code} value={option.code}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {statusFilter !== "all" ? (
+                            <button
+                              type="button"
+                              onClick={() => onStatusFilterChange("all")}
+                              className={clearFilterButtonClass}
+                              title="Quitar filtro de estado"
+                              aria-label="Quitar filtro de estado"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {showColumnFilters && column.usesCountryFilter ? (
+                        <Input
+                          type="text"
+                          value={countryFilter}
+                          onChange={(event) =>
+                            onCountryFilterChange(event.target.value)
+                          }
+                          disabled={opLocked}
+                          placeholder={column.filterPlaceholder ?? "Ej. Mexico"}
+                          className={headerInputClass}
+                          rightSlot={
+                            countryFilter.trim().length > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => onCountryFilterChange("")}
+                                className={clearFilterButtonClass}
+                                title="Quitar filtro de pais"
+                                aria-label="Quitar filtro de pais"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            ) : null
+                          }
+                          containerClassName="mt-2"
+                        />
+                      ) : null}
+
+                      {showColumnFilters && column.textFilterKey ? (
+                        <Input
+                          type="text"
+                          value={tableTextFilters[column.textFilterKey]}
+                          onChange={(event) =>
+                            onTableTextFilterChange(
+                              column.textFilterKey!,
+                              event.target.value,
+                            )
+                          }
+                          disabled={opLocked}
+                          placeholder={
+                            column.filterPlaceholder ??
+                            `Filtrar ${column.label.toLowerCase()}...`
+                          }
+                          className={headerInputClass}
+                          rightSlot={
+                            tableTextFilters[column.textFilterKey].trim().length > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onTableTextFilterChange(column.textFilterKey!, "")
+                                }
+                                className={clearFilterButtonClass}
+                                title={`Quitar filtro de ${column.label.toLowerCase()}`}
+                                aria-label={`Quitar filtro de ${column.label.toLowerCase()}`}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            ) : null
+                          }
+                          containerClassName="mt-2"
+                        />
+                      ) : null}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -117,6 +283,8 @@ export default function ClientsTable({
                 <ClientsTableRow
                   key={client.id}
                   client={client}
+                  visibleColumns={visibleColumns}
+                  gridTemplate={gridTemplate}
                   selected={client.id === selectedClientId}
                   onSelect={() => onSelectClient(client.id)}
                   onOpenEdit={onEditClient}

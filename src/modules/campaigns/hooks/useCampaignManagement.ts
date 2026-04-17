@@ -40,6 +40,9 @@ export function useCampaignManagement({
   const [exportCampaignId, setExportCampaignId] = useState("");
   const [sortKey, setSortKey] = useState<CampaignSortKey>("importedAt");
   const [sortDirection, setSortDirection] = useState<CampaignSortDirection>("asc");
+  const [showClientsModal, setShowClientsModal] = useState(false);
+  const [selectedClientsCampaignId, setSelectedClientsCampaignId] =
+    useState<string | null>(null);
 
   const sortedCampaignRows = useMemo(() => {
     const toTime = (value: string | null) => {
@@ -89,6 +92,12 @@ export function useCampaignManagement({
     () => buildCampaignTotals(campaignRows),
     [campaignRows],
   );
+  const selectedCampaignForClients = useMemo(
+    () =>
+      campaignRows.find((campaign) => campaign.id === selectedClientsCampaignId) ??
+      null,
+    [campaignRows, selectedClientsCampaignId],
+  );
 
   const exportOptions = useMemo<CampaignExportOption[]>(
     () =>
@@ -102,11 +111,14 @@ export function useCampaignManagement({
     [sortedCampaignRows],
   );
 
-  const loadCampaigns = async () => {
+  const loadCampaigns = async (options?: { silent?: boolean }) => {
     const requestId = ++requestIdRef.current;
+    const silent = options?.silent ?? false;
 
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       setError("");
 
       const [{ data: metadataRows, error: metadataError }, { data: statsRows, error: statsError }] =
@@ -156,7 +168,7 @@ export function useCampaignManagement({
           : "Error inesperado cargando campañas.",
       );
     } finally {
-      if (requestId === requestIdRef.current) {
+      if (!silent && requestId === requestIdRef.current) {
         setLoading(false);
       }
     }
@@ -362,12 +374,26 @@ export function useCampaignManagement({
   };
 
   const handleImportSuccess = async () => {
+    await loadCampaigns({ silent: true });
+  };
+
+  const openClientsModal = (campaign: CampaignViewRow) => {
+    setSelectedClientsCampaignId(campaign.id);
+    setShowClientsModal(true);
+  };
+
+  const closeClientsModal = () => {
+    setShowClientsModal(false);
+    setSelectedClientsCampaignId(null);
+  };
+
+  const handleClientsMoved = async () => {
     await loadCampaigns();
-    setShowImportModal(false);
   };
 
   return {
     campaignRows: sortedCampaignRows,
+    closeClientsModal,
     deletingCampaignId,
     editName,
     editOpen,
@@ -379,9 +405,12 @@ export function useCampaignManagement({
     exportCampaignId,
     isAdmin,
     loading,
+    openClientsModal,
     savingName,
     selectedOperationId,
+    selectedCampaignForClients,
     showImportModal,
+    showClientsModal,
     syncing,
     sortDirection,
     sortKey,
@@ -398,6 +427,7 @@ export function useCampaignManagement({
     handleSortChange,
     handleDeleteCampaign,
     handleImportSuccess,
+    handleClientsMoved,
     handleToggleLock,
   };
 }

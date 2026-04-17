@@ -389,8 +389,12 @@ export default function AgentDetailsModal({
     setAssignedStatusFilter("all");
     setAssignedCountryFilter("");
     setAssignedBalanceRangeFilter("all");
+  }, [isOpen, agent.id]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     void loadAgentData(1, { reset: true });
-  }, [isOpen, agent.id, loadAgentData]);
+  }, [isOpen, loadAgentData]);
 
   useEffect(() => {
     if (!isOpen) return;

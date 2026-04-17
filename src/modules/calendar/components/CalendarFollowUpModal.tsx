@@ -267,7 +267,7 @@ export default function CalendarFollowUpModal({
         | "scheduled_timezone"
       >
     > = {
-      status: actionStatus,
+      status: actionStatus === "postponed" ? "scheduled" : actionStatus,
       outcome_notes: outcomeNotes.trim() || null,
       attended_at:
         actionStatus === "attended" ? new Date().toISOString() : null,
