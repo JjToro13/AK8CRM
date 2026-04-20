@@ -130,34 +130,11 @@ function useProvideAuth(): AuthContextValue {
     const loadProfile = async () => {
       dlog("loadProfile -> rpc my_agent");
 
-      const execMyAgent = () => supabase.rpc("my_agent") as any;
-      let { data, error } = await rpcWithRetry<any>(
-        execMyAgent,
+      const { data, error } = await rpcWithRetry<any>(
+        () => supabase.rpc("my_agent") as any,
         "rpc my_agent",
         2,
       );
-
-      if (error?.status === 401) {
-        dwarn("rpc my_agent unauthorized, attempting refreshSession");
-
-        const { data: refreshData, error: refreshError } =
-          await supabase.auth.refreshSession();
-
-        if (!refreshError && refreshData.session) {
-          await sleep(150);
-
-          const retryResult = await rpcWithRetry<any>(
-            execMyAgent,
-            "rpc my_agent (after refresh)",
-            3,
-          );
-
-          data = retryResult.data;
-          error = retryResult.error;
-        } else {
-          dwarn("refreshSession failed", refreshError);
-        }
-      }
 
       dlog("loadProfile <- rpc my_agent", {
         hasData: !!data,

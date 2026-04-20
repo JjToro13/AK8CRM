@@ -1,10 +1,10 @@
 import { Shield, Eye, EyeOff, AlertTriangle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "../../../lib/supabase";
 import type { AgentRole } from "../../../shared/types/crm";
 import { getAgentRoleLabel } from "../../../shared/types/crm";
 import { cn } from "../../../lib/utils";
+import { useAuth } from "../../../hooks/useAuth";
 import {
   dashboardCardClass,
   dashboardSubTextClass,
@@ -49,35 +49,14 @@ export default function SecurityInfo({
   mode = "card",
   menuStats,
 }: SecurityInfoProps) {
+  const { user, role: authRole } = useAuth();
   const [showDetails, setShowDetails] = useState(false);
-  const [userName, setUserName] = useState<string>("");
-  const [role, setRole] = useState<AgentRole | null>(null);
-
-  useEffect(() => {
-    const loadUserInfo = async () => {
-      try {
-        const { data, error } = await supabase.rpc("my_agent");
-        if (error) throw error;
-
-        const agent = Array.isArray(data) ? data[0] : data;
-        if (!agent) return;
-
-        setUserName(agent.name || "Usuario");
-        setRole((agent.role as AgentRole) ?? null);
-      } catch (error) {
-        console.error("Error cargando info de seguridad:", error);
-
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (user?.user_metadata?.name) setUserName(user.user_metadata.name);
-        else setUserName(user?.email?.split("@")[0] || "Usuario");
-      }
-    };
-
-    void loadUserInfo();
-  }, []);
+  const role = authRole as AgentRole | null;
+  const userName =
+    user?.user_metadata?.name ||
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0] ||
+    "Usuario";
 
   const label = roleLabel(role, isAdmin);
   const dot = roleDotClass(role, isAdmin);

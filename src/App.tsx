@@ -148,6 +148,12 @@ export default function App() {
       if (cancelled) return;
 
       if (error) {
+        const message = String((error as any)?.message ?? "");
+        if (message.toLowerCase().includes("aborterror")) {
+          setBrandingReady(true);
+          return;
+        }
+
         console.error("Error resolviendo branding de operacion:", error);
         setAutoBranding(null);
         setBrandingReady(true);
