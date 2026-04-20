@@ -98,6 +98,20 @@ function useProvideAuth(): AuthContextValue {
   const chainRef = useRef(Promise.resolve());
   const authStateRef = useRef(authState);
 
+  const clearAuthState = () => {
+    setAuthState({
+      user: null,
+      session: null,
+      loading: false,
+      role: null,
+      isAdmin: false,
+      canSeeAllOperations: false,
+      operationId: null,
+      activeOperationId: null,
+      operationReady: true,
+    });
+  };
+
   useEffect(() => {
     authStateRef.current = authState;
   }, [authState]);
@@ -260,31 +274,29 @@ function useProvideAuth(): AuthContextValue {
 
       if (!settledSession?.user) {
         if (!mountedRef.current || myReq !== reqIdRef.current) return;
+        clearAuthState();
+        return;
+      }
 
-        setAuthState({
-          user: null,
-          session: null,
-          loading: false,
-          role: null,
-          isAdmin: false,
-          canSeeAllOperations: false,
-          operationId: null,
-          activeOperationId: null,
-          operationReady: true,
-        });
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !userData.user) {
+        dwarn("getUser before loadProfile failed", userError);
+        await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+        localStorage.removeItem("cm_selected_operation_id");
+
+        if (!mountedRef.current || myReq !== reqIdRef.current) return;
+        clearAuthState();
         return;
       }
 
       if (!mountedRef.current || myReq !== reqIdRef.current) return;
 
-      const shouldBlockUi =
-        authStateRef.current.loading || !authStateRef.current.user;
-
       setAuthState((prev) => ({
         ...prev,
-        user: settledSession.user,
+        user: userData.user,
         session: settledSession,
-        loading: shouldBlockUi,
+        loading: true,
       }));
 
       try {
@@ -301,7 +313,7 @@ function useProvideAuth(): AuthContextValue {
         dlog("final auth state", { profile, op });
 
         setAuthState({
-          user: settledSession.user,
+          user: userData.user,
           session: settledSession,
           loading: false,
           role: profile.role,
@@ -315,19 +327,10 @@ function useProvideAuth(): AuthContextValue {
         derr("applySession error", e);
 
         await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+        localStorage.removeItem("cm_selected_operation_id");
         if (!mountedRef.current || myReq !== reqIdRef.current) return;
 
-        setAuthState({
-          user: null,
-          session: null,
-          loading: false,
-          role: null,
-          isAdmin: false,
-          canSeeAllOperations: false,
-          operationId: null,
-          activeOperationId: null,
-          operationReady: true,
-        });
+        clearAuthState();
       }
     };
 
@@ -409,6 +412,16 @@ function useProvideAuth(): AuthContextValue {
       const { error } = await supabase.rpc("touch_my_presence");
       if (error) {
         dwarn("touch_my_presence error", error);
+        const errorStatus = (error as any)?.status;
+
+        if (errorStatus === 401) {
+          stopHeartbeat();
+          await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+          localStorage.removeItem("cm_selected_operation_id");
+          if (mountedRef.current) {
+            clearAuthState();
+          }
+        }
       }
     };
 
@@ -474,17 +487,7 @@ function useProvideAuth(): AuthContextValue {
       return { error };
     }
 
-    setAuthState({
-      user: null,
-      session: null,
-      loading: false,
-      role: null,
-      isAdmin: false,
-      canSeeAllOperations: false,
-      operationId: null,
-      activeOperationId: null,
-      operationReady: true,
-    });
+    clearAuthState();
 
     return { error: null };
   };
