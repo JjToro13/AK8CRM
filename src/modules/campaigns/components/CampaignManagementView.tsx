@@ -1,4 +1,5 @@
 import { Users } from "lucide-react";
+import { useState } from "react";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import CampaignReportExporter from "./CampaignReportExporter";
 import EditCampaignNameModal from "./EditCampaignNameModal";
@@ -23,6 +24,15 @@ import {
 export default function CampaignManagementView(
   props: CampaignManagementProps,
 ) {
+  const [importPreset, setImportPreset] = useState<{
+    initialImportMode: "new" | "existing";
+    initialSelectedCampaignId: string | null;
+    initialExistingImportSource: "file" | "single";
+  }>({
+    initialImportMode: "new",
+    initialSelectedCampaignId: null,
+    initialExistingImportSource: "file",
+  });
   const {
     campaignRows,
     deletingCampaignId,
@@ -63,6 +73,24 @@ export default function CampaignManagementView(
     handleToggleLock,
   } = useCampaignManagement(props);
 
+  const openDefaultImport = () => {
+    setImportPreset({
+      initialImportMode: "new",
+      initialSelectedCampaignId: null,
+      initialExistingImportSource: "file",
+    });
+    setShowImportModal(true);
+  };
+
+  const openQuickAppendImport = (campaignId: string) => {
+    setImportPreset({
+      initialImportMode: "existing",
+      initialSelectedCampaignId: campaignId,
+      initialExistingImportSource: "file",
+    });
+    setShowImportModal(true);
+  };
+
   if (!isAdmin) {
     return (
       <div className={cn(campaignCardClass, "bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(255,255,255,0.72))]")}>
@@ -101,7 +129,7 @@ export default function CampaignManagementView(
         syncing={syncing}
         totals={totals}
         onExport={() => openExport()}
-        onImport={() => setShowImportModal(true)}
+        onImport={openDefaultImport}
         onRefresh={syncNow}
       />
 
@@ -117,6 +145,7 @@ export default function CampaignManagementView(
         onDelete={handleDeleteCampaign}
         onEditName={openEditName}
         onExport={openExport}
+        onQuickAppend={(campaign) => openQuickAppendImport(campaign.id)}
         onOpenClients={openClientsModal}
         onToggleLock={handleToggleLock}
       />
@@ -147,6 +176,9 @@ export default function CampaignManagementView(
         onClose={() => setShowImportModal(false)}
         onImport={handleImportSuccess}
         selectedOperationId={selectedOperationId}
+        initialImportMode={importPreset.initialImportMode}
+        initialSelectedCampaignId={importPreset.initialSelectedCampaignId}
+        initialExistingImportSource={importPreset.initialExistingImportSource}
       />
 
       <CampaignClientsModal

@@ -116,11 +116,34 @@ function useProvideAuth(): AuthContextValue {
     const loadProfile = async () => {
       dlog("loadProfile -> rpc my_agent");
 
-      const { data, error } = await rpcWithRetry<any>(
-        () => supabase.rpc("my_agent") as any,
+      const execMyAgent = () => supabase.rpc("my_agent") as any;
+      let { data, error } = await rpcWithRetry<any>(
+        execMyAgent,
         "rpc my_agent",
-        4,
+        2,
       );
+
+      if (error?.status === 401) {
+        dwarn("rpc my_agent unauthorized, attempting refreshSession");
+
+        const { data: refreshData, error: refreshError } =
+          await supabase.auth.refreshSession();
+
+        if (!refreshError && refreshData.session) {
+          await sleep(150);
+
+          const retryResult = await rpcWithRetry<any>(
+            execMyAgent,
+            "rpc my_agent (after refresh)",
+            3,
+          );
+
+          data = retryResult.data;
+          error = retryResult.error;
+        } else {
+          dwarn("refreshSession failed", refreshError);
+        }
+      }
 
       dlog("loadProfile <- rpc my_agent", {
         hasData: !!data,
@@ -198,6 +221,7 @@ function useProvideAuth(): AuthContextValue {
 
     const applySession = async (session: Session | null, source: string) => {
       const myReq = ++reqIdRef.current;
+      let settledSession = session;
 
       dlog("applySession", {
         source,
@@ -223,6 +247,34 @@ function useProvideAuth(): AuthContextValue {
         return;
       }
 
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError) {
+        dwarn("getSession before loadProfile failed", sessionError);
+      }
+
+      if (sessionData.session?.user) {
+        settledSession = sessionData.session;
+      }
+
+      if (!settledSession?.user) {
+        if (!mountedRef.current || myReq !== reqIdRef.current) return;
+
+        setAuthState({
+          user: null,
+          session: null,
+          loading: false,
+          role: null,
+          isAdmin: false,
+          canSeeAllOperations: false,
+          operationId: null,
+          activeOperationId: null,
+          operationReady: true,
+        });
+        return;
+      }
+
       if (!mountedRef.current || myReq !== reqIdRef.current) return;
 
       const shouldBlockUi =
@@ -230,14 +282,13 @@ function useProvideAuth(): AuthContextValue {
 
       setAuthState((prev) => ({
         ...prev,
-        user: session.user,
-        session,
+        user: settledSession.user,
+        session: settledSession,
         loading: shouldBlockUi,
       }));
 
       try {
-        await supabase.auth.getSession();
-
+        await sleep(50);
         const profile = await loadProfile();
         if (!mountedRef.current || myReq !== reqIdRef.current) return;
 
@@ -250,8 +301,8 @@ function useProvideAuth(): AuthContextValue {
         dlog("final auth state", { profile, op });
 
         setAuthState({
-          user: session.user,
-          session,
+          user: settledSession.user,
+          session: settledSession,
           loading: false,
           role: profile.role,
           isAdmin: profile.isAdmin,

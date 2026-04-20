@@ -43,6 +43,9 @@ interface ImportClientsModalProps {
   onClose: () => void;
   onImport: () => Promise<void> | void;
   selectedOperationId?: string | null;
+  initialImportMode?: ImportMode;
+  initialSelectedCampaignId?: string | null;
+  initialExistingImportSource?: ExistingImportSource;
 }
 
 interface ImportResult {
@@ -83,11 +86,21 @@ interface ParsedClient {
 
 type ImportMode = "new" | "existing";
 type ImportPhase = "form" | "processing" | "result";
+type ExistingImportSource = "file" | "single";
 
 type CampaignOption = {
   id: string;
   prefix: string;
   display_name: string | null;
+};
+
+type SingleClientForm = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_number: string;
+  country: string;
+  source: string;
 };
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -146,6 +159,14 @@ const DUPLICATE_TYPE_LABELS: Record<string, string> = {
   batch_duplicate: "Duplicado dentro del archivo",
   existing_duplicate: "Ya existe en la operacion",
 };
+const EMPTY_SINGLE_CLIENT_FORM: SingleClientForm = {
+  first_name: "",
+  last_name: "",
+  email: "",
+  phone_number: "",
+  country: "",
+  source: "",
+};
 
 const HEADER_TOKENS = new Set([
   "nombre",
@@ -193,6 +214,9 @@ export default function ImportClientsModal({
   onClose,
   onImport,
   selectedOperationId,
+  initialImportMode = "new",
+  initialSelectedCampaignId = null,
+  initialExistingImportSource = "file",
 }: ImportClientsModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [importMode, setImportMode] = useState<ImportMode>("new");
@@ -200,6 +224,11 @@ export default function ImportClientsModal({
   const [availableCampaigns, setAvailableCampaigns] = useState<CampaignOption[]>([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
+  const [existingImportSource, setExistingImportSource] =
+    useState<ExistingImportSource>("file");
+  const [singleClientForm, setSingleClientForm] = useState<SingleClientForm>(
+    EMPTY_SINGLE_CLIENT_FORM,
+  );
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState("");
@@ -212,6 +241,62 @@ export default function ImportClientsModal({
   const duplicateRows = result?.duplicate_rows ?? [];
   const skippedCount = result?.skipped_count ?? 0;
   const hasPartialImport = Boolean(result && skippedCount > 0);
+  const isExistingSingleMode =
+    importMode === "existing" && existingImportSource === "single";
+  const resetToInitialConfig = useCallback(() => {
+    const nextImportMode = initialImportMode;
+    const nextExistingImportSource =
+      nextImportMode === "existing" ? initialExistingImportSource : "file";
+
+    setImportMode(nextImportMode);
+    setCampaignName("");
+    setSelectedCampaignId(
+      nextImportMode === "existing" ? initialSelectedCampaignId ?? "" : "",
+    );
+    setExistingImportSource(nextExistingImportSource);
+    setSingleClientForm(EMPTY_SINGLE_CLIENT_FORM);
+  }, [
+    initialExistingImportSource,
+    initialImportMode,
+    initialSelectedCampaignId,
+  ]);
+
+  const updateSingleClientField = <K extends keyof SingleClientForm>(
+    field: K,
+    value: SingleClientForm[K],
+  ) => {
+    setSingleClientForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setError("");
+    setResult(null);
+    setPhase("form");
+  };
+
+  const buildSingleClientPayload = (): ParsedClient[] => {
+    const payload: ParsedClient = {
+      first_name: singleClientForm.first_name.trim() || undefined,
+      last_name: singleClientForm.last_name.trim() || undefined,
+      email: singleClientForm.email.trim() || undefined,
+      phone_number: singleClientForm.phone_number.trim() || undefined,
+      country: singleClientForm.country.trim() || undefined,
+      source: singleClientForm.source.trim() || undefined,
+    };
+
+    if (
+      !payload.first_name &&
+      !payload.last_name &&
+      !payload.email &&
+      !payload.phone_number
+    ) {
+      throw new Error(
+        "Completa al menos un dato identificable del cliente: nombre, email o telefono.",
+      );
+    }
+
+    return [payload];
+  };
 
   const loadAvailableCampaigns = useCallback(async () => {
     if (!selectedOperationId) {
@@ -248,11 +333,12 @@ export default function ImportClientsModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    resetToInitialConfig();
     setError("");
     setResult(null);
     setPhase("form");
     void loadAvailableCampaigns();
-  }, [isOpen, loadAvailableCampaigns]);
+  }, [isOpen, loadAvailableCampaigns, resetToInitialConfig]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -579,9 +665,13 @@ export default function ImportClientsModal({
   }, [duplicateRows, importMode, result?.campaign_prefix, selectedCampaign?.prefix]);
 
   const handleImport = async () => {
-    if (!file) return;
     if (importMode === "existing" && !selectedCampaignId) {
       setError("Selecciona una base existente antes de importar.");
+      return;
+    }
+
+    if (importMode === "new" && !file) return;
+    if (importMode === "existing" && existingImportSource === "file" && !file) {
       return;
     }
 
@@ -591,7 +681,10 @@ export default function ImportClientsModal({
     setResult(null);
 
     try {
-      const clientsData = await processExcelFile(file);
+      const clientsData =
+        importMode === "existing" && existingImportSource === "single"
+          ? buildSingleClientPayload()
+          : await processExcelFile(file!);
 
       if (clientsData.length === 0) {
         setPhase("form");
@@ -1226,9 +1319,7 @@ export default function ImportClientsModal({
 
   const hardReset = () => {
     setFile(null);
-    setImportMode("new");
-    setCampaignName("");
-    setSelectedCampaignId("");
+    resetToInitialConfig();
     setError("");
     setResult(null);
     setPhase("form");
@@ -1294,7 +1385,11 @@ export default function ImportClientsModal({
           >
             <ModalHeader
               icon={<FileSpreadsheet className="h-5 w-5 text-emerald-600" />}
-              title="Importar clientes desde Excel"
+              title={
+                isExistingSingleMode
+                  ? "Anexar cliente individual"
+                  : "Importar clientes desde Excel"
+              }
               description={
                 importMode === "existing"
                   ? "XLSX/XLS. Los clientes se anexarán a una base existente."
@@ -1306,7 +1401,73 @@ export default function ImportClientsModal({
             />
 
             <ModalBody className="space-y-6">
-              <div className={cn(campaignInsetClass, "p-4", phase !== "form" && "hidden")}>
+              {importMode === "existing" ? (
+                <div className={cn(campaignInsetClass, "p-4", phase !== "form" && "hidden")}>
+                  <div className="mb-2 block text-sm font-semibold text-ink/80">
+                    Metodo de carga
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExistingImportSource("file");
+                        setError("");
+                        setResult(null);
+                        setPhase("form");
+                      }}
+                      disabled={loading}
+                      className={cn(
+                        "rounded-[1.15rem] border px-4 py-3 text-left transition",
+                        existingImportSource === "file"
+                          ? "border-brand/24 bg-brand/[0.08] shadow-[0_16px_28px_rgba(15,23,42,0.06)]"
+                          : "border-white/74 bg-white/72 hover:bg-white/84",
+                      )}
+                    >
+                      <div className="text-sm font-semibold text-ink/85">
+                        Archivo Excel
+                      </div>
+                      <div className="mt-1 text-xs text-muted">
+                        Anexa varios clientes desde una base XLSX/XLS.
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExistingImportSource("single");
+                        setFile(null);
+                        setError("");
+                        setResult(null);
+                        setPhase("form");
+                      }}
+                      disabled={loading}
+                      className={cn(
+                        "rounded-[1.15rem] border px-4 py-3 text-left transition",
+                        existingImportSource === "single"
+                          ? "border-brand/24 bg-brand/[0.08] shadow-[0_16px_28px_rgba(15,23,42,0.06)]"
+                          : "border-white/74 bg-white/72 hover:bg-white/84",
+                      )}
+                    >
+                      <div className="text-sm font-semibold text-ink/85">
+                        Cliente individual
+                      </div>
+                      <div className="mt-1 text-xs text-muted">
+                        Registra un solo cliente manualmente con formulario.
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div
+                className={cn(
+                  campaignInsetClass,
+                  "p-4",
+                  (phase !== "form" ||
+                    (importMode === "existing" && existingImportSource === "single")) &&
+                    "hidden",
+                )}
+              >
                 <div className="mb-2 block text-sm font-semibold text-ink/80">
                   Destino de la importación
                 </div>
@@ -1319,6 +1480,8 @@ export default function ImportClientsModal({
                     onClick={() => {
                       setImportMode("new");
                       setSelectedCampaignId("");
+                      setExistingImportSource("file");
+                      setSingleClientForm(EMPTY_SINGLE_CLIENT_FORM);
                       setError("");
                       setResult(null);
                     }}
@@ -1344,6 +1507,8 @@ export default function ImportClientsModal({
                       if (!canAppendToExisting) return;
                       setImportMode("existing");
                       setCampaignName("");
+                      setExistingImportSource("file");
+                      setSingleClientForm(EMPTY_SINGLE_CLIENT_FORM);
                       setError("");
                       setResult(null);
                     }}
@@ -1434,7 +1599,16 @@ export default function ImportClientsModal({
                 </div>
               )}
 
-              <div className={cn(campaignInsetClass, "p-4", phase !== "form" && "hidden")}>
+              <div
+                className={cn(
+                  campaignInsetClass,
+                  "p-4",
+                  (phase !== "form" ||
+                    (importMode === "existing" &&
+                      existingImportSource === "single")) &&
+                    "hidden",
+                )}
+              >
                 <div className="mb-2 flex items-center justify-between">
                   <div className="block text-sm font-semibold text-ink/80">
                     Seleccionar archivo Excel
@@ -1495,20 +1669,137 @@ export default function ImportClientsModal({
                 </div>
               </div>
 
+              {isExistingSingleMode ? (
+                <div className={cn(campaignInsetClass, "space-y-4 p-4", phase !== "form" && "hidden")}>
+                  <div>
+                    <div className="mb-2 block text-sm font-semibold text-ink/80">
+                      Datos del cliente
+                    </div>
+                    <p className="text-xs text-muted">
+                      Completa la informacion basica para anexar un solo cliente a la base seleccionada.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <div className="mb-2 block text-xs font-semibold text-muted">
+                        Nombre
+                      </div>
+                      <Input
+                        type="text"
+                        value={singleClientForm.first_name}
+                        onChange={(e) =>
+                          updateSingleClientField("first_name", e.target.value)
+                        }
+                        placeholder="Ej. Juan"
+                        disabled={loading}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="mb-2 block text-xs font-semibold text-muted">
+                        Apellido
+                      </div>
+                      <Input
+                        type="text"
+                        value={singleClientForm.last_name}
+                        onChange={(e) =>
+                          updateSingleClientField("last_name", e.target.value)
+                        }
+                        placeholder="Ej. Perez"
+                        disabled={loading}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="mb-2 block text-xs font-semibold text-muted">
+                        Email
+                      </div>
+                      <Input
+                        type="email"
+                        value={singleClientForm.email}
+                        onChange={(e) =>
+                          updateSingleClientField("email", e.target.value)
+                        }
+                        placeholder="cliente@correo.com"
+                        disabled={loading}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="mb-2 block text-xs font-semibold text-muted">
+                        Telefono
+                      </div>
+                      <Input
+                        type="text"
+                        value={singleClientForm.phone_number}
+                        onChange={(e) =>
+                          updateSingleClientField("phone_number", e.target.value)
+                        }
+                        placeholder="Ej. 573001112233"
+                        disabled={loading}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="mb-2 block text-xs font-semibold text-muted">
+                        Pais
+                      </div>
+                      <Input
+                        type="text"
+                        value={singleClientForm.country}
+                        onChange={(e) =>
+                          updateSingleClientField("country", e.target.value)
+                        }
+                        placeholder="Ej. Colombia"
+                        disabled={loading}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="mb-2 block text-xs font-semibold text-muted">
+                        Empresa / fuente
+                      </div>
+                      <Input
+                        type="text"
+                        value={singleClientForm.source}
+                        onChange={(e) =>
+                          updateSingleClientField("source", e.target.value)
+                        }
+                        placeholder="Ej. Broker / marca"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-sky-200/80 bg-sky-50/70 px-3 py-2 text-xs text-sky-800">
+                    Debes completar al menos un dato identificable: nombre, email o telefono.
+                  </div>
+                </div>
+              ) : null}
+
               {phase === "processing" ? (
                 <div className={cn(campaignInsetClass, "p-8")}>
                   <div className="flex flex-col items-center justify-center gap-4 text-center">
                     <LoadingSpinner
                       size="lg"
-                      text="Procesando archivo..."
+                      text={
+                        isExistingSingleMode
+                          ? "Anexando cliente..."
+                          : "Procesando archivo..."
+                      }
                       fullScreen={false}
                     />
                     <div className="space-y-1">
                       <div className="text-sm font-semibold text-ink/85">
-                        Estamos validando el archivo y preparando la importacion.
+                        {isExistingSingleMode
+                          ? "Estamos validando los datos del cliente y preparando el anexo."
+                          : "Estamos validando el archivo y preparando la importacion."}
                       </div>
                       <div className="text-xs text-muted">
-                        Esto puede tardar un poco si la base es grande.
+                        {isExistingSingleMode
+                          ? "Esto tardara solo unos segundos."
+                          : "Esto puede tardar un poco si la base es grande."}
                       </div>
                     </div>
                   </div>
@@ -1637,7 +1928,11 @@ export default function ImportClientsModal({
                 disabled={loading}
                 type="button"
               >
-                {phase === "result" ? "Importar otro archivo" : "Cancelar"}
+                {phase === "result"
+                  ? isExistingSingleMode
+                    ? "Agregar otro cliente"
+                    : "Importar otro archivo"
+                  : "Cancelar"}
               </button>
 
               {phase === "result" ? (
@@ -1651,7 +1946,14 @@ export default function ImportClientsModal({
               ) : phase === "processing" ? null : (
                 <button
                   onClick={handleImport}
-                  disabled={!file || loading}
+                  disabled={
+                    loading ||
+                    (importMode === "new" && !file) ||
+                    (importMode === "existing" &&
+                      existingImportSource === "file" &&
+                      !file) ||
+                    (importMode === "existing" && !selectedCampaignId)
+                  }
                   className={modalPrimaryActionClassName}
                   type="button"
                 >
@@ -1664,7 +1966,9 @@ export default function ImportClientsModal({
                   ) : (
                     <>
                       <Upload className="h-4 w-4" />
-                      Importar Clientes
+                      {isExistingSingleMode
+                        ? "Anexar Cliente"
+                        : "Importar Clientes"}
                     </>
                   )}
                 </button>

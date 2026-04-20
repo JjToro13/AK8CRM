@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type FocusEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Eye, EyeOff, KeyRound, Mail } from "lucide-react";
 import { auth } from "../services/auth.service";
-import { supabase } from "../../../integrations/supabase/client";
 import AppFooter from "../../../shared/components/layout/AppFooter";
 
 type TenantFlavor = "neutral" | "light" | "shade";
@@ -239,17 +238,6 @@ function getTenantTheme(tenant: TenantFlavor): TenantTheme {
   };
 }
 
-async function validateProfile() {
-  const { data, error } = await supabase.rpc("my_agent");
-
-  if (error) {
-    return { profile: null, error };
-  }
-
-  const profile = Array.isArray(data) ? data[0] : data;
-  return { profile: profile ?? null, error: null };
-}
-
 function LandscapePanel({
   context,
   theme,
@@ -418,23 +406,6 @@ export default function LoginPage() {
       if (signInError) {
         setError(signInError.message);
         return;
-      }
-
-      const { profile, error: profileError } = await validateProfile();
-
-      if (profileError) {
-        console.error("Error validando perfil con my_agent:", profileError);
-      }
-
-      if (!profile) {
-        await supabase.auth.signOut({ scope: "local" });
-        setError("No se pudo validar tu acceso. Contacta al administrador.");
-        return;
-      }
-
-      if (profile.is_active === false) {
-        await supabase.auth.signOut({ scope: "local" });
-        setError("Tu cuenta esta desactivada. Contacta al administrador.");
       }
     } catch (submitError) {
       console.error(submitError);
