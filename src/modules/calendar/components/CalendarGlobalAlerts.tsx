@@ -18,6 +18,10 @@ const POLL_INTERVAL_MS = 60_000;
 const CALENDAR_ALERTS_COLLAPSED_STORAGE_KEY = "ak8crm.calendar-alerts.collapsed";
 const expandedPanelPositionClass = "right-0 top-[34%] -translate-y-1/2";
 const collapsedPanelPositionClass = "right-0 top-[40%] -translate-y-1/2";
+const alertsPanelClass =
+  "pointer-events-auto border border-r-0 border-brand/14 bg-[linear-gradient(180deg,rgb(var(--color-surface)/0.98),rgb(var(--color-surface-elevated)/0.94))] shadow-[-26px_30px_72px_rgba(15,23,42,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl";
+const alertsGhostButtonClass =
+  "inline-flex items-center justify-center gap-1 rounded-full border border-white/10 bg-white/[0.04] text-xs font-semibold text-ink/84 transition hover:border-brand/24 hover:bg-white/[0.08] hover:text-brand";
 
 const emptySummary: CalendarGlobalAlertsSummary = {
   total: 0,
@@ -147,10 +151,15 @@ export default function CalendarGlobalAlerts() {
           collapsedPanelPositionClass,
         )}
       >
-        <div className="pointer-events-auto flex min-w-[12.25rem] flex-col gap-2 rounded-l-[1.35rem] rounded-r-none border border-r-0 border-white/78 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,249,252,0.94))] px-3 py-3 shadow-[-20px_26px_54px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-2xl">
+        <div
+          className={cn(
+            alertsPanelClass,
+            "flex min-w-[12.25rem] flex-col gap-2 rounded-l-[1.35rem] rounded-r-none px-3 py-3",
+          )}
+        >
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[0.95rem] border border-sky-200/80 bg-sky-50/94">
-              <CalendarClock className="h-4 w-4 text-sky-700" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-[0.95rem] border border-brand/22 bg-brand/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <CalendarClock className="h-4 w-4 text-brand" />
             </div>
 
             <div className="min-w-0">
@@ -165,13 +174,13 @@ export default function CalendarGlobalAlerts() {
 
           <div className="flex flex-wrap gap-2">
             {summary.overdueCount > 0 ? (
-              <span className="inline-flex items-center justify-center gap-1 rounded-full border border-rose-200/90 bg-rose-50/92 px-2 py-1 text-[11px] font-semibold text-rose-700">
+              <span className="inline-flex items-center justify-center gap-1 rounded-full border border-rose-400/25 bg-rose-500/[0.08] px-2 py-1 text-[11px] font-semibold text-rose-200">
                 {summary.overdueCount} vencida{summary.overdueCount === 1 ? "" : "s"}
               </span>
             ) : null}
 
             {summary.upcomingCount > 0 ? (
-              <span className="inline-flex items-center justify-center gap-1 rounded-full border border-amber-200/90 bg-amber-50/92 px-2 py-1 text-[11px] font-semibold text-amber-800">
+              <span className="inline-flex items-center justify-center gap-1 rounded-full border border-amber-400/25 bg-amber-500/[0.08] px-2 py-1 text-[11px] font-semibold text-amber-200">
                 {summary.upcomingCount} próxima{summary.upcomingCount === 1 ? "" : "s"}
               </span>
             ) : null}
@@ -180,7 +189,7 @@ export default function CalendarGlobalAlerts() {
           <button
             type="button"
             onClick={() => setCollapsed(false)}
-            className="inline-flex items-center justify-center gap-1 rounded-full border border-slate-200/80 bg-white/92 px-3 py-1.5 text-xs font-semibold text-ink/84 transition hover:border-sky-200 hover:text-sky-700"
+            className={cn(alertsGhostButtonClass, "px-3 py-1.5")}
             title="Expandir calendario"
           >
             Ver agenda
@@ -198,11 +207,16 @@ export default function CalendarGlobalAlerts() {
         expandedPanelPositionClass,
       )}
     >
-      <div className="pointer-events-auto rounded-l-[1.55rem] rounded-r-none border border-r-0 border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,249,252,0.94))] p-4 shadow-[-26px_30px_72px_rgba(15,23,42,0.15),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-2xl">
+      <div
+        className={cn(
+          alertsPanelClass,
+          "rounded-l-[1.55rem] rounded-r-none p-4",
+        )}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-sky-200/80 bg-sky-50/94 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
-              <CalendarClock className="h-5 w-5 text-sky-700" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-brand/22 bg-brand/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <CalendarClock className="h-5 w-5 text-brand" />
             </div>
 
             <div>
@@ -221,7 +235,7 @@ export default function CalendarGlobalAlerts() {
           <button
             type="button"
             onClick={() => setCollapsed(true)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/80 bg-white/92 text-ink/82 transition hover:border-sky-200 hover:text-sky-700"
+            className={cn(alertsGhostButtonClass, "h-9 w-9")}
             title="Minimizar calendario"
           >
             <ChevronDown className="h-4 w-4" />
@@ -230,8 +244,8 @@ export default function CalendarGlobalAlerts() {
 
         <div className="mt-4 grid gap-2">
           {summary.overdueCount > 0 ? (
-            <div className="rounded-[1rem] border border-rose-200/90 bg-[linear-gradient(180deg,rgba(255,241,242,0.96),rgba(255,255,255,0.82))] px-3 py-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-rose-700">
+            <div className="rounded-[1rem] border border-rose-400/25 bg-rose-500/[0.08] px-3 py-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-rose-200">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 {summary.overdueCount} vencida{summary.overdueCount === 1 ? "" : "s"}
               </div>
@@ -239,8 +253,8 @@ export default function CalendarGlobalAlerts() {
           ) : null}
 
           {summary.upcomingCount > 0 ? (
-            <div className="rounded-[1rem] border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.96),rgba(255,255,255,0.82))] px-3 py-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-amber-800">
+            <div className="rounded-[1rem] border border-amber-400/25 bg-amber-500/[0.08] px-3 py-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-amber-200">
                 <CalendarClock className="h-3.5 w-3.5" />
                 {summary.upcomingCount} próxima{summary.upcomingCount === 1 ? "" : "s"}
               </div>
@@ -249,7 +263,7 @@ export default function CalendarGlobalAlerts() {
         </div>
 
         {summary.nextEvent ? (
-          <div className="mt-4 rounded-[1.2rem] border border-slate-200/90 bg-white/84 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
+          <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-black/10 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
               Próximo seguimiento
             </div>
@@ -272,7 +286,7 @@ export default function CalendarGlobalAlerts() {
           <button
             type="button"
             onClick={() => navigate("/calendar")}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded-full border border-slate-200/80 bg-white/92 px-3 py-2 text-xs font-semibold text-ink/84 transition hover:border-sky-200 hover:text-sky-700"
+            className={cn(alertsGhostButtonClass, "flex-1 px-3 py-2")}
           >
             Abrir agenda
             <ChevronRight className="h-3.5 w-3.5" />

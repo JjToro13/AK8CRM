@@ -1365,7 +1365,7 @@ export default function ImportClientsModal({
     <LazyMotion features={domAnimation}>
       <AnimatePresence mode="wait">
         <m.div
-          className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6"
+          className="fixed inset-0 z-[90] overflow-y-auto p-4 sm:p-6"
           variants={overlayV}
           initial="initial"
           animate="animate"
@@ -1376,15 +1376,19 @@ export default function ImportClientsModal({
         >
           <div className="absolute inset-0 bg-[rgba(15,23,42,0.42)] backdrop-blur-sm" />
 
-          <m.div
-            className={cn(campaignModalPanelClass, "max-w-2xl")}
-            variants={panelV}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-          >
+          <div className="relative flex min-h-full items-center justify-center">
+            <m.div
+              className={cn(
+                campaignModalPanelClass,
+                "flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col sm:max-h-[calc(100vh-3rem)]",
+              )}
+              variants={panelV}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
             <ModalHeader
-              icon={<FileSpreadsheet className="h-5 w-5 text-emerald-600" />}
+              icon={<FileSpreadsheet className="h-5 w-5 text-brand" />}
               title={
                 isExistingSingleMode
                   ? "Anexar cliente individual"
@@ -1400,7 +1404,7 @@ export default function ImportClientsModal({
               className={campaignModalHeaderClass}
             />
 
-            <ModalBody className="space-y-6">
+            <ModalBody className="crm-scrollbar crm-scrollbar-shell min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain pr-2">
               {importMode === "existing" ? (
                 <div className={cn(campaignInsetClass, "p-4", phase !== "form" && "hidden")}>
                   <div className="mb-2 block text-sm font-semibold text-ink/80">
@@ -1420,7 +1424,7 @@ export default function ImportClientsModal({
                         "rounded-[1.15rem] border px-4 py-3 text-left transition",
                         existingImportSource === "file"
                           ? "border-brand/24 bg-brand/[0.08] shadow-[0_16px_28px_rgba(15,23,42,0.06)]"
-                          : "border-white/74 bg-white/72 hover:bg-white/84",
+                          : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]",
                       )}
                     >
                       <div className="text-sm font-semibold text-ink/85">
@@ -1445,7 +1449,7 @@ export default function ImportClientsModal({
                         "rounded-[1.15rem] border px-4 py-3 text-left transition",
                         existingImportSource === "single"
                           ? "border-brand/24 bg-brand/[0.08] shadow-[0_16px_28px_rgba(15,23,42,0.06)]"
-                          : "border-white/74 bg-white/72 hover:bg-white/84",
+                          : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]",
                       )}
                     >
                       <div className="text-sm font-semibold text-ink/85">
@@ -1490,7 +1494,7 @@ export default function ImportClientsModal({
                       "rounded-[1.15rem] border px-4 py-3 text-left transition",
                       importMode === "new"
                         ? "border-brand/24 bg-brand/[0.08] shadow-[0_16px_28px_rgba(15,23,42,0.06)]"
-                        : "border-white/74 bg-white/72 hover:bg-white/84",
+                        : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]",
                     )}
                   >
                     <div className="text-sm font-semibold text-ink/85">
@@ -1517,7 +1521,7 @@ export default function ImportClientsModal({
                       "rounded-[1.15rem] border px-4 py-3 text-left transition",
                       importMode === "existing"
                         ? "border-brand/24 bg-brand/[0.08] shadow-[0_16px_28px_rgba(15,23,42,0.06)]"
-                        : "border-white/74 bg-white/72 hover:bg-white/84",
+                        : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]",
                       !canAppendToExisting && "cursor-not-allowed opacity-60",
                     )}
                   >
@@ -1531,9 +1535,9 @@ export default function ImportClientsModal({
                 </div>
 
                 {!canAppendToExisting ? (
-                  <p className="mt-3 text-xs text-amber-700">
+                  <div className="mt-3 rounded-2xl border border-amber-400/25 bg-amber-500/[0.08] px-3 py-2 text-xs text-amber-100/90">
                     Para anexar clientes primero debes seleccionar una operación activa.
-                  </p>
+                  </div>
                 ) : null}
               </div>
 
@@ -1631,12 +1635,12 @@ export default function ImportClientsModal({
                   onDrop={onDrop}
                   className={cn(
                     "rounded-[1.25rem] border border-dashed p-6 transition",
-                    "border-white/78 bg-white/48 hover:border-brand/30 hover:bg-white/58",
+                    "border-white/10 bg-white/[0.04] hover:border-brand/30 hover:bg-white/[0.08]",
                     loading && "pointer-events-none opacity-70",
                   )}
                 >
                   <div className="flex flex-col items-center gap-3 text-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/76 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.88)]">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
                       <UploadCloud className="h-6 w-6 text-brand" />
                     </div>
 
@@ -1660,8 +1664,8 @@ export default function ImportClientsModal({
                     <div className="text-xs text-muted">XLSX/XLS hasta 10MB</div>
 
                     {file && (
-                      <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/76 bg-white/72 px-3 py-1 text-xs text-ink/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
-                        <CheckCircle className="h-4 w-4 text-emerald-600" />
+                      <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/[0.08] px-3 py-1 text-xs text-emerald-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                        <CheckCircle className="h-4 w-4 text-emerald-300" />
                         <span className="font-semibold">{file.name}</span>
                       </div>
                     )}
@@ -1772,7 +1776,7 @@ export default function ImportClientsModal({
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-sky-200/80 bg-sky-50/70 px-3 py-2 text-xs text-sky-800">
+                  <div className="rounded-xl border border-brand/25 bg-brand/[0.08] px-3 py-2 text-xs text-brand-soft">
                     Debes completar al menos un dato identificable: nombre, email o telefono.
                   </div>
                 </div>
@@ -1807,14 +1811,14 @@ export default function ImportClientsModal({
               ) : null}
 
               {error && phase === "form" && (
-                <div className="rounded-[1.2rem] border border-red-200/90 bg-[linear-gradient(180deg,rgba(254,242,242,0.92),rgba(255,255,255,0.8))] p-4">
+                <div className="rounded-[1.2rem] border border-red-400/25 bg-red-500/[0.08] p-4">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="mt-0.5 h-5 w-5 text-red-600" />
+                    <AlertCircle className="mt-0.5 h-5 w-5 text-red-300" />
                     <div>
-                      <div className="text-sm font-semibold text-red-700">
+                      <div className="text-sm font-semibold text-red-100">
                         Error
                       </div>
-                      <div className="mt-1 whitespace-pre-line text-sm text-red-700/90">
+                      <div className="mt-1 whitespace-pre-line text-sm text-red-100/85">
                         {error}
                       </div>
                     </div>
@@ -1827,21 +1831,21 @@ export default function ImportClientsModal({
                   className={cn(
                     "rounded-[1.2rem] p-4",
                     hasPartialImport
-                      ? "border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.95),rgba(255,255,255,0.82))]"
-                      : "border border-emerald-200/90 bg-[linear-gradient(180deg,rgba(236,253,245,0.94),rgba(255,255,255,0.8))]",
+                      ? "border border-amber-400/25 bg-amber-500/[0.08]"
+                      : "border border-emerald-400/25 bg-emerald-500/[0.08]",
                   )}
                 >
                   <div className="flex items-start gap-2">
                     {hasPartialImport ? (
-                      <AlertCircle className="mt-0.5 h-5 w-5 text-amber-700" />
+                      <AlertCircle className="mt-0.5 h-5 w-5 text-amber-300" />
                     ) : (
-                      <CheckCircle className="mt-0.5 h-5 w-5 text-emerald-700" />
+                      <CheckCircle className="mt-0.5 h-5 w-5 text-emerald-300" />
                     )}
                     <div className="w-full">
                       <div
                         className={cn(
                           "text-sm font-semibold",
-                          hasPartialImport ? "text-amber-900" : "text-emerald-900",
+                          hasPartialImport ? "text-amber-100" : "text-emerald-100",
                         )}
                       >
                         {hasPartialImport ? "Carga parcial completada" : "Importacion completada"}
@@ -1849,7 +1853,7 @@ export default function ImportClientsModal({
                       <div
                         className={cn(
                           "mt-1 text-sm",
-                          hasPartialImport ? "text-amber-900/85" : "text-emerald-900/80",
+                          hasPartialImport ? "text-amber-100/80" : "text-emerald-100/80",
                         )}
                       >
                         Se importaron <b>{result.success}</b> clientes
@@ -1867,11 +1871,11 @@ export default function ImportClientsModal({
                       </div>
 
                       {result.errors?.length > 0 && (
-                        <div className="mt-3 rounded-xl border border-amber-200 bg-white/76 p-3">
-                          <div className="text-sm font-semibold text-amber-700">
+                        <div className="mt-3 rounded-xl border border-amber-400/25 bg-black/10 p-3">
+                          <div className="text-sm font-semibold text-amber-100">
                             Avisos encontrados
                           </div>
-                          <ul className="mt-2 space-y-1 text-xs text-amber-700">
+                          <ul className="mt-2 space-y-1 text-xs text-amber-100/80">
                             {result.errors.map((err, idx) => (
                               <li key={idx}>• {err}</li>
                             ))}
@@ -1880,13 +1884,13 @@ export default function ImportClientsModal({
                       )}
 
                       {duplicateRows.length > 0 ? (
-                        <div className="mt-3 rounded-xl border border-sky-200 bg-white/76 p-3">
+                        <div className="mt-3 rounded-xl border border-brand/25 bg-black/10 p-3">
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                              <div className="text-sm font-semibold text-sky-800">
+                              <div className="text-sm font-semibold text-brand-soft">
                                 Reporte de repetidos disponible
                               </div>
-                              <div className="mt-1 text-xs text-sky-800/80">
+                              <div className="mt-1 text-xs text-brand-soft/80">
                                 Descarga el detalle de filas repetidas en CSV o Excel para revisarlas o reenviarlas corregidas.
                               </div>
                             </div>
@@ -1897,7 +1901,7 @@ export default function ImportClientsModal({
                                 onClick={() => {
                                   void downloadDuplicateReportXlsx();
                                 }}
-                                className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800 transition hover:bg-sky-100"
+                                className="inline-flex items-center gap-2 rounded-full border border-brand/25 bg-brand/[0.12] px-3 py-2 text-xs font-semibold text-brand-soft transition hover:bg-brand/[0.18]"
                               >
                                 <FileSpreadsheet className="h-4 w-4" />
                                 Descargar Excel
@@ -1906,7 +1910,7 @@ export default function ImportClientsModal({
                               <button
                                 type="button"
                                 onClick={downloadDuplicateReport}
-                                className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-2 text-xs font-semibold text-sky-800 transition hover:bg-sky-50"
+                                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-brand-soft transition hover:bg-white/[0.08]"
                               >
                                 <Download className="h-4 w-4" />
                                 Descargar CSV
@@ -1921,7 +1925,9 @@ export default function ImportClientsModal({
               )}
             </ModalBody>
 
-            <ModalFooter className={cn("justify-end gap-2", campaignModalFooterClass)}>
+            <ModalFooter
+              className={cn("shrink-0 justify-end gap-2", campaignModalFooterClass)}
+            >
               <button
                 onClick={phase === "result" ? hardReset : close}
                 className={modalSecondaryActionClassName}
@@ -1974,7 +1980,8 @@ export default function ImportClientsModal({
                 </button>
               )}
             </ModalFooter>
-          </m.div>
+            </m.div>
+          </div>
         </m.div>
       </AnimatePresence>
     </LazyMotion>,

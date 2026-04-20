@@ -33,7 +33,7 @@ export default function CampaignsTableRow({
   const isDeleting = deletingCampaignId === campaign.id;
   const isTogglingLock = togglingLockCampaignId === campaign.id;
   const actionButtonClass =
-    "inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/76 bg-white/72 text-ink/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.86)] transition hover:-translate-y-[1px] hover:border-brand/22 hover:bg-white/90 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex h-9 w-9 items-center justify-center rounded-full border border-brand/16 bg-[rgb(var(--color-surface-elevated)/0.84)] text-ink/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:-translate-y-[1px] hover:border-brand/26 hover:bg-[rgb(var(--color-surface-elevated)/0.98)] hover:text-ink disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <tr
@@ -76,7 +76,7 @@ export default function CampaignsTableRow({
 
       <td className="whitespace-nowrap px-6 py-4">
         <div className="space-y-1">
-          <span className="inline-flex items-center rounded-full border border-emerald-200/90 bg-emerald-50/90 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+          <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-[rgba(16,185,129,0.14)] px-2.5 py-1 text-xs font-semibold text-emerald-300">
             {campaign.available.toLocaleString()}
           </span>
           <div className="text-[11px] text-muted">sin asignar</div>
@@ -91,12 +91,12 @@ export default function CampaignsTableRow({
 
       <td className="whitespace-nowrap px-6 py-4">
         {campaign.isLocked ? (
-          <span className="inline-flex items-center rounded-full border border-amber-200/90 bg-amber-50/90 px-2.5 py-1 text-xs font-semibold text-amber-700">
+          <span className="inline-flex items-center rounded-full border border-amber-500/22 bg-[rgba(245,158,11,0.14)] px-2.5 py-1 text-xs font-semibold text-[rgb(251,191,36)]">
             <Lock className="mr-1 h-3.5 w-3.5" />
             Bloqueada
           </span>
         ) : (
-          <span className="inline-flex items-center rounded-full border border-emerald-200/90 bg-emerald-50/82 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+          <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-[rgba(16,185,129,0.14)] px-2.5 py-1 text-xs font-semibold text-emerald-300">
             <Unlock className="mr-1 h-3.5 w-3.5" />
             Activa
           </span>
@@ -104,7 +104,7 @@ export default function CampaignsTableRow({
       </td>
 
       <td className="whitespace-nowrap px-6 py-4">
-        <div className="flex items-center gap-2 rounded-full border border-white/70 bg-white/42 px-2 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+        <div className="flex items-center gap-2 rounded-full border border-brand/12 bg-[rgb(var(--color-surface)/0.36)] px-2 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
           <button
             type="button"
             onClick={(event) => {
@@ -113,7 +113,7 @@ export default function CampaignsTableRow({
             }}
             className={cn(
               actionButtonClass,
-              "border-sky-200/80 bg-sky-50/90 text-sky-700 hover:border-sky-300 hover:bg-sky-100 hover:text-sky-800",
+              "border-brand/22 text-brand shadow-[0_0_0_1px_rgb(var(--color-brand-500)/0.14),inset_0_1px_0_rgba(255,255,255,0.1)] hover:border-brand/34 hover:text-brand",
             )}
             title="Anexar clientes a esta base"
           >
@@ -138,7 +138,7 @@ export default function CampaignsTableRow({
               event.stopPropagation();
               onExport(campaign.id);
             }}
-            className={cn(actionButtonClass, "text-emerald-700 hover:text-emerald-800")}
+            className={cn(actionButtonClass, "text-emerald-400 hover:text-emerald-300")}
             title="Exportar esta campaña"
           >
             <Download className="h-4 w-4" />
@@ -181,7 +181,7 @@ export default function CampaignsTableRow({
               event.stopPropagation();
               onDelete(campaign);
             }}
-            className={cn(actionButtonClass, "text-red-600 hover:text-red-700")}
+            className={cn(actionButtonClass, "text-red-400 hover:text-red-300")}
             title="Eliminar campaña"
             disabled={isDeleting}
           >
