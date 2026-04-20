@@ -37,6 +37,7 @@ type AuthContextValue = AuthState & {
 };
 
 const PRESENCE_HEARTBEAT_MS = 90_000;
+const PRESENCE_INITIAL_DELAY_MS = 30_000;
 const AUTH_DEBUG = false;
 const dlog = (...a: any[]) => AUTH_DEBUG && console.log("[AUTH]", ...a);
 const dwarn = (...a: any[]) => AUTH_DEBUG && console.warn("[AUTH]", ...a);
@@ -377,11 +378,17 @@ function useProvideAuth(): AuthContextValue {
     }
 
     let heartbeatId: number | null = null;
+    let heartbeatStartTimeoutId: number | null = null;
 
     const stopHeartbeat = () => {
       if (heartbeatId !== null) {
         window.clearInterval(heartbeatId);
         heartbeatId = null;
+      }
+
+      if (heartbeatStartTimeoutId !== null) {
+        window.clearTimeout(heartbeatStartTimeoutId);
+        heartbeatStartTimeoutId = null;
       }
     };
 
@@ -393,11 +400,6 @@ function useProvideAuth(): AuthContextValue {
 
         if (errorStatus === 401) {
           stopHeartbeat();
-          await supabase.auth.signOut({ scope: "local" }).catch(() => {});
-          localStorage.removeItem("cm_selected_operation_id");
-          if (mountedRef.current) {
-            clearAuthState();
-          }
         }
       }
     };
@@ -409,13 +411,15 @@ function useProvideAuth(): AuthContextValue {
         return;
       }
 
-      void touchPresence();
+      heartbeatStartTimeoutId = window.setTimeout(() => {
+        void touchPresence();
 
-      heartbeatId = window.setInterval(() => {
-        if (document.visibilityState !== "hidden") {
-          void touchPresence();
-        }
-      }, PRESENCE_HEARTBEAT_MS);
+        heartbeatId = window.setInterval(() => {
+          if (document.visibilityState !== "hidden") {
+            void touchPresence();
+          }
+        }, PRESENCE_HEARTBEAT_MS);
+      }, PRESENCE_INITIAL_DELAY_MS);
     };
 
     const handleVisibilityChange = () => {
@@ -429,7 +433,7 @@ function useProvideAuth(): AuthContextValue {
 
     const handleFocus = () => {
       if (document.visibilityState === "visible") {
-        void touchPresence();
+        ensureHeartbeat();
       }
     };
 

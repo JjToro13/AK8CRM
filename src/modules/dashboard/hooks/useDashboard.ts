@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import type { Call, Client } from "../../../shared/types/crm";
 import { useBackendHealth } from "../../../shared/resilience/BackendHealthProvider";
-import { auth } from "../../auth/services/auth.service";
 import { calls } from "../../calls/services/calls.service";
 import { clients } from "../../clients/services/clients.service";
 import { dashboard } from "../services/dashboard.service";
@@ -20,6 +19,7 @@ export function useDashboard({
   const {
     activeOperationId: authActiveOperationId,
     operationId: authOperationId,
+    user,
     signOut,
   } = useAuth();
   const { shouldReduceLoad, reportBackendIssue, reportBackendSuccess } =
@@ -204,8 +204,12 @@ export function useDashboard({
       let agentId: string | undefined;
 
       if (!isAdmin) {
-        const currentUser = await auth.getCurrentUser();
-        agentId = currentUser?.id;
+        agentId = user?.id;
+      }
+
+      if (!isAdmin && !agentId) {
+        setRecentCalls([]);
+        return;
       }
 
       const { data, error } = await calls.getRecent({
@@ -234,6 +238,7 @@ export function useDashboard({
     reportBackendIssue,
     reportBackendSuccess,
     shouldReduceLoad,
+    user,
   ]);
 
   useEffect(() => {
@@ -271,8 +276,12 @@ export function useDashboard({
         let agentId: string | undefined;
 
         if (!isAdmin) {
-          const currentUser = await auth.getCurrentUser();
-          agentId = currentUser?.id;
+          agentId = user?.id;
+        }
+
+        if (!isAdmin && !agentId) {
+          setSearchResults([]);
+          return;
         }
 
         const { data, error } = await clients.search(trimmedQuery, {
@@ -311,6 +320,7 @@ export function useDashboard({
       reportBackendIssue,
       reportBackendSuccess,
       shouldReduceLoad,
+      user,
     ],
   );
 
