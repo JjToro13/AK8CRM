@@ -39,7 +39,7 @@ const DashboardPage = lazy(() => import("./modules/dashboard/pages/DashboardPage
 
 const BRANDING_CACHE_KEY_PREFIX = "crm.branding-cache.";
 const BRANDING_MAX_WAIT_MS = 1500;
-const CRM_RELEASE_NOTICE_KEY = "crm.release-notice.1.0.30";
+const CRM_RELEASE_NOTICE_KEY = "crm.release-notice.1.0.56";
 
 function getBrandingCacheKey(operationId: string) {
   return `${BRANDING_CACHE_KEY_PREFIX}${operationId}`;
@@ -212,7 +212,7 @@ export default function App() {
                   Si la base entra en alta carga, el CRM activa modo de contingencia
                   para seguir accesible.
                 </li>
-                <li>Version actual: 1.0.30.</li>
+                <li>Version actual: 1.0.56.</li>
               </ul>
             }
             primaryText="Continuar"
