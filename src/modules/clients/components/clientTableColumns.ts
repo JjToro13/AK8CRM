@@ -6,6 +6,7 @@ export type ClientTableColumnKey =
   | "phone_number"
   | "country"
   | "source"
+  | "campaign"
   | "assigned_agent"
   | "funnel"
   | "deposit_amount"
@@ -125,6 +126,12 @@ export const CLIENT_TABLE_COLUMNS: ClientTableColumnConfig[] = [
     defaultVisible: true,
     textFilterKey: "source",
     filterPlaceholder: "Buscar empresa...",
+  },
+  {
+    key: "campaign",
+    label: "Campana",
+    width: "190px",
+    defaultVisible: true,
   },
   {
     key: "assigned_agent",

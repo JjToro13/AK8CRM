@@ -53,8 +53,36 @@ export const CLIENT_LIST_SELECT = `
   last_comment_at,
   last_comment_agent,
   comment_count,
+  campaign:campaigns!clients_campaign_id_fkey(
+    id,
+    prefix,
+    display_name
+  ),
   agent:agents!clients_last_comment_agent_fkey(name)
 `;
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) {
+    return (value[0] ?? null) as T | null;
+  }
+
+  return (value ?? null) as T | null;
+}
+
+function normalizeClient(value: any): Client | null {
+  if (!value) return null;
+
+  return {
+    ...value,
+    campaign: firstRelation(value.campaign),
+    agent: firstRelation(value.agent),
+  } as Client;
+}
+
+function normalizeClients(values: any): Client[] {
+  if (!Array.isArray(values)) return [];
+  return values.map(normalizeClient).filter(Boolean) as Client[];
+}
 
 function applyClientBalanceRangeFilter(
   request: any,
@@ -222,7 +250,7 @@ export const clients = {
     ).range(from, to);
 
     return {
-      data: (data ?? []) as Client[],
+      data: normalizeClients(data),
       error,
       count: count ?? 0,
     };
@@ -262,7 +290,7 @@ export const clients = {
     ).range(from, to);
 
     return {
-      data: (data ?? []) as Client[],
+      data: normalizeClients(data),
       error,
       count: count ?? 0,
     };
@@ -277,7 +305,7 @@ export const clients = {
 
     const { data, error } = await request.single();
 
-    return { data: (data ?? null) as Client | null, error };
+    return { data: normalizeClient(data), error };
   },
 
   create: async (
@@ -289,7 +317,7 @@ export const clients = {
       .select()
       .single();
 
-    return { data: (data ?? null) as Client | null, error };
+    return { data: normalizeClient(data), error };
   },
 
   update: async (
@@ -305,7 +333,7 @@ export const clients = {
 
     const { data, error } = await request.select().single();
 
-    return { data: (data ?? null) as Client | null, error };
+    return { data: normalizeClient(data), error };
   },
 
   delete: async (id: string, operationId?: string | null) => {

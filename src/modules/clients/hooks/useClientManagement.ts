@@ -332,6 +332,7 @@ export function useClientManagement(
             "phone_number",
             "country",
             "source",
+            "campaign",
             "assigned_agent",
             "funnel",
             "deposit_amount",

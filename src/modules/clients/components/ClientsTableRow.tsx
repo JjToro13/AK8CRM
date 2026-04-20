@@ -94,6 +94,9 @@ export default function ClientsTableRow({
     (client.net_deposit ?? 0) >= 500 || (client.deposit_amount ?? 0) >= 500;
   const isManyAttempts = (client.attempts ?? 0) >= 3;
   const company = client.source || client.trading_company || "-";
+  const campaignPrefix = client.campaign?.prefix?.trim() || client.campaign_id || "";
+  const campaignLabel =
+    client.campaign?.display_name?.trim() || campaignPrefix || "-";
   const assignedAgentName = client.assigned_agent?.name?.trim() || "Sin asignar";
   const isPendingToday = !hasCommentToday(client.last_comment_at);
   const rowAccentClass = isManyAttempts
@@ -203,6 +206,21 @@ export default function ClientsTableRow({
               <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
                 <div className="truncate" title={company}>
                   {company}
+                </div>
+              </SheetCell>
+            );
+          case "campaign":
+            return (
+              <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
+                <div className="min-w-0">
+                  <div className="truncate" title={campaignLabel}>
+                    {campaignLabel}
+                  </div>
+                  {campaignPrefix && campaignPrefix !== campaignLabel ? (
+                    <div className="mt-1 text-[11px] font-semibold text-muted">
+                      {campaignPrefix}
+                    </div>
+                  ) : null}
                 </div>
               </SheetCell>
             );

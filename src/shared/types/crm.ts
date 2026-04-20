@@ -5,6 +5,11 @@ export interface Client {
   tenant_id?: string | null;
   operation_id?: string | null;
   campaign_id?: string | null;
+  campaign?: {
+    id?: string;
+    prefix?: string | null;
+    display_name?: string | null;
+  } | null;
   assigned_to?: string | null;
   first_name?: string;
   last_name?: string;
