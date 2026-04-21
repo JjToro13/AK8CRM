@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Phone,
   User,
+  UserRound,
   Hash,
   AlertCircle,
   Edit,
@@ -45,6 +46,10 @@ export default function ClientSearch({
   const [showEmailModal, setShowEmailModal] = useState(false);
 
   const resolvedStatus = resolveClientStatus(client);
+  const assignedAgentName = client.assigned_agent?.name?.trim() || null;
+  const campaignName =
+    client.campaign?.display_name?.trim() ||
+    (client.campaign?.prefix ? `Base ${client.campaign.prefix}` : null);
 
   const handleCall = async () => {
     setCalling(true);
@@ -180,6 +185,20 @@ export default function ClientSearch({
           <div className="flex items-center text-muted">
             <Building className="h-4 w-4 mr-2 opacity-70" />
             <span className="truncate">{client.trading_company}</span>
+          </div>
+        )}
+
+        {campaignName && (
+          <div className="flex items-center text-muted">
+            <Building className="h-4 w-4 mr-2 opacity-70" />
+            <span className="truncate">Base: {campaignName}</span>
+          </div>
+        )}
+
+        {assignedAgentName && (
+          <div className="flex items-center text-muted">
+            <UserRound className="h-4 w-4 mr-2 opacity-70" />
+            <span className="truncate">Asignado a: {assignedAgentName}</span>
           </div>
         )}
 

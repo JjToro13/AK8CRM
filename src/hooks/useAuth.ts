@@ -270,6 +270,23 @@ function useProvideAuth(): AuthContextValue {
 
       if (!mountedRef.current || myReq !== reqIdRef.current) return;
 
+      const currentAuthState = authStateRef.current;
+      const shouldSyncSilently =
+        !!currentAuthState.user?.id &&
+        currentAuthState.user.id === userData.user.id &&
+        !currentAuthState.loading &&
+        currentAuthState.role !== null;
+
+      if (shouldSyncSilently) {
+        dlog("applySession -> silent sync", { source, myReq });
+        setAuthState((prev) => ({
+          ...prev,
+          user: userData.user,
+          session: settledSession,
+        }));
+        return;
+      }
+
       setAuthState((prev) => ({
         ...prev,
         user: userData.user,

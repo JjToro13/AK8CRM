@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import type { Call, Client } from "../../../shared/types/crm";
 import { useBackendHealth } from "../../../shared/resilience/BackendHealthProvider";
+import { agentNameMap } from "../../../shared/services/agent-name-map";
 import { calls } from "../../calls/services/calls.service";
 import { clients } from "../../clients/services/clients.service";
 import { dashboard } from "../services/dashboard.service";
@@ -10,6 +11,28 @@ import type { DashboardProps, Operation, VisibleTenant } from "../types/dashboar
 const SELECTED_OPERATION_STORAGE_KEY = "cm_selected_operation_id";
 const SELECTED_TENANT_STORAGE_KEY = "cm_selected_tenant_id";
 const DASHBOARD_SEARCH_DEBOUNCE_MS = 400;
+
+async function enrichSearchClientsWithAssignedAgentNames(clientsList: Client[]) {
+  const ids = Array.from(
+    new Set(clientsList.map((client) => client.assigned_to).filter(Boolean)),
+  ) as string[];
+
+  if (ids.length === 0) {
+    return clientsList.map((client) => ({
+      ...client,
+      assigned_agent: client.assigned_agent ?? null,
+    }));
+  }
+
+  const map = await agentNameMap(ids);
+
+  return clientsList.map((client) => ({
+    ...client,
+    assigned_agent: client.assigned_to
+      ? { name: map.get(client.assigned_to) ?? client.assigned_to }
+      : null,
+  }));
+}
 
 export function useDashboard({
   isAdmin,
@@ -299,7 +322,15 @@ export function useDashboard({
           return;
         }
 
-        setSearchResults(data || []);
+        const enrichedResults = await enrichSearchClientsWithAssignedAgentNames(
+          data || [],
+        );
+
+        if (requestId !== searchRequestIdRef.current) {
+          return;
+        }
+
+        setSearchResults(enrichedResults);
         reportBackendSuccess("dashboard:search");
       } catch (error) {
         if (requestId !== searchRequestIdRef.current) {
