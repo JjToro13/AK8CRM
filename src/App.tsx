@@ -10,7 +10,6 @@ import { useAuth } from "./hooks/useAuth";
 import { Suspense, lazy, useEffect, useState } from "react";
 
 import LoadingSpinner from "./shared/components/feedback/LoadingSpinner";
-import GeneralNoticeModal from "./shared/components/feedback/GeneralNoticeModal";
 import MaintenanceGate from "./shared/components/guards/MaintenanceGate";
 import {
   canAccessAgentWorkspace,
@@ -39,7 +38,6 @@ const DashboardPage = lazy(() => import("./modules/dashboard/pages/DashboardPage
 
 const BRANDING_CACHE_KEY_PREFIX = "crm.branding-cache.";
 const BRANDING_MAX_WAIT_MS = 1500;
-const CRM_RELEASE_NOTICE_KEY = "crm.release-notice.1.0.56";
 
 function getBrandingCacheKey(operationId: string) {
   return `${BRANDING_CACHE_KEY_PREFIX}${operationId}`;
@@ -87,7 +85,6 @@ export default function App() {
   const { branding, setAutoBranding } = useBranding();
   const { isDegraded, isManualDegraded } = useBackendHealth();
   const [brandingReady, setBrandingReady] = useState(true);
-  const [releaseNoticeOpen, setReleaseNoticeOpen] = useState(true);
   const {
     user,
     loading,
@@ -102,10 +99,6 @@ export default function App() {
   const canAccessCampaigns = !!user && canAccessCampaignWorkspace(role);
   const canAccessCalls = !!user && canUseCallHistory(role);
   const canAccessCalendar = !!user && canUseCalendarWorkspace(role);
-
-  useEffect(() => {
-    setReleaseNoticeOpen(Boolean(user));
-  }, [user]);
 
   useEffect(() => {
     if (!user) {
@@ -197,26 +190,6 @@ export default function App() {
       >
         <MaintenanceGate>
           <div className="min-h-screen bg-bg">
-          <GeneralNoticeModal
-            open={Boolean(user) && releaseNoticeOpen}
-            onClose={() => setReleaseNoticeOpen(false)}
-            dismissKey={CRM_RELEASE_NOTICE_KEY}
-            variant="info"
-            title="Cambios recientes en el CRM"
-            message={
-              <ul className="list-disc space-y-2 pl-5 text-sm">
-                <li>Clientes y agentes ahora cargan de forma mas ligera y estable.</li>
-                <li>La busqueda principal de clientes se activa desde 2 caracteres.</li>
-                <li>El historial de comentarios se carga solo cuando lo abres.</li>
-                <li>
-                  Si la base entra en alta carga, el CRM activa modo de contingencia
-                  para seguir accesible.
-                </li>
-                <li>Version actual: 1.0.56.</li>
-              </ul>
-            }
-            primaryText="Continuar"
-          />
           {user ? <BackendHealthBanner /> : null}
           <BackendHealthDebugger />
           {user ? <CalendarGlobalAlerts /> : null}

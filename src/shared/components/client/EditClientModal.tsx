@@ -1049,28 +1049,16 @@ export default function EditClientModal({
           </div>
 
           {/* Info adicional */}
-          <div
-            className={cn(
-              "rounded-3xl border p-4",
-              isAdmin
-                ? "border-white/78 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.62))]"
-                : "border-brand/18 bg-[linear-gradient(180deg,rgba(var(--color-brand-50),0.74),rgba(255,255,255,0.66))]",
-            )}
-          >
-            <h3
-              className={cn(
-                "text-xs font-semibold mb-2",
-                isAdmin ? "text-ink/80" : "text-brand",
-              )}
-            >
+          <div className="rounded-3xl border border-brand/12 bg-[linear-gradient(180deg,rgb(var(--color-surface-elevated)/0.88),rgb(var(--color-surface)/0.72))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+            <h3 className="mb-2 text-xs font-semibold text-ink/82">
               Información Adicional
             </h3>
 
-            <div
-              className={cn("text-sm", isAdmin ? "text-muted" : "text-ink/80")}
-            >
+            <div className="text-sm text-muted">
               <p>
-                <span className="font-semibold">Intentos de llamada:</span>{" "}
+                <span className="font-semibold text-ink/86">
+                  Intentos de llamada:
+                </span>{" "}
                 {client.attempts}
               </p>
               <p className="mt-1">

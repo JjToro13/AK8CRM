@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../hooks/useAuth";
+import { notify } from "../../../shared/lib/notify";
 import type { Call, Client } from "../../../shared/types/crm";
 import { useBackendHealth } from "../../../shared/resilience/BackendHealthProvider";
 import { agentNameMap } from "../../../shared/services/agent-name-map";
+import { agents } from "../../agents/services/agents.service";
 import { calls } from "../../calls/services/calls.service";
 import { clients } from "../../clients/services/clients.service";
 import { dashboard } from "../services/dashboard.service";
@@ -59,6 +61,13 @@ export function useDashboard({
   const [callsLoading, setCallsLoading] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [selectedClientForAssignment, setSelectedClientForAssignment] =
+    useState<Client | null>(null);
+  const [assignmentAgents, setAssignmentAgents] = useState<
+    Array<{ id: string; name: string; email?: string | null }>
+  >([]);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
   const [tenants, setTenants] = useState<VisibleTenant[]>([]);
   const [operations, setOperations] = useState<Operation[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
@@ -391,6 +400,122 @@ export function useDashboard({
     }
   }, [runSearch, searchQuery]);
 
+  const closeAssignmentModal = useCallback(() => {
+    setShowAssignmentModal(false);
+    setSelectedClientForAssignment(null);
+    setAssignmentAgents([]);
+    setAssignmentSaving(false);
+  }, []);
+
+  const handleAssignClient = useCallback(
+    async (client: Client) => {
+      if (!isAdmin) return;
+
+      setSelectedClientForAssignment(client);
+      setShowAssignmentModal(true);
+      setAssignmentSaving(false);
+
+      const { data, error } = await agents.getAll();
+
+      if (error) {
+        console.error("Error cargando agentes para asignacion:", error);
+        setAssignmentAgents([]);
+        notify.error(
+          "No se pudieron cargar los agentes",
+          "Intenta abrir la asignacion nuevamente.",
+        );
+        return;
+      }
+
+      const availableAgents = (data ?? [])
+        .filter(
+          (agent) =>
+            agent.role === "agent" &&
+            agent.is_active !== false &&
+            (!client.operation_id || agent.operation_id === client.operation_id),
+        )
+        .map((agent) => ({
+          id: agent.id,
+          name: agent.name,
+          email: agent.email ?? null,
+        }));
+
+      const currentAssignedStillMissing =
+        client.assigned_to &&
+        !availableAgents.some((agent) => agent.id === client.assigned_to);
+
+      setAssignmentAgents(
+        currentAssignedStillMissing
+          ? [
+              {
+                id: client.assigned_to!,
+                name: client.assigned_agent?.name?.trim() || client.assigned_to!,
+                email: null,
+              },
+              ...availableAgents,
+            ]
+          : availableAgents,
+      );
+    },
+    [isAdmin],
+  );
+
+  const handleAssignmentSaved = useCallback(
+    async (agentId: string | null) => {
+      if (!selectedClientForAssignment) return;
+
+      setAssignmentSaving(true);
+
+      const previousAgentLabel =
+        selectedClientForAssignment.assigned_agent?.name?.trim() || "Sin asignar";
+      const nextAgentLabel =
+        agentId === null
+          ? "Sin asignar"
+          : assignmentAgents.find((agent) => agent.id === agentId)?.name ?? agentId;
+
+      const { error: updateError } = await clients.update(
+        selectedClientForAssignment.id,
+        {
+          assigned_to: agentId,
+          updated_at: new Date().toISOString(),
+        },
+        selectedClientForAssignment.operation_id ?? undefined,
+      );
+
+      if (updateError) {
+        console.error("Error actualizando asignacion del cliente:", updateError);
+        notify.error(
+          "No se pudo actualizar la asignacion",
+          "Vuelve a intentarlo en unos segundos.",
+        );
+        setAssignmentSaving(false);
+        return;
+      }
+
+      const assignedAgent = agentId === null ? null : { name: nextAgentLabel };
+
+      setSelectedClient((current) =>
+        current && current.id === selectedClientForAssignment.id
+          ? { ...current, assigned_to: agentId, assigned_agent: assignedAgent }
+          : current,
+      );
+      setSearchResults((current) =>
+        current.map((client) =>
+          client.id === selectedClientForAssignment.id
+            ? { ...client, assigned_to: agentId, assigned_agent: assignedAgent }
+            : client,
+        ),
+      );
+
+      notify.clientAssignmentUpdated(
+        `${previousAgentLabel} -> ${nextAgentLabel}`,
+      );
+
+      closeAssignmentModal();
+    },
+    [assignmentAgents, closeAssignmentModal, selectedClientForAssignment],
+  );
+
   const handleSignOut = useCallback(async () => {
     try {
       await signOut();
@@ -494,12 +619,19 @@ export function useDashboard({
     recentCalls,
     searchQuery,
     searchResults,
+    assignmentAgents,
+    assignmentSaving,
+    closeAssignmentModal,
+    handleAssignClient,
+    handleAssignmentSaved,
     selectedClient,
+    selectedClientForAssignment,
     selectedTenantId,
     selectedOperation,
     selectedOperationId,
     selectOperation,
     selectTenant,
+    showAssignmentModal,
     setShowEditModal,
     showEditModal,
     statCompleted,

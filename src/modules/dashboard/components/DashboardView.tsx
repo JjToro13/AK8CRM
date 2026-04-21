@@ -5,6 +5,7 @@ import {
   canUseCallHistory,
   canUseClientActions,
 } from "../../../lib/supabase";
+import ClientAssignmentModal from "../../../shared/components/client/ClientAssignmentModal";
 import EditClientModal from "../../../shared/components/client/EditClientModal";
 import SecurityInfo from "./SecurityInfo";
 import AppFooter from "../../../shared/components/layout/AppFooter";
@@ -24,9 +25,14 @@ import DashboardHeaderMenu from "./DashboardHeaderMenu";
 export default function DashboardView(props: DashboardProps) {
   const { branding } = useBranding();
   const {
+    assignmentAgents,
+    assignmentSaving,
     callsLoading,
+    closeAssignmentModal,
     degradedMode,
     handleCallStarted,
+    handleAssignClient,
+    handleAssignmentSaved,
     handleClientSaved,
     handleEditClient,
     handleSearchInput,
@@ -40,10 +46,12 @@ export default function DashboardView(props: DashboardProps) {
     searchQuery,
     searchResults,
     selectedClient,
+    selectedClientForAssignment,
     selectedTenantId,
     selectedOperationId,
     selectOperation,
     selectTenant,
+    showAssignmentModal,
     setShowEditModal,
     showEditModal,
     statCompleted,
@@ -217,6 +225,17 @@ export default function DashboardView(props: DashboardProps) {
         onClose={() => setShowEditModal(false)}
         onSave={handleClientSaved}
         isAdmin={isAdmin}
+        canAssignClient={isAdmin}
+        onAssignClient={handleAssignClient}
+      />
+
+      <ClientAssignmentModal
+        client={selectedClientForAssignment}
+        isOpen={showAssignmentModal}
+        onClose={closeAssignmentModal}
+        onSave={handleAssignmentSaved}
+        saving={assignmentSaving}
+        agents={assignmentAgents}
       />
     </div>
   );
