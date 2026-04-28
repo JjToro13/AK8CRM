@@ -4,6 +4,7 @@ import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import GeneralNoticeModal from "../../../shared/components/feedback/GeneralNoticeModal";
 import CampaignReportExporter from "./CampaignReportExporter";
 import EditCampaignNameModal from "./EditCampaignNameModal";
+import DeleteCampaignConfirmModal from "./DeleteCampaignConfirmModal";
 import ImportClientsModal from "./ImportClientsModal";
 import CampaignClientsModal from "./CampaignClientsModal";
 import { cn } from "../../../lib/utils";
@@ -15,6 +16,7 @@ import CampaignManagementErrorCard from "./CampaignManagementErrorCard";
 import CampaignManagementNote from "./CampaignManagementNote";
 import CampaignManagementToolbar from "./CampaignManagementToolbar";
 import CampaignsTable from "./CampaignsTable";
+import PendingDeletionCampaignsPanel from "./PendingDeletionCampaignsPanel";
 import {
   campaignCardClass,
   campaignEyebrowClass,
@@ -22,7 +24,7 @@ import {
   campaignTitleClass,
 } from "./campaignUi";
 
-const CAMPAIGNS_ADMIN_UPDATES_NOTICE_KEY = "campaigns_admin_updates_notice_v1";
+const CAMPAIGNS_ADMIN_UPDATES_NOTICE_KEY = "campaigns_admin_updates_notice_v2";
 
 export default function CampaignManagementView(
   props: CampaignManagementProps,
@@ -39,6 +41,7 @@ export default function CampaignManagementView(
   });
   const {
     campaignRows,
+    pendingDeletionCampaignRows,
     deletingCampaignId,
     editCampaignId,
     editName,
@@ -52,6 +55,8 @@ export default function CampaignManagementView(
     loading,
     openClientsModal,
     savingName,
+    restoringCampaignId,
+    selectedCampaignForDeletion,
     selectedCampaignForClients,
     selectedOperationId,
     showClientsModal,
@@ -62,6 +67,8 @@ export default function CampaignManagementView(
     togglingLockCampaignId,
     totals,
     openEditName,
+    openDeleteCampaign,
+    closeDeleteCampaign,
     openExport,
     saveName,
     setEditName,
@@ -74,6 +81,7 @@ export default function CampaignManagementView(
     handleClientsMoved,
     handleDeleteCampaign,
     handleImportSuccess,
+    handleRestoreCampaign,
     handleToggleLock,
   } = useCampaignManagement(props);
 
@@ -159,6 +167,10 @@ export default function CampaignManagementView(
               Si solo cambias de campana, puedes decidir si se mantiene la
               asignacion actual o si los clientes quedan sin agente.
             </li>
+            <li>
+              Las campanas retiradas quedan en una bandeja temporal durante 7
+              dias para descargarlas, recuperarlas o borrarlas definitivamente.
+            </li>
           </ul>
         }
         primaryText="Entendido"
@@ -171,12 +183,20 @@ export default function CampaignManagementView(
         togglingLockCampaignId={togglingLockCampaignId}
         sortDirection={sortDirection}
         sortKey={sortKey}
-        onDelete={handleDeleteCampaign}
+        onDelete={openDeleteCampaign}
         onEditName={openEditName}
         onExport={openExport}
         onQuickAppend={(campaign) => openQuickAppendImport(campaign.id)}
         onOpenClients={openClientsModal}
         onToggleLock={handleToggleLock}
+      />
+
+      <PendingDeletionCampaignsPanel
+        campaigns={pendingDeletionCampaignRows}
+        deletingCampaignId={deletingCampaignId}
+        restoringCampaignId={restoringCampaignId}
+        onDelete={openDeleteCampaign}
+        onRestore={handleRestoreCampaign}
       />
 
       <CampaignManagementNote />
@@ -198,6 +218,14 @@ export default function CampaignManagementView(
         campaigns={exportOptions}
         defaultCampaignId={exportCampaignId}
         selectedOperationId={selectedOperationId}
+      />
+
+      <DeleteCampaignConfirmModal
+        campaign={selectedCampaignForDeletion}
+        isOpen={Boolean(selectedCampaignForDeletion)}
+        deleting={Boolean(deletingCampaignId)}
+        onClose={closeDeleteCampaign}
+        onConfirm={handleDeleteCampaign}
       />
 
       <ImportClientsModal

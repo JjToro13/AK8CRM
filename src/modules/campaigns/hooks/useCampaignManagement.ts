@@ -26,6 +26,7 @@ export function useCampaignManagement({
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [deletingCampaignId, setDeletingCampaignId] = useState<string | null>(null);
+  const [restoringCampaignId, setRestoringCampaignId] = useState<string | null>(null);
   const [togglingLockCampaignId, setTogglingLockCampaignId] = useState<string | null>(
     null,
   );
@@ -42,6 +43,8 @@ export function useCampaignManagement({
   const [sortDirection, setSortDirection] = useState<CampaignSortDirection>("asc");
   const [showClientsModal, setShowClientsModal] = useState(false);
   const [selectedClientsCampaignId, setSelectedClientsCampaignId] =
+    useState<string | null>(null);
+  const [deleteConfirmCampaignId, setDeleteConfirmCampaignId] =
     useState<string | null>(null);
 
   const sortedCampaignRows = useMemo(() => {
@@ -87,16 +90,30 @@ export function useCampaignManagement({
       });
     });
   }, [campaignRows, sortDirection, sortKey]);
+  const activeCampaignRows = useMemo(
+    () => sortedCampaignRows.filter((campaign) => !campaign.deletionRequestedAt),
+    [sortedCampaignRows],
+  );
+  const pendingDeletionCampaignRows = useMemo(
+    () => sortedCampaignRows.filter((campaign) => campaign.deletionRequestedAt),
+    [sortedCampaignRows],
+  );
 
   const totals = useMemo(
-    () => buildCampaignTotals(campaignRows),
-    [campaignRows],
+    () => buildCampaignTotals(activeCampaignRows),
+    [activeCampaignRows],
   );
   const selectedCampaignForClients = useMemo(
     () =>
       campaignRows.find((campaign) => campaign.id === selectedClientsCampaignId) ??
       null,
     [campaignRows, selectedClientsCampaignId],
+  );
+  const selectedCampaignForDeletion = useMemo(
+    () =>
+      campaignRows.find((campaign) => campaign.id === deleteConfirmCampaignId) ??
+      null,
+    [campaignRows, deleteConfirmCampaignId],
   );
 
   const exportOptions = useMemo<CampaignExportOption[]>(
@@ -200,26 +217,70 @@ export function useCampaignManagement({
     setSyncing(false);
   };
 
-  const handleDeleteCampaign = async (campaign: CampaignViewRow) => {
+  const openDeleteCampaign = (campaign: CampaignViewRow) => {
+    setDeleteConfirmCampaignId(campaign.id);
+  };
+
+  const closeDeleteCampaign = () => {
+    if (deletingCampaignId) return;
+    setDeleteConfirmCampaignId(null);
+  };
+
+  const handleDeleteCampaign = async () => {
+    const campaign = selectedCampaignForDeletion;
+    if (!campaign) return;
+
     if (!selectedOperationId) {
       setError("Debes seleccionar una operacion valida antes de modificar campañas.");
       return;
     }
 
-    const extraWarning =
-      campaign.assigned > 0
-        ? `\n\nOJO: Hay ${campaign.assigned} clientes asignados en esta campaña.`
-        : "";
-
-    const confirmed = window.confirm(
-      `Eliminar la campaña ${campaign.prefix}? Se eliminaran todos los clientes ligados a esa campaña. Esta acción no se puede deshacer.${extraWarning}`,
-    );
-
-    if (!confirmed) return;
-
     try {
       setDeletingCampaignId(campaign.id);
       setError("");
+
+      const now = new Date();
+      const deletionAvailableAt = campaign.deletionAvailableAt
+        ? new Date(campaign.deletionAvailableAt)
+        : null;
+      const isPendingDeletion = Boolean(campaign.deletionRequestedAt);
+      const canDeletePermanently =
+        isPendingDeletion &&
+        deletionAvailableAt !== null &&
+        deletionAvailableAt.getTime() <= now.getTime();
+
+      if (!isPendingDeletion) {
+        const currentUser = await auth.getCurrentUser();
+        const availableAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const { error: stageError, affectedClients } =
+          await campaigns.stageDeletion(campaign.id, selectedOperationId, {
+            requestedBy: currentUser?.id ?? null,
+            requestedAt: now.toISOString(),
+            availableAt: availableAt.toISOString(),
+            reason: "campaign_retirement_grace_period",
+          });
+
+        if (stageError) {
+          console.error(stageError);
+          setError(
+            `No se pudo retirar la campaña ${campaign.prefix}: ${stageError.message}`,
+          );
+          return;
+        }
+
+        notify.info(
+          "Campaña retirada",
+          `${(affectedClients ?? 0).toLocaleString()} clientes fueron desasignados y ocultos por 7 dias.`,
+        );
+        setDeleteConfirmCampaignId(null);
+        await loadCampaigns();
+        return;
+      }
+
+      if (!canDeletePermanently) {
+        setError("La campaña aun esta en periodo de gracia.");
+        return;
+      }
 
       const { error: clientsError } = await campaigns.deleteClientsByCampaign(
         campaign.id,
@@ -242,6 +303,7 @@ export function useCampaignManagement({
       }
 
       await loadCampaigns();
+      setDeleteConfirmCampaignId(null);
     } catch (error) {
       console.error(error);
       setError(
@@ -391,8 +453,43 @@ export function useCampaignManagement({
     await loadCampaigns();
   };
 
+  const handleRestoreCampaign = async (campaign: CampaignViewRow) => {
+    if (!selectedOperationId) {
+      setError("Debes seleccionar una operacion valida antes de restaurar campañas.");
+      return;
+    }
+
+    try {
+      setRestoringCampaignId(campaign.id);
+      setError("");
+
+      const { error: restoreError, restoredClients } =
+        await campaigns.restoreDeletion(campaign.id, selectedOperationId);
+
+      if (restoreError) {
+        console.error(restoreError);
+        setError(`No se pudo restaurar la campaña: ${restoreError.message}`);
+        return;
+      }
+
+      notify.success(
+        "Campaña restaurada",
+        `${(restoredClients ?? 0).toLocaleString()} clientes vuelven a estar visibles.`,
+      );
+      await loadCampaigns();
+    } catch (error) {
+      console.error(error);
+      setError(
+        error instanceof Error ? error.message : "Error restaurando la campaña.",
+      );
+    } finally {
+      setRestoringCampaignId(null);
+    }
+  };
+
   return {
-    campaignRows: sortedCampaignRows,
+    campaignRows: activeCampaignRows,
+    pendingDeletionCampaignRows,
     closeClientsModal,
     deletingCampaignId,
     editName,
@@ -407,8 +504,10 @@ export function useCampaignManagement({
     loading,
     openClientsModal,
     savingName,
+    restoringCampaignId,
     selectedOperationId,
     selectedCampaignForClients,
+    selectedCampaignForDeletion,
     showImportModal,
     showClientsModal,
     syncing,
@@ -417,6 +516,8 @@ export function useCampaignManagement({
     togglingLockCampaignId,
     totals,
     openEditName,
+    openDeleteCampaign,
+    closeDeleteCampaign,
     openExport,
     saveName,
     setEditName,
@@ -428,6 +529,7 @@ export function useCampaignManagement({
     handleDeleteCampaign,
     handleImportSuccess,
     handleClientsMoved,
+    handleRestoreCampaign,
     handleToggleLock,
   };
 }

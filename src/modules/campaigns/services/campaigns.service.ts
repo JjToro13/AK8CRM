@@ -9,7 +9,7 @@ export const campaigns = {
     let request = supabase
       .from("campaigns")
       .select(
-        "id, prefix, display_name, created_at, updated_at, imported_at, is_locked, locked_at, locked_by, operation_id, tenant_id",
+        "id, prefix, display_name, created_at, updated_at, imported_at, is_locked, locked_at, locked_by, deletion_requested_at, deletion_available_at, deletion_requested_by, deletion_reason, operation_id, tenant_id",
       )
       .order("prefix", { ascending: true });
 
@@ -69,6 +69,96 @@ export const campaigns = {
 
     const { error } = await request;
     return { error };
+  },
+
+  stageDeletion: async (
+    campaignId: string,
+    selectedOperationId: string | null | undefined,
+    params: {
+      requestedBy: string | null;
+      reason?: string | null;
+      requestedAt: string;
+      availableAt: string;
+    },
+  ) => {
+    let campaignRequest = supabase
+      .from("campaigns")
+      .update({
+        is_locked: true,
+        locked_at: params.requestedAt,
+        locked_by: params.requestedBy,
+        deletion_requested_at: params.requestedAt,
+        deletion_available_at: params.availableAt,
+        deletion_requested_by: params.requestedBy,
+        deletion_reason: params.reason ?? "soft_delete_grace_period",
+        updated_at: params.requestedAt,
+      })
+      .eq("id", campaignId);
+
+    let clientsRequest = supabase.from("clients").update(
+      {
+        assigned_to: null,
+        assigned_at: null,
+        assigned_by: null,
+        quarantined_until: params.availableAt,
+        quarantine_reason: params.reason ?? "campaign_deletion_grace_period",
+        updated_at: params.requestedAt,
+      },
+      { count: "exact" },
+    ).eq("campaign_id", campaignId);
+
+    if (selectedOperationId) {
+      campaignRequest = campaignRequest.eq("operation_id", selectedOperationId);
+      clientsRequest = clientsRequest.eq("operation_id", selectedOperationId);
+    }
+
+    const { error: campaignError } = await campaignRequest;
+    if (campaignError) {
+      return { error: campaignError };
+    }
+
+    const { error: clientsError, count } = await clientsRequest;
+
+    return { error: clientsError, affectedClients: count ?? 0 };
+  },
+
+  restoreDeletion: async (
+    campaignId: string,
+    selectedOperationId?: string | null,
+  ) => {
+    let campaignRequest = supabase
+      .from("campaigns")
+      .update({
+        deletion_requested_at: null,
+        deletion_available_at: null,
+        deletion_requested_by: null,
+        deletion_reason: null,
+        is_locked: false,
+        locked_at: null,
+        locked_by: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", campaignId);
+
+    let clientsRequest = supabase
+      .from("clients")
+      .update({
+        quarantined_until: null,
+        quarantine_reason: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("campaign_id", campaignId);
+
+    if (selectedOperationId) {
+      campaignRequest = campaignRequest.eq("operation_id", selectedOperationId);
+      clientsRequest = clientsRequest.eq("operation_id", selectedOperationId);
+    }
+
+    const { error: campaignError } = await campaignRequest;
+    if (campaignError) return { error: campaignError };
+
+    const { error: clientsError, count } = await clientsRequest;
+    return { error: clientsError, restoredClients: count ?? 0 };
   },
 
   updateLock: async (

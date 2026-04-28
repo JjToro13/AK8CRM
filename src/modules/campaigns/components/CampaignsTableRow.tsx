@@ -1,4 +1,13 @@
-import { Download, Lock, Pencil, Plus, Trash2, Unlock, Users } from "lucide-react";
+import {
+  Clock,
+  Download,
+  Lock,
+  Pencil,
+  Plus,
+  Trash2,
+  Unlock,
+  Users,
+} from "lucide-react";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import {
   formatCampaignDate,
@@ -32,6 +41,14 @@ export default function CampaignsTableRow({
 }: CampaignsTableRowProps) {
   const isDeleting = deletingCampaignId === campaign.id;
   const isTogglingLock = togglingLockCampaignId === campaign.id;
+  const isPendingDeletion = Boolean(campaign.deletionRequestedAt);
+  const deletionAvailableAt = campaign.deletionAvailableAt
+    ? new Date(campaign.deletionAvailableAt)
+    : null;
+  const canDeletePermanently =
+    isPendingDeletion &&
+    deletionAvailableAt !== null &&
+    deletionAvailableAt.getTime() <= Date.now();
   const actionButtonClass =
     "inline-flex h-9 w-9 items-center justify-center rounded-full border border-brand/16 bg-[rgb(var(--color-surface-elevated)/0.84)] text-ink/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:-translate-y-[1px] hover:border-brand/26 hover:bg-[rgb(var(--color-surface-elevated)/0.98)] hover:text-ink disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -90,7 +107,12 @@ export default function CampaignsTableRow({
       </td>
 
       <td className="whitespace-nowrap px-6 py-4">
-        {campaign.isLocked ? (
+        {isPendingDeletion ? (
+          <span className="inline-flex items-center rounded-full border border-amber-500/22 bg-[rgba(245,158,11,0.14)] px-2.5 py-1 text-xs font-semibold text-[rgb(251,191,36)]">
+            <Clock className="mr-1 h-3.5 w-3.5" />
+            {canDeletePermanently ? "Lista para borrar" : "Retirada"}
+          </span>
+        ) : campaign.isLocked ? (
           <span className="inline-flex items-center rounded-full border border-amber-500/22 bg-[rgba(245,158,11,0.14)] px-2.5 py-1 text-xs font-semibold text-[rgb(251,191,36)]">
             <Lock className="mr-1 h-3.5 w-3.5" />
             Bloqueada
@@ -182,7 +204,13 @@ export default function CampaignsTableRow({
               onDelete(campaign);
             }}
             className={cn(actionButtonClass, "text-red-400 hover:text-red-300")}
-            title="Eliminar campaña"
+            title={
+              isPendingDeletion
+                ? canDeletePermanently
+                  ? "Eliminar definitivamente"
+                  : "Ver periodo de gracia"
+                : "Retirar campaña"
+            }
             disabled={isDeleting}
           >
             {isDeleting ? (

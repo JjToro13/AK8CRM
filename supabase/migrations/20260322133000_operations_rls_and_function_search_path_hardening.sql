@@ -126,6 +126,8 @@ as $function$
   select public.current_role() = 'agent'
 $function$;
 
+drop function if exists public.list_agents();
+
 create or replace function public.list_agents()
 returns table(
   id uuid,

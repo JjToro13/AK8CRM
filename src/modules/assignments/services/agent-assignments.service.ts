@@ -98,11 +98,16 @@ export const agentAssignments = {
   },
 
   getAssignedClients: async (agentId: string) => {
-    const { data, error } = await supabase
+    let request = supabase
       .from("clients")
       .select(CLIENT_LIST_SELECT)
-      .eq("assigned_to", agentId)
-      .order("created_at", { ascending: false });
+      .eq("assigned_to", agentId);
+
+    request = applyClientListFilters(request);
+
+    const { data, error } = await request.order("created_at", {
+      ascending: false,
+    });
 
     return { data: data ?? [], error };
   },
@@ -160,6 +165,8 @@ export const agentAssignments = {
     if (operationId) {
       request = request.eq("operation_id", operationId);
     }
+
+    request = applyClientListFilters(request);
 
     const { count, error } = await request;
 

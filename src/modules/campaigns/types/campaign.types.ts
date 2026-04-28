@@ -8,6 +8,10 @@ export type CampaignMetadataRow = {
   is_locked?: boolean;
   locked_at?: string | null;
   locked_by?: string | null;
+  deletion_requested_at?: string | null;
+  deletion_available_at?: string | null;
+  deletion_requested_by?: string | null;
+  deletion_reason?: string | null;
   operation_id?: string | null;
   tenant_id?: string | null;
 };
@@ -35,6 +39,10 @@ export type CampaignViewRow = {
   isLocked: boolean;
   lockedAt: string | null;
   lockedBy: string | null;
+  deletionRequestedAt: string | null;
+  deletionAvailableAt: string | null;
+  deletionRequestedBy: string | null;
+  deletionReason: string | null;
 };
 
 export type CampaignTotals = {

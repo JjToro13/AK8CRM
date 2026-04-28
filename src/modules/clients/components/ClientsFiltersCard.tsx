@@ -485,7 +485,10 @@ export default function ClientsFiltersCard({
                       onAssignFilteredClients();
                     }}
                     disabled={
-                      opLocked || selectingFilteredClients || totalClients === 0
+                      opLocked ||
+                      selectingFilteredClients ||
+                      totalClients === 0 ||
+                      !hasActiveFilters
                     }
                     className={cn(
                       "inline-flex items-center gap-2 rounded-full border border-brand/20 bg-white/82 px-3 py-2 text-xs font-semibold text-brand shadow-[0_14px_30px_rgba(75,123,236,0.12)] transition hover:-translate-y-[1px] hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0",
@@ -494,7 +497,9 @@ export default function ClientsFiltersCard({
                     <CheckSquare className="h-3.5 w-3.5" />
                     {selectingFilteredClients
                       ? "Seleccionando..."
-                      : "Seleccionar filtrados"}
+                      : hasActiveFilters
+                        ? "Seleccionar filtrados"
+                        : "Filtra primero"}
                   </button>
                 </div>
               ) : null}

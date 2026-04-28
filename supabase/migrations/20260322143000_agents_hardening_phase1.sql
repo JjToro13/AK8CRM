@@ -107,6 +107,8 @@ for delete
 to authenticated
 using (false);
 
+drop function if exists public.list_agents();
+
 create or replace function public.list_agents()
 returns table(
   id uuid,

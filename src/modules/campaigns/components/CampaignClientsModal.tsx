@@ -68,6 +68,7 @@ const UNASSIGNED_AGENT_FILTER = "__unassigned__";
 const ASSIGNED_ONLY_FILTER = "__assigned_only__";
 const KEEP_AGENT_OPTION = "__keep_agent__";
 const UNASSIGNED_AGENT_OPTION = "__unassigned_agent__";
+const CAMPAIGN_MAX_FILTERED_SELECTION = 5000;
 
 export default function CampaignClientsModal({
   campaign,
@@ -254,6 +255,12 @@ export default function CampaignClientsModal({
 
   const allVisibleSelected =
     clients.length > 0 && clients.every((client) => selectedClientIds.includes(client.id));
+  const hasActiveClientFilters =
+    trimmedSearchQuery.length > 0 ||
+    statusFilter !== "all" ||
+    assignmentFilter !== "all" ||
+    trimmedCountryFilter.length > 0 ||
+    balanceRangeFilter !== "all";
   const selectedVisibleClients = useMemo(
     () => clients.filter((client) => selectedClientIds.includes(client.id)),
     [clients, selectedClientIds],
@@ -278,6 +285,14 @@ export default function CampaignClientsModal({
 
   const loadFilteredClientIds = async () => {
     if (!campaign?.id) return [] as string[];
+    if (!hasActiveClientFilters) {
+      throw new Error("Activa al menos un filtro antes de seleccionar filtrados.");
+    }
+    if (totalClients > CAMPAIGN_MAX_FILTERED_SELECTION) {
+      throw new Error(
+        `Refina los filtros hasta ${CAMPAIGN_MAX_FILTERED_SELECTION.toLocaleString()} clientes o menos.`,
+      );
+    }
 
     const pageSize = 1000;
     const collectedIds: string[] = [];
@@ -319,6 +334,12 @@ export default function CampaignClientsModal({
 
       const ids = (data ?? []).map((row) => String((row as { id: string }).id));
       collectedIds.push(...ids);
+
+      if (collectedIds.length > CAMPAIGN_MAX_FILTERED_SELECTION) {
+        throw new Error(
+          `Seleccion demasiado grande. Refina los filtros hasta ${CAMPAIGN_MAX_FILTERED_SELECTION.toLocaleString()} clientes o menos.`,
+        );
+      }
 
       if (ids.length < pageSize) {
         break;
@@ -668,13 +689,21 @@ export default function CampaignClientsModal({
                 <button
                   type="button"
                   onClick={() => void toggleFilteredSelection()}
-                  disabled={loading || selectingAllFiltered || totalClients === 0}
+                  disabled={
+                    loading ||
+                    selectingAllFiltered ||
+                    totalClients === 0 ||
+                    !hasActiveClientFilters ||
+                    totalClients > CAMPAIGN_MAX_FILTERED_SELECTION
+                  }
                   className={modalSecondaryActionClassName}
                 >
                   <CheckSquare className="h-4 w-4" />
                   {selectingAllFiltered
                     ? "Procesando..."
-                    : "Seleccionar filtrados"}
+                    : hasActiveClientFilters
+                      ? "Seleccionar filtrados"
+                      : "Filtra primero"}
                 </button>
                 <button
                   type="button"
@@ -688,7 +717,11 @@ export default function CampaignClientsModal({
                   type="button"
                   onClick={() => void clearFilteredSelection()}
                   disabled={
-                    loading || selectingAllFiltered || totalClients === 0
+                    loading ||
+                    selectingAllFiltered ||
+                    totalClients === 0 ||
+                    !hasActiveClientFilters ||
+                    totalClients > CAMPAIGN_MAX_FILTERED_SELECTION
                   }
                   className={modalSecondaryActionClassName}
                 >

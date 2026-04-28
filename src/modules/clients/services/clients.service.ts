@@ -24,6 +24,7 @@ export type ClientListFilters = {
   textFilters?: Partial<ClientTableTextFilters> | null;
   orderBy?: ClientTableSortKey | null;
   orderDirection?: ClientTableSortDirection | null;
+  includeQuarantined?: boolean;
 };
 
 export const CLIENT_LIST_SELECT = `
@@ -32,6 +33,8 @@ export const CLIENT_LIST_SELECT = `
   operation_id,
   campaign_id,
   assigned_to,
+  quarantined_until,
+  quarantine_reason,
   serial,
   first_name,
   last_name,
@@ -115,6 +118,13 @@ export function applyClientListFilters(
   const sourceQuery = filters?.textFilters?.source?.trim();
   const serialQuery = filters?.textFilters?.serial?.trim();
   const { startIso, endIso } = getTodayRangeForQueries();
+  const nowIso = new Date().toISOString();
+
+  if (!filters?.includeQuarantined) {
+    nextRequest = nextRequest.or(
+      `quarantined_until.is.null,quarantined_until.lt.${nowIso}`,
+    );
+  }
 
   if (filters?.operationId) {
     nextRequest = nextRequest.eq("operation_id", filters.operationId);

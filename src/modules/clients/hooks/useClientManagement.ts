@@ -59,6 +59,7 @@ const CLIENTS_VIEW_STATE_KEY = "clients_view_state_v1";
 const CLIENTS_SEARCH_DEBOUNCE_MS = 400;
 const CLIENTS_MIN_SEARCH_LENGTH = 2;
 const CLIENTS_FOCUS_REFRESH_STALE_MS = 90_000;
+const CLIENTS_MAX_FILTERED_BULK_SELECTION = 5000;
 
 export type ClientStatusFilter = "all" | ClientStatusCode;
 export type ClientCampaignFilter = "all" | string;
@@ -1343,10 +1344,38 @@ export function useClientManagement(
 
   const handleAssignFilteredClients = async () => {
     if (!isAdmin) return;
+    const hasBulkSelectionFilter =
+      effectiveSearchQuery.length > 0 ||
+      statusFilter !== "all" ||
+      campaignFilter !== "all" ||
+      assignedAgentFilter !== "all" ||
+      countryFilter.trim().length > 0 ||
+      balanceRangeFilter !== "all" ||
+      dailyManagementFilter !== "all" ||
+      Object.values(debouncedTableTextFilters).some(
+        (value) => value.trim().length > 0,
+      );
+
+    if (!hasBulkSelectionFilter) {
+      notify.info(
+        "Activa un filtro primero",
+        "Para evitar seleccionar toda la base, aplica al menos un filtro antes de operar en lote.",
+      );
+      return;
+    }
+
     if (totalClients === 0) {
       notify.info(
         "Sin clientes filtrados",
         "No hay registros para seleccionar en esta vista.",
+      );
+      return;
+    }
+
+    if (totalClients > CLIENTS_MAX_FILTERED_BULK_SELECTION) {
+      notify.error(
+        "Seleccion demasiado grande",
+        `Refina los filtros hasta ${CLIENTS_MAX_FILTERED_BULK_SELECTION.toLocaleString()} clientes o menos.`,
       );
       return;
     }

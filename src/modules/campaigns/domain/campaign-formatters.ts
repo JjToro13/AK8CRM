@@ -70,6 +70,10 @@ export function buildCampaignViewRows(
         isLocked: Boolean(metadata?.is_locked ?? false),
         lockedAt: metadata?.locked_at ?? null,
         lockedBy: metadata?.locked_by ?? null,
+        deletionRequestedAt: metadata?.deletion_requested_at ?? null,
+        deletionAvailableAt: metadata?.deletion_available_at ?? null,
+        deletionRequestedBy: metadata?.deletion_requested_by ?? null,
+        deletionReason: metadata?.deletion_reason ?? null,
       };
     });
 }
