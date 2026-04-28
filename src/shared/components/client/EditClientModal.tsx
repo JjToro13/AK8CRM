@@ -82,6 +82,16 @@ function cn(...classes: Array<string | false | null | undefined>) {
 
 const COMMENTS_PAGE_SIZE = 10;
 
+function normalizeEmailValue(value: string) {
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizePhoneValue(value: string) {
+  const digits = value.replace(/[^0-9]+/g, "");
+  return digits.length > 0 ? digits : null;
+}
+
 export default function EditClientModal({
   client,
   isOpen,
@@ -111,6 +121,12 @@ export default function EditClientModal({
   const [baselineUserBalance, setBaselineUserBalance] = useState<
     number | null
   >(null);
+  const [clientNameInput, setClientNameInput] = useState("");
+  const [clientPhoneInput, setClientPhoneInput] = useState("");
+  const [clientEmailInput, setClientEmailInput] = useState("");
+  const [baselineClientName, setBaselineClientName] = useState("");
+  const [baselineClientPhone, setBaselineClientPhone] = useState("");
+  const [baselineClientEmail, setBaselineClientEmail] = useState("");
 
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState<ClientComment[]>([]);
@@ -166,6 +182,15 @@ export default function EditClientModal({
           ? ""
           : String(currentBalance),
       );
+      const nextClientName = client.first_name || client.name || "";
+      const nextClientPhone = client.phone_number || "";
+      const nextClientEmail = client.email || "";
+      setClientNameInput(nextClientName);
+      setClientPhoneInput(nextClientPhone);
+      setClientEmailInput(nextClientEmail);
+      setBaselineClientName(nextClientName);
+      setBaselineClientPhone(nextClientPhone);
+      setBaselineClientEmail(nextClientEmail);
       setNewComment("");
       setComments([]);
       setEditingCommentId(null);
@@ -382,6 +407,21 @@ export default function EditClientModal({
     return { value: parsed, isValid: true };
   };
 
+  const validateContactInputs = () => {
+    const email = clientEmailInput.trim();
+    const phone = clientPhoneInput.trim();
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return "El email debe tener un formato valido.";
+    }
+
+    if (phone.length > 20) {
+      return "El telefono no puede superar 20 caracteres.";
+    }
+
+    return null;
+  };
+
   const handleSave = async () => {
     if (!client || !user) return;
 
@@ -396,13 +436,29 @@ export default function EditClientModal({
       const { value: parsedUserBalance, isValid: isUserBalanceValid } =
         parseUserBalanceInput();
       const balanceChanged = isAdmin && parsedUserBalance !== baselineUserBalance;
+      const trimmedClientName = clientNameInput.trim();
+      const trimmedClientPhone = clientPhoneInput.trim();
+      const trimmedClientEmail = clientEmailInput.trim();
+      const contactChanged =
+        isAdmin &&
+        (trimmedClientName !== baselineClientName ||
+          trimmedClientPhone !== baselineClientPhone ||
+          trimmedClientEmail !== baselineClientEmail);
 
       if (isAdmin && !isUserBalanceValid) {
         setError("El valor depositado debe ser un numero valido.");
         return;
       }
 
-      if (!statusChanged && !hasNewComment && !balanceChanged) {
+      if (isAdmin && contactChanged) {
+        const contactError = validateContactInputs();
+        if (contactError) {
+          setError(contactError);
+          return;
+        }
+      }
+
+      if (!statusChanged && !hasNewComment && !balanceChanged && !contactChanged) {
         onClose();
         return;
       }
@@ -412,7 +468,7 @@ export default function EditClientModal({
         return;
       }
 
-      if (statusChanged || balanceChanged) {
+      if (statusChanged || balanceChanged || contactChanged) {
         const nextUpdate: Record<string, unknown> = {
           updated_at: new Date().toISOString(),
         };
@@ -424,6 +480,14 @@ export default function EditClientModal({
 
         if (balanceChanged) {
           nextUpdate.user_balance = parsedUserBalance;
+        }
+
+        if (contactChanged) {
+          nextUpdate.first_name = trimmedClientName || null;
+          nextUpdate.email = trimmedClientEmail || null;
+          nextUpdate.phone_number = trimmedClientPhone || null;
+          nextUpdate.normalized_email = normalizeEmailValue(trimmedClientEmail);
+          nextUpdate.normalized_phone = normalizePhoneValue(trimmedClientPhone);
         }
 
         let updateRequest = supabase
@@ -438,7 +502,15 @@ export default function EditClientModal({
         const { error: updateError } = await updateRequest;
 
         if (updateError) {
-          setError(updateError.message);
+          const duplicateContact =
+            updateError.message?.includes("normalized_email") ||
+            updateError.message?.includes("normalized_phone") ||
+            updateError.message?.includes("duplicate key");
+          setError(
+            duplicateContact
+              ? "Ya existe otro cliente con ese email o telefono en esta operacion."
+              : updateError.message,
+          );
           return;
         }
       }
@@ -472,6 +544,15 @@ export default function EditClientModal({
         );
       }
 
+      if (contactChanged) {
+        setBaselineClientName(trimmedClientName);
+        setBaselineClientPhone(trimmedClientPhone);
+        setBaselineClientEmail(trimmedClientEmail);
+        setClientNameInput(trimmedClientName);
+        setClientPhoneInput(trimmedClientPhone);
+        setClientEmailInput(trimmedClientEmail);
+      }
+
       if (hasNewComment) {
         setNewComment("");
         setCommentsHistoryOpen(true);
@@ -486,6 +567,8 @@ export default function EditClientModal({
             ? "Cliente actualizado y comentario guardado. La ventana permanece abierta."
             : "Comentario guardado. La ventana permanece abierta."
           : statusChanged || balanceChanged
+            ? "Cliente actualizado correctamente."
+            : contactChanged
             ? "Cliente actualizado correctamente."
             : "Cambios guardados correctamente.",
       );
@@ -540,7 +623,7 @@ export default function EditClientModal({
                 Editar cliente
               </h2>
               <p className="truncate text-xs text-muted">
-                {`${client.first_name || client.name || "Cliente"} - ${client.serial}`}
+                {`${clientNameInput || client.first_name || client.name || "Cliente"} - ${client.serial}`}
               </p>
             </div>
           </div>
@@ -640,8 +723,12 @@ export default function EditClientModal({
               </div>
               <Input
                 type="text"
-                value={client.first_name || client.name || ""}
-                disabled
+                value={clientNameInput}
+                onChange={(event) => {
+                  setSaveSuccessMessage("");
+                  setClientNameInput(event.target.value);
+                }}
+                disabled={!isAdmin || loading}
                 className="border-white/70 bg-white/72 backdrop-blur-xl"
               />
             </div>
@@ -664,16 +751,21 @@ export default function EditClientModal({
               </div>
               <Input
                 type="text"
-                value={client.phone_number || ""}
-                disabled
+                value={clientPhoneInput}
+                onChange={(event) => {
+                  setSaveSuccessMessage("");
+                  setClientPhoneInput(event.target.value);
+                }}
+                disabled={!isAdmin || loading}
                 className="border-white/70 bg-white/72 backdrop-blur-xl"
                 rightSlot={
-                  client.phone_number ? (
+                  clientPhoneInput.trim() ? (
                     <button
                       type="button"
                       onClick={() =>
-                        void copyFieldValue("Telefono", client.phone_number)
+                        void copyFieldValue("Telefono", clientPhoneInput)
                       }
+                      disabled={loading}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/88 text-muted shadow-[0_10px_20px_rgba(15,23,42,0.06)] transition hover:border-brand/18 hover:text-ink"
                       title="Copiar telefono"
                       aria-label="Copiar telefono"
@@ -691,14 +783,19 @@ export default function EditClientModal({
               </div>
               <Input
                 type="text"
-                value={client.email || ""}
-                disabled
+                value={clientEmailInput}
+                onChange={(event) => {
+                  setSaveSuccessMessage("");
+                  setClientEmailInput(event.target.value);
+                }}
+                disabled={!isAdmin || loading}
                 className="border-white/70 bg-white/72 backdrop-blur-xl"
                 rightSlot={
-                  client.email ? (
+                  clientEmailInput.trim() ? (
                     <button
                       type="button"
-                      onClick={() => void copyFieldValue("Email", client.email)}
+                      onClick={() => void copyFieldValue("Email", clientEmailInput)}
+                      disabled={loading}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/88 text-muted shadow-[0_10px_20px_rgba(15,23,42,0.06)] transition hover:border-brand/18 hover:text-ink"
                       title="Copiar email"
                       aria-label="Copiar email"
@@ -709,6 +806,13 @@ export default function EditClientModal({
                 }
               />
             </div>
+
+            {isAdmin ? (
+              <div className="md:col-span-2 xl:col-span-4 -mt-2 text-xs text-muted">
+                Nombre, telefono y email son editables solo para administrador.
+                El sistema mantiene validacion de duplicados por operacion.
+              </div>
+            ) : null}
 
             {isAdmin ? (
               <div className="md:col-span-2 xl:col-span-4">

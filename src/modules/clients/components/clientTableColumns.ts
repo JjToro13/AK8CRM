@@ -32,6 +32,7 @@ export type ClientTableSortKey =
   | "investment_date"
   | "serial"
   | "attempts"
+  | "last_comment_at"
   | "created_at";
 
 export type ClientTableSortDirection = "asc" | "desc";
@@ -52,6 +53,7 @@ export type ClientTableColumnConfig = {
   width: string;
   sortable?: boolean;
   sortKey?: ClientTableSortKey;
+  sortLabel?: string;
   defaultVisible?: boolean;
   textFilterKey?: ClientTableTextFilterKey;
   filterPlaceholder?: string;
@@ -201,6 +203,9 @@ export const CLIENT_TABLE_COLUMNS: ClientTableColumnConfig[] = [
     key: "comments",
     label: "Comentarios",
     width: "320px",
+    sortable: true,
+    sortKey: "last_comment_at",
+    sortLabel: "fecha y hora del ultimo comentario",
     defaultVisible: true,
   },
   {

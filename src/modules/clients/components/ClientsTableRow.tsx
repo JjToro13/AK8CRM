@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import ClientCommentsCell from "../../../shared/components/client/ClientCommentsCell";
 import {
   cn,
@@ -17,7 +17,9 @@ type ClientsTableRowProps = {
   visibleColumns: ClientTableColumnKey[];
   gridTemplate: string;
   selected: boolean;
-  onSelect: () => void;
+  onSelect: (
+    event: MouseEvent<HTMLDivElement> | KeyboardEvent<HTMLDivElement>,
+  ) => void;
   onOpenEdit: (client: Client) => void;
   onCopy: (label: string, value?: string | null) => void;
 };
@@ -124,11 +126,12 @@ export default function ClientsTableRow({
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onSelect();
+          onSelect(event);
         }
       }}
       className={cn(
         "crm-client-row group relative grid min-w-max text-left transition-all",
+        "select-none",
         "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1",
         rowAccentClass,
         selected && "crm-client-row-selected",

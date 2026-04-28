@@ -9,6 +9,7 @@ import {
   type ClientStatusCode,
 } from "../../../lib/utils";
 import { notify } from "../../../shared/lib/notify";
+import type { ClientAssignmentSavePayload } from "../../../shared/components/client/ClientAssignmentModal";
 import { agentNameMap } from "../../../shared/services/agent-name-map";
 import { agents } from "../../agents/services/agents.service";
 import { agentAssignments } from "../../assignments/services/agent-assignments.service";
@@ -176,12 +177,13 @@ export function useClientManagement(
   >([]);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
-  const [selectedClientForAssignment, setSelectedClientForAssignment] =
-    useState<Client | null>(null);
+  const [selectedClientsForAssignment, setSelectedClientsForAssignment] =
+    useState<Client[]>([]);
   const [assignmentAgents, setAssignmentAgents] = useState<
     Array<{ id: string; name: string; email?: string | null }>
   >([]);
   const [assignmentSaving, setAssignmentSaving] = useState(false);
+  const [selectingFilteredClients, setSelectingFilteredClients] = useState(false);
 
   const [error, setError] = useState("");
   const [callingClient, setCallingClient] = useState<string | null>(null);
@@ -366,6 +368,7 @@ export function useClientManagement(
         savedSortKey === "investment_date" ||
         savedSortKey === "serial" ||
         savedSortKey === "attempts" ||
+        savedSortKey === "last_comment_at" ||
         savedSortKey === "created_at"
       ) {
         setSortKey(savedSortKey);
@@ -1281,11 +1284,15 @@ export function useClientManagement(
     setShowEmailModal(true);
   };
 
-  const handleAssignClient = async (client: Client) => {
+  const handleAssignClient = async (selection: Client | Client[]) => {
     if (!isAdmin) return;
 
+    const selectedClients = Array.isArray(selection) ? selection : [selection];
+    const primaryClient = selectedClients[0];
+    if (!primaryClient) return;
+
     setError("");
-    setSelectedClientForAssignment(client);
+    setSelectedClientsForAssignment(selectedClients);
     setShowAssignmentModal(true);
     setAssignmentSaving(false);
 
@@ -1302,7 +1309,8 @@ export function useClientManagement(
         (agent) =>
           agent.role === "agent" &&
           agent.is_active !== false &&
-          (!client.operation_id || agent.operation_id === client.operation_id),
+          (!primaryClient.operation_id ||
+            agent.operation_id === primaryClient.operation_id),
       )
       .map((agent) => ({
         id: agent.id,
@@ -1310,22 +1318,91 @@ export function useClientManagement(
         email: agent.email,
       }));
 
-    const currentAssignedStillMissing =
-      client.assigned_to &&
-      !availableAgents.some((agent) => agent.id === client.assigned_to);
+    const missingAssignedAgents = selectedClients
+      .filter(
+        (client) =>
+          client.assigned_to &&
+          !availableAgents.some((agent) => agent.id === client.assigned_to),
+      )
+      .map((client) => ({
+        id: client.assigned_to!,
+        name: client.assigned_agent?.name?.trim() || client.assigned_to!,
+        email: null,
+      }));
+
+    const dedupedMissingAgents = Array.from(
+      new Map(missingAssignedAgents.map((agent) => [agent.id, agent])).values(),
+    );
 
     setAssignmentAgents(
-      currentAssignedStillMissing
-        ? [
-            {
-              id: client.assigned_to!,
-              name: client.assigned_agent?.name?.trim() || client.assigned_to!,
-              email: null,
-            },
-            ...availableAgents,
-          ]
+      dedupedMissingAgents.length > 0
+        ? [...dedupedMissingAgents, ...availableAgents]
         : availableAgents,
     );
+  };
+
+  const handleAssignFilteredClients = async () => {
+    if (!isAdmin) return;
+    if (totalClients === 0) {
+      notify.info(
+        "Sin clientes filtrados",
+        "No hay registros para seleccionar en esta vista.",
+      );
+      return;
+    }
+
+    setSelectingFilteredClients(true);
+    setError("");
+
+    try {
+      const targetOperationId = canSeeAllOperations
+        ? activeOperationId
+        : operationId;
+
+      if (!targetOperationId) {
+        setError("Debes seleccionar una operacion para operar sobre filtrados");
+        return;
+      }
+
+      const result = await clientsService.getAllMatching({
+        operationId: targetOperationId,
+        searchQuery: effectiveSearchQuery,
+        statusCode: statusFilter === "all" ? null : statusFilter,
+        campaignId: campaignFilter === "all" ? null : campaignFilter,
+        assignedAgentId:
+          assignedAgentFilter === "all" ? null : assignedAgentFilter,
+        country: countryFilter.trim() || null,
+        balanceRange:
+          balanceRangeFilter === "all" ? null : balanceRangeFilter,
+        dailyManagement:
+          dailyManagementFilter === "all" ? null : dailyManagementFilter,
+        textFilters: debouncedTableTextFilters,
+        orderBy: sortKey,
+        orderDirection: sortDirection,
+      });
+
+      if (result.error) {
+        console.error("Error seleccionando clientes filtrados:", result.error);
+        setError("No se pudieron seleccionar los clientes filtrados");
+        return;
+      }
+
+      if ((result.data ?? []).length === 0) {
+        notify.info(
+          "Sin clientes filtrados",
+          "No hay registros para seleccionar en esta vista.",
+        );
+        return;
+      }
+
+      await handleAssignClient(result.data ?? []);
+      notify.info(
+        "Filtrados seleccionados",
+        `${(result.data ?? []).length.toLocaleString()} clientes listos para migrar o reasignar.`,
+      );
+    } finally {
+      setSelectingFilteredClients(false);
+    }
   };
 
   const loadScheduleAgentsForClient = async (client: Client) => {
@@ -1407,7 +1484,7 @@ export function useClientManagement(
   const closeEmailModal = () => setShowEmailModal(false);
   const closeAssignmentModal = () => {
     setShowAssignmentModal(false);
-    setSelectedClientForAssignment(null);
+    setSelectedClientsForAssignment([]);
     setAssignmentAgents([]);
     setAssignmentSaving(false);
   };
@@ -1666,38 +1743,73 @@ export function useClientManagement(
     return "Busca, revisa comentarios y gestiona la cartera";
   }, [opLocked]);
 
-  const handleAssignmentSaved = async (agentId: string | null) => {
-    if (!selectedClientForAssignment) return;
+  const handleAssignmentSaved = async (payload: ClientAssignmentSavePayload) => {
+    if (selectedClientsForAssignment.length === 0) return;
 
     setAssignmentSaving(true);
     setError("");
 
+    const selectedIds = selectedClientsForAssignment.map((client) => client.id);
+    const primaryClient = selectedClientsForAssignment[0];
+    const operationId = primaryClient?.operation_id ?? undefined;
+    const shouldChangeAgent = payload.agentId !== undefined;
+    const shouldChangeCampaign = Boolean(payload.targetCampaignId);
+    const shouldClearAssignmentForCampaignMove =
+      shouldChangeCampaign &&
+      !payload.keepAssignmentOnCampaignChange &&
+      !shouldChangeAgent;
+
     const previousAgentLabel =
-      selectedClientForAssignment.assigned_agent?.name?.trim() || "Sin asignar";
+      selectedClientsForAssignment.length === 1
+        ? selectedClientsForAssignment[0].assigned_agent?.name?.trim() ||
+          "Sin asignar"
+        : `${selectedClientsForAssignment.length} clientes`;
     const nextAgentLabel =
-      agentId === null
+      payload.agentId === undefined
+        ? "sin cambios"
+        : payload.agentId === null
         ? "Sin asignar"
-        : assignmentAgents.find((agent) => agent.id === agentId)?.name ?? agentId;
+        : assignmentAgents.find((agent) => agent.id === payload.agentId)?.name ??
+          payload.agentId;
 
-    const { error: updateError } = await clientsService.update(
-      selectedClientForAssignment.id,
-      {
-        assigned_to: agentId,
-        updated_at: new Date().toISOString(),
-      },
-      selectedClientForAssignment.operation_id ?? undefined,
-    );
+    if (shouldChangeCampaign && payload.targetCampaignId) {
+      const moveResult = await campaigns.moveClientsToCampaign({
+        clientIds: selectedIds,
+        targetCampaignId: payload.targetCampaignId,
+        reason: "client_assignment_modal",
+        notes: payload.keepAssignmentOnCampaignChange
+          ? "Cambio de base conservando asignacion"
+          : "Cambio de base liberando asignacion",
+      });
 
-    if (updateError) {
-      console.error("Error actualizando asignacion del cliente:", updateError);
-      setError("No se pudo actualizar la asignacion del cliente");
-      setAssignmentSaving(false);
-      return;
+      if (moveResult.error) {
+        console.error("Error cambiando clientes de base:", moveResult.error);
+        setError("No se pudieron cambiar los clientes de base");
+        setAssignmentSaving(false);
+        return;
+      }
     }
 
-    notify.clientAssignmentUpdated(
-      `${previousAgentLabel} -> ${nextAgentLabel}`,
-    );
+    if (shouldChangeAgent || shouldClearAssignmentForCampaignMove) {
+      const nextAssignedTo = shouldChangeAgent ? payload.agentId ?? null : null;
+      const { error: updateError } = await clientsService.updateMany(
+        selectedIds,
+        {
+          assigned_to: nextAssignedTo,
+          updated_at: new Date().toISOString(),
+        },
+        operationId,
+      );
+
+      if (updateError) {
+        console.error("Error actualizando asignacion del cliente:", updateError);
+        setError("No se pudo actualizar la asignacion del cliente");
+        setAssignmentSaving(false);
+        return;
+      }
+    }
+
+    notify.clientAssignmentUpdated(`${previousAgentLabel} -> ${nextAgentLabel}`);
 
     closeAssignmentModal();
     await loadClients({ silent: true });
@@ -1745,12 +1857,14 @@ export function useClientManagement(
     closeAssignmentModal,
     selectedClientForSchedule,
     selectedScheduledEvent,
-    selectedClientForAssignment,
+    selectedClientForAssignment: selectedClientsForAssignment[0] ?? null,
+    selectedClientsForAssignment,
     scheduleDraftDate,
     scheduleAgents,
     assignmentAgents,
     scheduleSaving,
     assignmentSaving,
+    selectingFilteredClients,
     error,
     degradedMode: shouldReduceLoad,
     callingClient,
@@ -1797,6 +1911,7 @@ export function useClientManagement(
     handleCallClient,
     handleEmailClient,
     handleAssignClient,
+    handleAssignFilteredClients,
     handleScheduleClient,
     handleAssignmentSaved,
     handleScheduleCreated,

@@ -1,6 +1,7 @@
 import { Users } from "lucide-react";
 import { useState } from "react";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
+import GeneralNoticeModal from "../../../shared/components/feedback/GeneralNoticeModal";
 import CampaignReportExporter from "./CampaignReportExporter";
 import EditCampaignNameModal from "./EditCampaignNameModal";
 import ImportClientsModal from "./ImportClientsModal";
@@ -21,9 +22,12 @@ import {
   campaignTitleClass,
 } from "./campaignUi";
 
+const CAMPAIGNS_ADMIN_UPDATES_NOTICE_KEY = "campaigns_admin_updates_notice_v1";
+
 export default function CampaignManagementView(
   props: CampaignManagementProps,
 ) {
+  const [updatesNoticeOpen, setUpdatesNoticeOpen] = useState(true);
   const [importPreset, setImportPreset] = useState<{
     initialImportMode: "new" | "existing";
     initialSelectedCampaignId: string | null;
@@ -134,6 +138,31 @@ export default function CampaignManagementView(
       />
 
       {error ? <CampaignManagementErrorCard error={error} /> : null}
+
+      <GeneralNoticeModal
+        open={updatesNoticeOpen}
+        onClose={() => setUpdatesNoticeOpen(false)}
+        dismissKey={CAMPAIGNS_ADMIN_UPDATES_NOTICE_KEY}
+        variant="info"
+        title="Cambios en campanas"
+        message={
+          <ul className="list-disc space-y-2 pl-5 text-sm">
+            <li>
+              Al abrir una campana puedes filtrar sus clientes y seleccionar
+              visibles o todos los filtrados.
+            </li>
+            <li>
+              La operacion sobre seleccionados permite mover de campana,
+              asignar agente, desasignar o combinar base y agente.
+            </li>
+            <li>
+              Si solo cambias de campana, puedes decidir si se mantiene la
+              asignacion actual o si los clientes quedan sin agente.
+            </li>
+          </ul>
+        }
+        primaryText="Entendido"
+      />
 
       <CampaignsTable
         campaigns={campaignRows}

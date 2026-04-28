@@ -1,5 +1,9 @@
-import type { MutableRefObject } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, Radar, X } from "lucide-react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+  MutableRefObject,
+} from "react";
+import { AlertCircle, ArrowDown, ArrowUp, ChevronsUpDown, Radar, X } from "lucide-react";
 import { CLIENT_STATUS_OPTIONS, type ClientStatusCode, cn } from "../../../lib/utils";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import Input from "../../../shared/components/ui/Input";
@@ -38,11 +42,14 @@ type ClientsTableProps = {
   countryFilter: string;
   sortKey: ClientTableSortKey;
   sortDirection: ClientTableSortDirection;
-  selectedClientId: string | null;
+  selectedClientIds: string[];
   tableScrollRef: MutableRefObject<HTMLDivElement | null>;
   lastTableViewportHeight: number | null;
   onTableScroll: () => void;
-  onSelectClient: (clientId: string) => void;
+  onSelectClient: (
+    clientId: string,
+    event: ReactMouseEvent | ReactKeyboardEvent,
+  ) => void;
   onEditClient: (client: Client) => void;
   onCopy: (label: string, value?: string | null) => void;
   onStatusFilterChange: (value: "all" | ClientStatusCode) => void;
@@ -60,6 +67,8 @@ const headerInputClass =
   "h-9 rounded-2xl border-slate-200/70 bg-white/80 px-3 py-2 text-[12px] font-medium normal-case tracking-normal text-ink shadow-none";
 const clearFilterButtonClass =
   "inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/75 bg-white/88 text-muted shadow-[0_10px_20px_rgba(15,23,42,0.06)] transition hover:border-brand/20 hover:text-ink";
+const sortableHeaderButtonClass =
+  "group/sort inline-flex items-center gap-1.5 rounded-full px-2 py-1 -ml-2 transition hover:bg-brand/8 hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15";
 
 export default function ClientsTable({
   clients,
@@ -73,7 +82,7 @@ export default function ClientsTable({
   countryFilter,
   sortKey,
   sortDirection,
-  selectedClientId,
+  selectedClientIds,
   tableScrollRef,
   lastTableViewportHeight,
   onTableScroll,
@@ -158,7 +167,8 @@ export default function ClientsTable({
                         <button
                           type="button"
                           onClick={() => onSortChange(column.sortKey!)}
-                          className="inline-flex items-center gap-1 transition hover:text-ink"
+                          className={sortableHeaderButtonClass}
+                          title={`Ordenar por ${column.sortLabel ?? column.label.toLowerCase()}`}
                         >
                           <span>{column.label}</span>
                           {sortKey === column.sortKey ? (
@@ -167,7 +177,9 @@ export default function ClientsTable({
                             ) : (
                               <ArrowDown className="h-3.5 w-3.5" />
                             )
-                          ) : null}
+                          ) : (
+                            <ChevronsUpDown className="h-3.5 w-3.5 text-muted/45 transition group-hover/sort:text-brand/75" />
+                          )}
                         </button>
                       ) : (
                         <span>{column.label}</span>
@@ -285,8 +297,8 @@ export default function ClientsTable({
                   client={client}
                   visibleColumns={visibleColumns}
                   gridTemplate={gridTemplate}
-                  selected={client.id === selectedClientId}
-                  onSelect={() => onSelectClient(client.id)}
+                  selected={selectedClientIds.includes(client.id)}
+                  onSelect={(event) => onSelectClient(client.id, event)}
                   onOpenEdit={onEditClient}
                   onCopy={onCopy}
                 />

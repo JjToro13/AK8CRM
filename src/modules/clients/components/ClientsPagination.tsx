@@ -28,6 +28,7 @@ type ClientsPaginationProps = {
   onPageInputChange: (value: string) => void;
   onPageInputSubmit: () => void;
   selectedClient: Client | null;
+  selectedClients: Client[];
   canExecuteClientActions: boolean;
   enableCalls: boolean;
   callingClient: string | null;
@@ -37,7 +38,7 @@ type ClientsPaginationProps = {
   onScheduleClient: (client: Client) => void;
   onEditClient: (client: Client) => void;
   canAssignClient: boolean;
-  onAssignClient: (client: Client) => void;
+  onAssignClient: (clients: Client[]) => void;
 };
 
 export default function ClientsPagination({
@@ -49,6 +50,7 @@ export default function ClientsPagination({
   onPageInputChange,
   onPageInputSubmit,
   selectedClient,
+  selectedClients,
   canExecuteClientActions,
   enableCalls,
   callingClient,
@@ -64,6 +66,8 @@ export default function ClientsPagination({
     ? resolveClientStatus(selectedClient)
     : null;
   const hasSelectedClient = Boolean(selectedClient);
+  const selectedCount = selectedClients.length;
+  const isBulkSelection = selectedCount > 1;
   const selectedClientName = selectedClient
     ? `${selectedClient.first_name || selectedClient.name || "Sin nombre"} ${selectedClient.last_name || ""}`.trim()
     : null;
@@ -78,7 +82,13 @@ export default function ClientsPagination({
             Acciones rápidas
           </div>
 
-          {selectedClient ? (
+          {isBulkSelection ? (
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-ink">
+              <span className="font-semibold">{selectedCount} clientes seleccionados</span>
+              <span className="text-muted">|</span>
+              <span className="text-muted">Acciones de lote disponibles</span>
+            </div>
+          ) : selectedClient ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-ink">
               <span className="truncate font-semibold">{selectedClientName}</span>
               <span className="text-muted">|</span>
@@ -126,6 +136,7 @@ export default function ClientsPagination({
               disabled={
                 !canExecuteClientActions ||
                 !selectedClient ||
+                isBulkSelection ||
                 (enableCalls && callingClient === selectedClient.id)
               }
               className={clientQuickActionButtonClass(
@@ -144,7 +155,10 @@ export default function ClientsPagination({
                 onEmailClient(selectedClient);
               }}
               disabled={
-                !canExecuteClientActions || !selectedClient || !selectedClient.email
+                !canExecuteClientActions ||
+                !selectedClient ||
+                isBulkSelection ||
+                !selectedClient.email
               }
               className={clientQuickActionButtonClass(
                 "email",
@@ -161,7 +175,7 @@ export default function ClientsPagination({
                 if (!selectedClient) return;
                 onScheduleClient(selectedClient);
               }}
-              disabled={!canExecuteClientActions || !selectedClient}
+              disabled={!canExecuteClientActions || !selectedClient || isBulkSelection}
               className={clientQuickActionButtonClass(
                 "calendar",
                 hasSelectedClient && canExecuteClientActions,
@@ -177,7 +191,7 @@ export default function ClientsPagination({
                 if (!selectedClient) return;
                 onEditClient(selectedClient);
               }}
-              disabled={!canExecuteClientActions || !selectedClient}
+              disabled={!canExecuteClientActions || !selectedClient || isBulkSelection}
               className={clientQuickActionButtonClass(
                 "neutral",
                 hasSelectedClient && canExecuteClientActions,
@@ -191,13 +205,13 @@ export default function ClientsPagination({
               <button
                 type="button"
                 onClick={() => {
-                  if (!selectedClient) return;
-                  onAssignClient(selectedClient);
+                  if (selectedClients.length === 0) return;
+                  onAssignClient(selectedClients);
                 }}
-                disabled={!selectedClient}
+                disabled={selectedClients.length === 0}
                 className={clientQuickActionButtonClass(
                   "neutral",
-                  hasSelectedClient,
+                  selectedClients.length > 0,
                 )}
               >
                 <UserPlus className="h-4 w-4" />

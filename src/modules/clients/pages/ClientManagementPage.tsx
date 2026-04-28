@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { AlertCircle, ArrowLeft, RefreshCw, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import EditClientModal from "../../../shared/components/client/EditClientModal";
@@ -26,7 +33,7 @@ import {
   type ClientManagementProps,
 } from "../hooks/useClientManagement";
 
-const CLIENTS_UPDATES_NOTICE_KEY = "clients_updates_notice_v1";
+const CLIENTS_UPDATES_NOTICE_KEY = "clients_updates_notice_v2";
 
 export default function ClientManagementPage(
   props: ClientManagementProps = {},
@@ -75,11 +82,13 @@ export default function ClientManagementPage(
     selectedClientForSchedule,
     selectedScheduledEvent,
     selectedClientForAssignment,
+    selectedClientsForAssignment,
     scheduleDraftDate,
     scheduleAgents,
     assignmentAgents,
     scheduleSaving,
     assignmentSaving,
+    selectingFilteredClients,
     error,
     degradedMode,
     callingClient,
@@ -116,6 +125,7 @@ export default function ClientManagementPage(
     handleCallClient,
     handleEmailClient,
     handleAssignClient,
+    handleAssignFilteredClients,
     handleScheduleClient,
     handleAssignmentSaved,
     handleScheduleCreated,
@@ -132,16 +142,21 @@ export default function ClientManagementPage(
     searchMinLength,
   } = useClientManagement(props);
   const clientsWorkspaceRef = useRef<HTMLElement | null>(null);
-  const [selectedActionClientId, setSelectedActionClientId] = useState<
-    string | null
-  >(null);
+  const [selectedActionClientIds, setSelectedActionClientIds] = useState<string[]>(
+    [],
+  );
+  const selectionAnchorClientIdRef = useRef<string | null>(null);
   const [updatesNoticeOpen, setUpdatesNoticeOpen] = useState(true);
 
   const headerTotal = hasActiveFilters ? unfilteredTotalClients : totalClients;
-  const selectedActionClient = useMemo(
-    () => clients.find((client) => client.id === selectedActionClientId) ?? null,
-    [clients, selectedActionClientId],
+  const selectedActionClients = useMemo(
+    () =>
+      selectedActionClientIds
+        .map((id) => clients.find((client) => client.id === id))
+        .filter(Boolean) as typeof clients,
+    [clients, selectedActionClientIds],
   );
+  const selectedActionClient = selectedActionClients[0] ?? null;
   const modalClientIndex = useMemo(
     () => clients.findIndex((client) => client.id === modalClient?.id),
     [clients, modalClient?.id],
@@ -155,24 +170,34 @@ export default function ClientManagementPage(
 
   const handleOpenPreviousClient = () => {
     if (!previousModalClient) return;
-    setSelectedActionClientId(previousModalClient.id);
+    setSelectedActionClientIds([previousModalClient.id]);
+    selectionAnchorClientIdRef.current = previousModalClient.id;
     handleEditClient(previousModalClient);
   };
 
   const handleOpenNextClient = () => {
     if (!nextModalClient) return;
-    setSelectedActionClientId(nextModalClient.id);
+    setSelectedActionClientIds([nextModalClient.id]);
+    selectionAnchorClientIdRef.current = nextModalClient.id;
     handleEditClient(nextModalClient);
   };
 
   useEffect(() => {
-    if (!clients.some((client) => client.id === selectedActionClientId)) {
-      setSelectedActionClientId(null);
+    setSelectedActionClientIds((current) => {
+      const visibleIds = new Set(clients.map((client) => client.id));
+      return current.filter((id) => visibleIds.has(id));
+    });
+
+    if (
+      selectionAnchorClientIdRef.current &&
+      !clients.some((client) => client.id === selectionAnchorClientIdRef.current)
+    ) {
+      selectionAnchorClientIdRef.current = null;
     }
-  }, [clients, selectedActionClientId]);
+  }, [clients]);
 
   useEffect(() => {
-    if (!selectedActionClientId) return;
+    if (selectedActionClientIds.length === 0) return;
 
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node | null;
@@ -180,7 +205,8 @@ export default function ClientManagementPage(
       if (!target) return;
       if (clientsWorkspaceRef.current?.contains(target)) return;
 
-      setSelectedActionClientId(null);
+      setSelectedActionClientIds([]);
+      selectionAnchorClientIdRef.current = null;
     };
 
     document.addEventListener("mousedown", handlePointerDown);
@@ -188,7 +214,33 @@ export default function ClientManagementPage(
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
     };
-  }, [selectedActionClientId]);
+  }, [selectedActionClientIds.length]);
+
+  const handleSelectActionClient = (
+    clientId: string,
+    event: ReactMouseEvent | ReactKeyboardEvent,
+  ) => {
+    setSelectedActionClientIds((current) => {
+      if (event.shiftKey && selectionAnchorClientIdRef.current) {
+        const anchorIndex = clients.findIndex(
+          (client) => client.id === selectionAnchorClientIdRef.current,
+        );
+        const targetIndex = clients.findIndex((client) => client.id === clientId);
+
+        if (anchorIndex >= 0 && targetIndex >= 0) {
+          const [from, to] =
+            anchorIndex <= targetIndex
+              ? [anchorIndex, targetIndex]
+              : [targetIndex, anchorIndex];
+          const rangeIds = clients.slice(from, to + 1).map((client) => client.id);
+          return Array.from(new Set([...current, ...rangeIds]));
+        }
+      }
+
+      selectionAnchorClientIdRef.current = clientId;
+      return current.length === 1 && current[0] === clientId ? [] : [clientId];
+    });
+  };
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
@@ -281,16 +333,25 @@ export default function ClientManagementPage(
             message={
               <ul className="list-disc space-y-2 pl-5 text-sm">
                 <li>
-                  Ahora selecciona una fila para activar los botones de acciones
-                  rapidas en la parte inferior.
+                  Puedes seleccionar una fila para activar acciones rapidas o usar
+                  Shift + clic para seleccionar varios clientes visibles.
                 </li>
                 <li>
-                  Los filtros se abren desde <strong>Sin filtros activos</strong>.
+                  La columna Comentarios y el resto de encabezados con indicador
+                  permiten ordenar la tabla.
                 </li>
-                <li>
-                  Un doble clic en una fila abre la edicion del cliente de forma
-                  rapida.
-                </li>
+                {isAdmin ? (
+                  <>
+                    <li>
+                      Desde los filtros puedes seleccionar todos los resultados
+                      filtrados y aplicar acciones de base, agente o ambas.
+                    </li>
+                    <li>
+                      En la ficha del cliente puedes editar nombre, telefono,
+                      email y balance principal.
+                    </li>
+                  </>
+                ) : null}
               </ul>
             }
             primaryText="Entendido"
@@ -354,6 +415,9 @@ export default function ClientManagementPage(
               onResetTableTextFilters={resetTableTextFilters}
               activeFilterSummary={activeFilterSummary}
               isAdmin={isAdmin}
+              totalClients={totalClients}
+              selectingFilteredClients={selectingFilteredClients}
+              onAssignFilteredClients={handleAssignFilteredClients}
               rowsPerPage={rowsPerPage}
               onRowsPerPageChange={setRowsPerPage}
               opLocked={opLocked}
@@ -371,11 +435,11 @@ export default function ClientManagementPage(
               countryFilter={countryFilter}
               sortKey={sortKey}
               sortDirection={sortDirection}
-              selectedClientId={selectedActionClientId}
+              selectedClientIds={selectedActionClientIds}
               tableScrollRef={tableScrollRef}
               lastTableViewportHeight={lastTableViewportHeightRef.current}
               onTableScroll={handleTableScroll}
-              onSelectClient={setSelectedActionClientId}
+              onSelectClient={handleSelectActionClient}
               onEditClient={handleEditClient}
               onCopy={handleCopy}
               onStatusFilterChange={setStatusFilter}
@@ -396,6 +460,7 @@ export default function ClientManagementPage(
               onPageInputChange={setPageInput}
               onPageInputSubmit={handlePageInputSubmit}
               selectedClient={selectedActionClient}
+              selectedClients={selectedActionClients}
               canExecuteClientActions={canExecuteClientActions}
               enableCalls={enableCalls}
               callingClient={callingClient}
@@ -439,11 +504,19 @@ export default function ClientManagementPage(
       {isAdmin ? (
         <ClientAssignmentModal
           client={selectedClientForAssignment}
+          clients={selectedClientsForAssignment}
           isOpen={showAssignmentModal}
           onClose={closeAssignmentModal}
-          onSave={handleAssignmentSaved}
+          onSave={(agentId) =>
+            handleAssignmentSaved({
+              agentId,
+              keepAssignmentOnCampaignChange: true,
+            })
+          }
+          onSaveDetails={handleAssignmentSaved}
           saving={assignmentSaving}
           agents={assignmentAgents}
+          campaignOptions={campaignFilterOptions}
         />
       ) : null}
 

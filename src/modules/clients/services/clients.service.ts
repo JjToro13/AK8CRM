@@ -179,8 +179,32 @@ function applyClientListOrder(
 
   return request.order(sortColumn, {
     ascending,
-    nullsFirst: ascending,
+    nullsFirst: sortColumn === "last_comment_at" ? false : ascending,
   });
+}
+
+function applyAssignedAgentFilter(request: any, assignedAgentId?: string | null) {
+  if (!assignedAgentId) return request;
+
+  if (assignedAgentId === UNASSIGNED_AGENT_FILTER) {
+    return request.is("assigned_to", null);
+  }
+
+  if (assignedAgentId === ASSIGNED_ONLY_FILTER) {
+    return request.not("assigned_to", "is", null);
+  }
+
+  return request.eq("assigned_to", assignedAgentId);
+}
+
+function applyClientSearchQuery(request: any, query?: string | null) {
+  const q = query?.trim();
+
+  if (!q) return request;
+
+  return request.or(
+    `first_name.ilike.%${q}%,last_name.ilike.%${q}%,serial.ilike.%${q}%,email.ilike.%${q}%,phone_number.ilike.%${q}%,source.ilike.%${q}%`,
+  );
 }
 
 export const clients = {
@@ -221,25 +245,16 @@ export const clients = {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    let request = supabase
-      .from("clients")
-      .select(CLIENT_LIST_SELECT, { count: "exact" })
-      .or(
-        `first_name.ilike.%${q}%,last_name.ilike.%${q}%,serial.ilike.%${q}%,email.ilike.%${q}%,phone_number.ilike.%${q}%,source.ilike.%${q}%`,
-      );
+    let request = applyClientSearchQuery(
+      supabase.from("clients").select(CLIENT_LIST_SELECT, { count: "exact" }),
+      q,
+    );
 
     if (params?.agentId) {
       request = request.eq("assigned_to", params.agentId);
     }
 
-    if (params?.assignedAgentId) {
-      request =
-        params.assignedAgentId === UNASSIGNED_AGENT_FILTER
-          ? request.is("assigned_to", null)
-          : params.assignedAgentId === ASSIGNED_ONLY_FILTER
-            ? request.not("assigned_to", "is", null)
-          : request.eq("assigned_to", params.assignedAgentId);
-    }
+    request = applyAssignedAgentFilter(request, params?.assignedAgentId);
 
     request = applyClientListFilters(request, params);
 
@@ -272,14 +287,7 @@ export const clients = {
       .from("clients")
       .select(CLIENT_LIST_SELECT, { count: "exact" });
 
-    if (params?.assignedAgentId) {
-      request =
-        params.assignedAgentId === UNASSIGNED_AGENT_FILTER
-          ? request.is("assigned_to", null)
-          : params.assignedAgentId === ASSIGNED_ONLY_FILTER
-            ? request.not("assigned_to", "is", null)
-          : request.eq("assigned_to", params.assignedAgentId);
-    }
+    request = applyAssignedAgentFilter(request, params?.assignedAgentId);
 
     request = applyClientListFilters(request, params);
 
@@ -294,6 +302,45 @@ export const clients = {
       error,
       count: count ?? 0,
     };
+  },
+
+  getAllMatching: async (
+    params?: {
+      searchQuery?: string | null;
+      assignedAgentId?: string | null;
+      pageSize?: number;
+    } & ClientListFilters,
+  ) => {
+    const pageSize = params?.pageSize ?? 1000;
+    const collected: Client[] = [];
+    let from = 0;
+
+    while (true) {
+      let request = supabase.from("clients").select(CLIENT_LIST_SELECT);
+
+      request = applyClientSearchQuery(request, params?.searchQuery);
+      request = applyAssignedAgentFilter(request, params?.assignedAgentId);
+      request = applyClientListFilters(request, params);
+
+      const { data, error } = await applyClientListOrder(
+        request,
+        params?.orderBy,
+        params?.orderDirection,
+      ).range(from, from + pageSize - 1);
+
+      if (error) {
+        return { data: collected, error };
+      }
+
+      const batch = normalizeClients(data);
+      collected.push(...batch);
+
+      if (batch.length < pageSize) break;
+
+      from += pageSize;
+    }
+
+    return { data: collected, error: null };
   },
 
   getById: async (id: string, operationId?: string | null) => {
@@ -334,6 +381,34 @@ export const clients = {
     const { data, error } = await request.select().single();
 
     return { data: normalizeClient(data), error };
+  },
+
+  updateMany: async (
+    ids: string[],
+    updates: Partial<Client>,
+    operationId?: string | null,
+  ) => {
+    const updated: Client[] = [];
+    const batchSize = 500;
+
+    for (let index = 0; index < ids.length; index += batchSize) {
+      const batchIds = ids.slice(index, index + batchSize);
+      let request = supabase.from("clients").update(updates).in("id", batchIds);
+
+      if (operationId) {
+        request = request.eq("operation_id", operationId);
+      }
+
+      const { data, error } = await request.select();
+
+      if (error) {
+        return { data: updated, error };
+      }
+
+      updated.push(...normalizeClients(data));
+    }
+
+    return { data: updated, error: null };
   },
 
   delete: async (id: string, operationId?: string | null) => {

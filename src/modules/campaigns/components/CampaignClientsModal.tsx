@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowRightLeft, CheckSquare, ListFilter, Users } from "lucide-react";
-import { clients as clientsService, supabase } from "../../../lib/supabase";
+import {
+  ArrowRightLeft,
+  CheckSquare,
+  ListFilter,
+  UserCog,
+  Users,
+} from "lucide-react";
+import { agents, clients as clientsService, supabase } from "../../../lib/supabase";
 import {
   CLIENT_STATUS_OPTIONS,
   cn,
@@ -60,6 +66,8 @@ const BALANCE_PLACEHOLDER = "__campaign_clients_balance_placeholder__";
 const ASSIGNMENT_PLACEHOLDER = "__campaign_clients_assignment_placeholder__";
 const UNASSIGNED_AGENT_FILTER = "__unassigned__";
 const ASSIGNED_ONLY_FILTER = "__assigned_only__";
+const KEEP_AGENT_OPTION = "__keep_agent__";
+const UNASSIGNED_AGENT_OPTION = "__unassigned_agent__";
 
 export default function CampaignClientsModal({
   campaign,
@@ -85,6 +93,12 @@ export default function CampaignClientsModal({
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [targetCampaignId, setTargetCampaignId] = useState<string>("");
+  const [targetAgentId, setTargetAgentId] = useState<string>(KEEP_AGENT_OPTION);
+  const [keepAssignmentOnCampaignChange, setKeepAssignmentOnCampaignChange] =
+    useState(true);
+  const [agentOptions, setAgentOptions] = useState<
+    Array<{ id: string; name: string; email?: string | null }>
+  >([]);
   const [moveNotes, setMoveNotes] = useState("");
   const [error, setError] = useState("");
   const [reloadSeed, setReloadSeed] = useState(0);
@@ -110,9 +124,50 @@ export default function CampaignClientsModal({
     setRowsPerPage(20);
     setSelectedClientIds([]);
     setTargetCampaignId("");
+    setTargetAgentId(KEEP_AGENT_OPTION);
+    setKeepAssignmentOnCampaignChange(true);
     setMoveNotes("");
     setError("");
   }, [campaign?.id, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let cancelled = false;
+
+    const loadAgents = async () => {
+      const { data, error: agentsError } = await agents.getAll();
+
+      if (cancelled) return;
+
+      if (agentsError) {
+        console.error("[CampaignClientsModal] loadAgents error:", agentsError);
+        setAgentOptions([]);
+        return;
+      }
+
+      setAgentOptions(
+        (data ?? [])
+          .filter(
+            (agent) =>
+              agent.role === "agent" &&
+              agent.is_active !== false &&
+              (!selectedOperationId || agent.operation_id === selectedOperationId),
+          )
+          .map((agent) => ({
+            id: agent.id,
+            name: agent.name,
+            email: agent.email ?? null,
+          })),
+      );
+    };
+
+    void loadAgents();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, selectedOperationId]);
 
   useEffect(() => {
     if (!isOpen || !campaign?.id) return;
@@ -199,6 +254,20 @@ export default function CampaignClientsModal({
 
   const allVisibleSelected =
     clients.length > 0 && clients.every((client) => selectedClientIds.includes(client.id));
+  const selectedVisibleClients = useMemo(
+    () => clients.filter((client) => selectedClientIds.includes(client.id)),
+    [clients, selectedClientIds],
+  );
+  const selectedVisibleAssignedCount = selectedVisibleClients.filter(
+    (client) => Boolean(client.assigned_to),
+  ).length;
+  const hasCampaignChange = Boolean(targetCampaignId);
+  const hasAgentChange = targetAgentId !== KEEP_AGENT_OPTION;
+  const willClearAssignmentForMove =
+    hasCampaignChange && !keepAssignmentOnCampaignChange && !hasAgentChange;
+  const canApplySelection =
+    selectedClientIds.length > 0 &&
+    (hasCampaignChange || hasAgentChange || willClearAssignmentForMove);
 
   const buildAssignedAgentFilterValue = () =>
     assignmentFilter === "all"
@@ -348,7 +417,7 @@ export default function CampaignClientsModal({
     }
   };
 
-  const handleMoveSelected = async () => {
+  const handleApplySelected = async () => {
     if (!campaign?.id) return;
 
     if (selectedClientIds.length === 0) {
@@ -356,8 +425,8 @@ export default function CampaignClientsModal({
       return;
     }
 
-    if (!targetCampaignId) {
-      setError("Debes elegir la campana destino.");
+    if (!hasCampaignChange && !hasAgentChange) {
+      setError("Elige una campana destino, un agente o una desasignacion.");
       return;
     }
 
@@ -365,30 +434,59 @@ export default function CampaignClientsModal({
     setError("");
 
     try {
-      const result = await campaigns.moveClientsToCampaign({
-        clientIds: selectedClientIds,
-        targetCampaignId,
-        reason: "manual_reassignment",
-        notes: moveNotes.trim() || null,
-      });
+      let movedCount = 0;
 
-      if (result.error) {
-        throw result.error;
+      if (targetCampaignId) {
+        const result = await campaigns.moveClientsToCampaign({
+          clientIds: selectedClientIds,
+          targetCampaignId,
+          reason: "campaign_admin_operation",
+          notes: moveNotes.trim() || null,
+        });
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        movedCount = result.movedCount;
       }
 
+      if (hasAgentChange || willClearAssignmentForMove) {
+        const nextAssignedTo =
+          targetAgentId === UNASSIGNED_AGENT_OPTION || willClearAssignmentForMove
+            ? null
+            : targetAgentId;
+
+        const assignmentResult = await clientsService.updateMany(
+          selectedClientIds,
+          {
+            assigned_to: nextAssignedTo,
+            updated_at: new Date().toISOString(),
+          },
+          selectedOperationId ?? undefined,
+        );
+
+        if (assignmentResult.error) {
+          throw assignmentResult.error;
+        }
+      }
+
+      const changedCount = targetCampaignId ? movedCount : selectedClientIds.length;
       notify.success(
-        "Clientes movidos",
-        `Se movieron ${result.movedCount} cliente${result.movedCount === 1 ? "" : "s"} de campana.`,
+        "Clientes actualizados",
+        `Se actualizaron ${changedCount} cliente${changedCount === 1 ? "" : "s"}.`,
       );
 
       setSelectedClientIds([]);
       setTargetCampaignId("");
+      setTargetAgentId(KEEP_AGENT_OPTION);
+      setKeepAssignmentOnCampaignChange(true);
       setMoveNotes("");
       await onMoved();
       setReloadSeed((value) => value + 1);
     } catch (moveError: any) {
-      console.error("[CampaignClientsModal] moveSelected error:", moveError);
-      setError(moveError?.message || "No se pudieron mover los clientes.");
+      console.error("[CampaignClientsModal] applySelected error:", moveError);
+      setError(moveError?.message || "No se pudieron actualizar los clientes.");
     } finally {
       setMoving(false);
     }
@@ -713,10 +811,10 @@ export default function CampaignClientsModal({
           <section className={cn(campaignInsetClass, "p-4")}>
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink/80">
               <ArrowRightLeft className="h-4 w-4 text-brand" />
-              Repartir o mover seleccionados
+              Operacion sobre seleccionados
             </div>
 
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,18rem)_minmax(0,18rem)_minmax(0,1fr)]">
               <div>
                 <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                   Campana destino
@@ -736,6 +834,32 @@ export default function CampaignClientsModal({
               </div>
 
               <div>
+                <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                  <UserCog className="h-3.5 w-3.5 text-brand" />
+                  Agente
+                </div>
+                <Select value={targetAgentId} onValueChange={setTargetAgentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Mantener asignacion" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={KEEP_AGENT_OPTION}>
+                      Mantener asignacion
+                    </SelectItem>
+                    <SelectItem value={UNASSIGNED_AGENT_OPTION}>
+                      Sin asignar
+                    </SelectItem>
+                    {agentOptions.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.name}
+                        {agent.email ? ` · ${agent.email}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                   Nota
                 </div>
@@ -747,6 +871,26 @@ export default function CampaignClientsModal({
                 />
               </div>
             </div>
+
+            {hasCampaignChange && !hasAgentChange ? (
+              <label className="mt-4 flex items-start gap-3 rounded-2xl border border-white/70 bg-white/58 p-3 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={keepAssignmentOnCampaignChange}
+                  onChange={(event) =>
+                    setKeepAssignmentOnCampaignChange(event.target.checked)
+                  }
+                  disabled={moving}
+                  className="mt-0.5 h-4 w-4 rounded border-border"
+                />
+                <span>
+                  Mantener la asignacion actual al cambiar de campana.
+                  <span className="block text-xs text-muted">
+                    Si lo desmarcas, los seleccionados quedaran sin agente.
+                  </span>
+                </span>
+              </label>
+            ) : null}
           </section>
         </ModalBody>
 
@@ -754,7 +898,13 @@ export default function CampaignClientsModal({
           className={cn("justify-between max-sm:flex-wrap", campaignModalFooterClass)}
         >
           <div className="text-sm text-muted">
-            {selectedClientIds.length} cliente{selectedClientIds.length === 1 ? "" : "s"} listo{selectedClientIds.length === 1 ? "" : "s"} para mover
+            {selectedClientIds.length} seleccionado{selectedClientIds.length === 1 ? "" : "s"}
+            {selectedVisibleClients.length > 0 ? (
+              <>
+                {" · "}
+                {selectedVisibleAssignedCount} asignado{selectedVisibleAssignedCount === 1 ? "" : "s"} visibles
+              </>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2">
@@ -768,14 +918,14 @@ export default function CampaignClientsModal({
             </button>
             <button
               type="button"
-              onClick={handleMoveSelected}
-              disabled={moving || selectedClientIds.length === 0 || !targetCampaignId}
+              onClick={handleApplySelected}
+              disabled={moving || !canApplySelection}
               className={modalPrimaryActionClassName}
             >
               {moving ? (
-                <LoadingSpinner size="sm" text="Moviendo..." fullScreen={false} />
+                <LoadingSpinner size="sm" text="Aplicando..." fullScreen={false} />
               ) : (
-                "Mover seleccionados"
+                "Aplicar cambios"
               )}
             </button>
           </div>

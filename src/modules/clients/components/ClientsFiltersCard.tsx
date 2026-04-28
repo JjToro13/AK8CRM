@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
+  CheckSquare,
   LockKeyholeIcon,
   Search,
   SlidersHorizontal,
@@ -56,6 +57,9 @@ type ClientsFiltersCardProps = {
   onResetTableTextFilters: () => void;
   activeFilterSummary: string[];
   isAdmin: boolean;
+  totalClients: number;
+  selectingFilteredClients: boolean;
+  onAssignFilteredClients: () => void;
   rowsPerPage: number;
   onRowsPerPageChange: (value: number) => void;
   opLocked: boolean;
@@ -87,6 +91,9 @@ export default function ClientsFiltersCard({
   onResetTableTextFilters,
   activeFilterSummary,
   isAdmin,
+  totalClients,
+  selectingFilteredClients,
+  onAssignFilteredClients,
   rowsPerPage,
   onRowsPerPageChange,
   opLocked,
@@ -458,6 +465,39 @@ export default function ClientsFiltersCard({
                   </div>
                 ) : null}
               </div>
+
+              {isAdmin ? (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[1.1rem] border border-brand/15 bg-brand/[0.055] px-3 py-3">
+                  <div className="min-w-0 text-sm text-ink/80">
+                    <span className="font-semibold text-ink">
+                      {totalClients.toLocaleString()} filtrados
+                    </span>
+                    <span className="text-muted">
+                      {" "}para migrar de base, agente o ambos.
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPinnedOpen(false);
+                      setIsHoverOpen(false);
+                      onAssignFilteredClients();
+                    }}
+                    disabled={
+                      opLocked || selectingFilteredClients || totalClients === 0
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-full border border-brand/20 bg-white/82 px-3 py-2 text-xs font-semibold text-brand shadow-[0_14px_30px_rgba(75,123,236,0.12)] transition hover:-translate-y-[1px] hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0",
+                    )}
+                  >
+                    <CheckSquare className="h-3.5 w-3.5" />
+                    {selectingFilteredClients
+                      ? "Seleccionando..."
+                      : "Seleccionar filtrados"}
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

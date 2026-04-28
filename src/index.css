@@ -236,6 +236,8 @@
 
   .crm-client-row {
     background: transparent;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .crm-client-row:hover {
