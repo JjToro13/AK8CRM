@@ -35,6 +35,7 @@ import {
   modalSecondaryActionClassName,
 } from "../../../shared/components/layout/ModalLayout";
 import { notify } from "../../../shared/lib/notify";
+import { agentNameMap } from "../../../shared/services/agent-name-map";
 import {
   CLIENT_BALANCE_RANGE_OPTIONS,
   type ClientBalanceRangeFilter,
@@ -59,7 +60,7 @@ type CampaignClientsModalProps = {
 };
 
 type CampaignClientStatusFilter = "all" | ClientStatusCode;
-type CampaignClientAssignmentFilter = "all" | "assigned" | "unassigned";
+type CampaignClientAssignmentFilter = "all" | string;
 
 const STATUS_PLACEHOLDER = "__campaign_clients_status_placeholder__";
 const BALANCE_PLACEHOLDER = "__campaign_clients_balance_placeholder__";
@@ -69,6 +70,28 @@ const ASSIGNED_ONLY_FILTER = "__assigned_only__";
 const KEEP_AGENT_OPTION = "__keep_agent__";
 const UNASSIGNED_AGENT_OPTION = "__unassigned_agent__";
 const CAMPAIGN_MAX_FILTERED_SELECTION = 5000;
+
+async function enrichClientsWithAssignedAgentNames(clients: Client[]) {
+  const ids = Array.from(
+    new Set(clients.map((client) => client.assigned_to).filter(Boolean)),
+  ) as string[];
+
+  if (ids.length === 0) {
+    return clients.map((client) => ({
+      ...client,
+      assigned_agent: client.assigned_agent ?? null,
+    }));
+  }
+
+  const map = await agentNameMap(ids);
+
+  return clients.map((client) => ({
+    ...client,
+    assigned_agent: client.assigned_to
+      ? { name: map.get(client.assigned_to) ?? client.assigned_to }
+      : null,
+  }));
+}
 
 export default function CampaignClientsModal({
   campaign,
@@ -183,11 +206,7 @@ export default function CampaignClientsModal({
           campaignId: campaign.id,
           statusCode: statusFilter === "all" ? null : statusFilter,
           assignedAgentId:
-            assignmentFilter === "all"
-              ? null
-              : assignmentFilter === "unassigned"
-                ? "__unassigned__"
-                : "__assigned_only__",
+            assignmentFilter === "all" ? null : assignmentFilter,
           country: trimmedCountryFilter || null,
           balanceRange:
             balanceRangeFilter === "all" ? null : balanceRangeFilter,
@@ -203,10 +222,13 @@ export default function CampaignClientsModal({
           throw result.error;
         }
 
-        setClients(result.data ?? []);
+        const enrichedClients = await enrichClientsWithAssignedAgentNames(
+          result.data ?? [],
+        );
+        setClients(enrichedClients);
         setTotalClients(result.count ?? 0);
         setSelectedClientIds((current) =>
-          current.filter((id) => (result.data ?? []).some((client) => client.id === id)),
+          current.filter((id) => enrichedClients.some((client) => client.id === id)),
         );
       } catch (loadError: any) {
         console.error("[CampaignClientsModal] loadClients error:", loadError);
@@ -277,11 +299,7 @@ export default function CampaignClientsModal({
     (hasCampaignChange || hasAgentChange || willClearAssignmentForMove);
 
   const buildAssignedAgentFilterValue = () =>
-    assignmentFilter === "all"
-      ? null
-      : assignmentFilter === "unassigned"
-        ? UNASSIGNED_AGENT_FILTER
-        : ASSIGNED_ONLY_FILTER;
+    assignmentFilter === "all" ? null : assignmentFilter;
 
   const loadFilteredClientIds = async () => {
     if (!campaign?.id) return [] as string[];
@@ -315,6 +333,8 @@ export default function CampaignClientsModal({
         request = request.is("assigned_to", null);
       } else if (assignedAgentFilterValue === ASSIGNED_ONLY_FILTER) {
         request = request.not("assigned_to", "is", null);
+      } else if (assignedAgentFilterValue) {
+        request = request.eq("assigned_to", assignedAgentFilterValue);
       }
 
       request = applyClientListFilters(request, {
@@ -536,7 +556,7 @@ export default function CampaignClientsModal({
         <ModalHeader
           icon={<Users className="h-5 w-5 text-brand" />}
           title={`Clientes de ${campaign.name}`}
-          description={`${campaign.prefix} · ${campaign.total.toLocaleString()} registros`}
+          description={`${campaign.prefix} - ${campaign.total.toLocaleString()} registros`}
           onClose={onClose}
           closeDisabled={moving}
           className={campaignModalHeaderClass}
@@ -589,7 +609,7 @@ export default function CampaignClientsModal({
                     <SelectItem value="all">Todos los estatus</SelectItem>
                     {CLIENT_STATUS_OPTIONS.map((status) => (
                       <SelectItem key={status.code} value={status.code}>
-                        {status.shortLabel} · {status.label}
+                        {status.shortLabel} - {status.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -610,7 +630,7 @@ export default function CampaignClientsModal({
 
               <div>
                 <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                  Asignacion
+                  Asignado a
                 </div>
                 <Select
                   value={assignmentFilter}
@@ -620,15 +640,25 @@ export default function CampaignClientsModal({
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Todas" />
+                    <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ASSIGNMENT_PLACEHOLDER} disabled>
-                      Todas
+                      Todos
                     </SelectItem>
-                    <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="assigned">Asignado</SelectItem>
-                    <SelectItem value="unassigned">Sin asignar</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value={ASSIGNED_ONLY_FILTER}>
+                      Con asignacion
+                    </SelectItem>
+                    <SelectItem value={UNASSIGNED_AGENT_FILTER}>
+                      Sin asignacion
+                    </SelectItem>
+                    {agentOptions.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.name}
+                        {agent.email ? ` - ${agent.email}` : ""}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -683,7 +713,7 @@ export default function CampaignClientsModal({
           <section className={cn(campaignInsetClass, "overflow-hidden")}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/70 px-4 py-3 text-sm text-muted">
               <div>
-                {totalClients.toLocaleString()} clientes · pagina {currentPage} de {totalPages}
+                {totalClients.toLocaleString()} clientes - pagina {currentPage} de {totalPages}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -791,7 +821,12 @@ export default function CampaignClientsModal({
                           {getStatusText(client)}
                         </td>
                         <td className="px-4 py-3 text-sm text-ink/80">
-                          {client.assigned_to ? "Asignado" : "Sin asignar"}
+                          {client.assigned_to
+                            ? client.assigned_agent?.name?.trim() ||
+                              agentOptions.find((agent) => agent.id === client.assigned_to)
+                                ?.name ||
+                              client.assigned_to
+                            : "Sin asignar"}
                         </td>
                       </tr>
                     ))}
@@ -859,7 +894,7 @@ export default function CampaignClientsModal({
                   <SelectContent>
                     {targetCampaignOptions.map((option) => (
                       <SelectItem key={option.id} value={option.id}>
-                        {option.prefix} · {option.name}
+                        {option.prefix} - {option.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -885,7 +920,7 @@ export default function CampaignClientsModal({
                     {agentOptions.map((agent) => (
                       <SelectItem key={agent.id} value={agent.id}>
                         {agent.name}
-                        {agent.email ? ` · ${agent.email}` : ""}
+                        {agent.email ? ` - ${agent.email}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -934,7 +969,7 @@ export default function CampaignClientsModal({
             {selectedClientIds.length} seleccionado{selectedClientIds.length === 1 ? "" : "s"}
             {selectedVisibleClients.length > 0 ? (
               <>
-                {" · "}
+                {" - "}
                 {selectedVisibleAssignedCount} asignado{selectedVisibleAssignedCount === 1 ? "" : "s"} visibles
               </>
             ) : null}
