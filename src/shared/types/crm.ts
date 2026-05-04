@@ -11,6 +11,8 @@ export interface Client {
     display_name?: string | null;
   } | null;
   assigned_to?: string | null;
+  assigned_at?: string | null;
+  assigned_by?: string | null;
   quarantined_until?: string | null;
   quarantine_reason?: string | null;
   first_name?: string;

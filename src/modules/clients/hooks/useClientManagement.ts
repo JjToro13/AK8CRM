@@ -1821,11 +1821,14 @@ export function useClientManagement(
 
     if (shouldChangeAgent || shouldClearAssignmentForCampaignMove) {
       const nextAssignedTo = shouldChangeAgent ? payload.agentId ?? null : null;
+      const nowIso = new Date().toISOString();
       const { error: updateError } = await clientsService.updateMany(
         selectedIds,
         {
           assigned_to: nextAssignedTo,
-          updated_at: new Date().toISOString(),
+          assigned_at: nextAssignedTo ? nowIso : null,
+          assigned_by: nextAssignedTo ? user?.id ?? null : null,
+          updated_at: nowIso,
         },
         operationId,
       );

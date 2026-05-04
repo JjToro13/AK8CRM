@@ -265,8 +265,7 @@ export default function AssignmentModal({
         let request = supabase
           .from("clients")
           .select("id", { count: "exact", head: true })
-          .is("assigned_to", null)
-          .or("status.eq.new,status.is.null");
+          .is("assigned_to", null);
 
         request = applyClientListFilters(request, {
           operationId: effectiveOperationId,

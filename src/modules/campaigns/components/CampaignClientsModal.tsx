@@ -497,12 +497,17 @@ export default function CampaignClientsModal({
           targetAgentId === UNASSIGNED_AGENT_OPTION || willClearAssignmentForMove
             ? null
             : targetAgentId;
+        const nowIso = new Date().toISOString();
+        const currentUser =
+          nextAssignedTo ? (await supabase.auth.getUser()).data.user : null;
 
         const assignmentResult = await clientsService.updateMany(
           selectedClientIds,
           {
             assigned_to: nextAssignedTo,
-            updated_at: new Date().toISOString(),
+            assigned_at: nextAssignedTo ? nowIso : null,
+            assigned_by: nextAssignedTo ? currentUser?.id ?? null : null,
+            updated_at: nowIso,
           },
           selectedOperationId ?? undefined,
         );
