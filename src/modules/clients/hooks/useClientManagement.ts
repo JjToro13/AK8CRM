@@ -593,6 +593,11 @@ export function useClientManagement(
   }, [rowsPerPage]);
 
   useEffect(() => {
+    if (!viewHydrated || isAdmin || assignedAgentFilter === "all") return;
+    setAssignedAgentFilter("all");
+  }, [assignedAgentFilter, isAdmin, viewHydrated]);
+
+  useEffect(() => {
     const intervalId = window.setInterval(() => setTick((value) => value + 1), 1000);
     return () => window.clearInterval(intervalId);
   }, []);
@@ -838,6 +843,7 @@ export function useClientManagement(
         campaignFilter !== "all" ||
         trimmedCountryFilter.length > 0 ||
         balanceRangeFilter !== "all" ||
+        dailyManagementFilter !== "all" ||
         Object.values(debouncedTableTextFilters).some(
           (value) => value.trim().length > 0,
         );
@@ -851,6 +857,8 @@ export function useClientManagement(
           country: trimmedCountryFilter || null,
           balanceRange:
             balanceRangeFilter === "all" ? null : balanceRangeFilter,
+          dailyManagement:
+            dailyManagementFilter === "all" ? null : dailyManagementFilter,
           textFilters: debouncedTableTextFilters,
           orderBy: sortKey,
           orderDirection: sortDirection,
@@ -1705,7 +1713,7 @@ export function useClientManagement(
   const isSearchActive = trimmedSearchQuery.length >= CLIENTS_MIN_SEARCH_LENGTH;
   const isStatusFilterActive = statusFilter !== "all";
   const isCampaignFilterActive = campaignFilter !== "all";
-  const isAgentFilterActive = assignedAgentFilter !== "all";
+  const isAgentFilterActive = isAdmin && assignedAgentFilter !== "all";
   const trimmedCountryFilter = countryFilter.trim();
   const isCountryFilterActive = trimmedCountryFilter.length > 0;
   const isBalanceRangeFilterActive = balanceRangeFilter !== "all";

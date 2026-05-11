@@ -71,6 +71,35 @@ export const campaigns = {
     return { error };
   },
 
+  deleteCampaignPermanently: async (
+    campaignId: string,
+    selectedOperationId?: string | null,
+  ) => {
+    const { data, error } = await supabase.rpc("hard_delete_campaign_v1", {
+      p_campaign_id: campaignId,
+      p_operation_id: selectedOperationId ?? null,
+    });
+
+    const result = Array.isArray(data)
+      ? (data[0] as
+          | {
+              deleted_clients?: number | string | null;
+              deleted_movements?: number | string | null;
+              deleted_scheduled_calls?: number | string | null;
+              deleted_campaigns?: number | string | null;
+            }
+          | undefined)
+      : undefined;
+
+    return {
+      error,
+      deletedClients: Number(result?.deleted_clients ?? 0),
+      deletedMovements: Number(result?.deleted_movements ?? 0),
+      deletedScheduledCalls: Number(result?.deleted_scheduled_calls ?? 0),
+      deletedCampaigns: Number(result?.deleted_campaigns ?? 0),
+    };
+  },
+
   stageDeletion: async (
     campaignId: string,
     selectedOperationId: string | null | undefined,

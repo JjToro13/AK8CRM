@@ -240,14 +240,7 @@ export function useCampaignManagement({
       setError("");
 
       const now = new Date();
-      const deletionAvailableAt = campaign.deletionAvailableAt
-        ? new Date(campaign.deletionAvailableAt)
-        : null;
       const isPendingDeletion = Boolean(campaign.deletionRequestedAt);
-      const canDeletePermanently =
-        isPendingDeletion &&
-        deletionAvailableAt !== null &&
-        deletionAvailableAt.getTime() <= now.getTime();
 
       if (!isPendingDeletion) {
         const currentUser = await auth.getCurrentUser();
@@ -277,31 +270,31 @@ export function useCampaignManagement({
         return;
       }
 
-      if (!canDeletePermanently) {
-        setError("La campaña aun esta en periodo de gracia.");
-        return;
-      }
-
-      const { error: clientsError } = await campaigns.deleteClientsByCampaign(
+      const {
+        error: deleteError,
+        deletedClients,
+        deletedCampaigns,
+      } = await campaigns.deleteCampaignPermanently(
         campaign.id,
         selectedOperationId,
       );
-      if (clientsError) {
-        console.error(clientsError);
+      if (deleteError) {
+        console.error(deleteError);
         setError(
-          `Error eliminando clientes de la campaña ${campaign.prefix}: ${clientsError.message}`,
+          `No se pudo borrar definitivamente la campaña ${campaign.prefix}: ${deleteError.message}`,
         );
         return;
       }
 
-      const { error: campaignError } = await campaigns.deleteCampaignRow(
-        campaign.id,
-        selectedOperationId,
-      );
-      if (campaignError) {
-        console.warn("No se pudo borrar la fila de campaigns:", campaignError);
+      if (deletedCampaigns <= 0) {
+        setError(`No se encontro la campaña ${campaign.prefix} para borrar definitivamente.`);
+        return;
       }
 
+      notify.success(
+        "Campaña eliminada",
+        `${deletedClients.toLocaleString()} clientes fueron borrados definitivamente.`,
+      );
       await loadCampaigns();
       setDeleteConfirmCampaignId(null);
     } catch (error) {

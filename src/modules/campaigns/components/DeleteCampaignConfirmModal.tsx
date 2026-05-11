@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Clock, Trash2 } from "lucide-react";
+import { AlertTriangle, Trash2 } from "lucide-react";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import Input from "../../../shared/components/ui/Input";
 import {
@@ -56,8 +56,7 @@ export default function DeleteCampaignConfirmModal({
   const isGracePeriodActive = isPendingDeletion && !canDeletePermanently;
   const canConfirm =
     confirmationText.trim() === "ELIMINAR" &&
-    !deleting &&
-    !isGracePeriodActive;
+    !deleting;
 
   const copy = useMemo(() => {
     if (!campaign) {
@@ -78,9 +77,9 @@ export default function DeleteCampaignConfirmModal({
 
     if (isGracePeriodActive) {
       return {
-        title: "Retiro en periodo de gracia",
-        action: "No disponible",
-        body: `La campana ${campaign.prefix} ya fue retirada. El borrado definitivo estara disponible desde ${formatCampaignDate(campaign.deletionAvailableAt)}.`,
+        title: "Borrar definitivamente ahora",
+        action: "Borrar definitivamente",
+        body: `La campana ${campaign.prefix} esta en periodo de gracia hasta ${formatCampaignDate(campaign.deletionAvailableAt)}. Si continuas, se eliminaran definitivamente la base y sus ${campaign.total.toLocaleString()} clientes ahora.`,
       };
     }
 
@@ -105,13 +104,7 @@ export default function DeleteCampaignConfirmModal({
 
       <ModalPanel className={cn(campaignModalPanelClass, "relative max-w-xl")}>
         <ModalHeader
-          icon={
-            isGracePeriodActive ? (
-              <Clock className="h-5 w-5 text-amber-600" />
-            ) : (
-              <Trash2 className="h-5 w-5 text-red-600" />
-            )
-          }
+          icon={<Trash2 className="h-5 w-5 text-red-600" />}
           title={copy.title}
           description={`${campaign.name} · ${campaign.prefix}`}
           onClose={onClose}
@@ -127,22 +120,20 @@ export default function DeleteCampaignConfirmModal({
             </div>
           </div>
 
-          {!isGracePeriodActive ? (
-            <div>
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                Confirmacion requerida
-              </div>
-              <Input
-                value={confirmationText}
-                onChange={(event) => setConfirmationText(event.target.value)}
-                disabled={deleting}
-                placeholder="Escribe ELIMINAR"
-              />
-              <p className="mt-2 text-xs text-muted">
-                Debes escribir ELIMINAR en mayusculas para continuar.
-              </p>
+          <div>
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+              Confirmacion requerida
             </div>
-          ) : null}
+            <Input
+              value={confirmationText}
+              onChange={(event) => setConfirmationText(event.target.value)}
+              disabled={deleting}
+              placeholder="Escribe ELIMINAR"
+            />
+            <p className="mt-2 text-xs text-muted">
+              Debes escribir ELIMINAR en mayusculas para continuar.
+            </p>
+          </div>
         </ModalBody>
 
         <ModalFooter className={campaignModalFooterClass}>
@@ -155,20 +146,18 @@ export default function DeleteCampaignConfirmModal({
             Cerrar
           </button>
 
-          {!isGracePeriodActive ? (
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={!canConfirm}
-              className={modalPrimaryActionClassName}
-            >
-              {deleting ? (
-                <LoadingSpinner size="sm" text="Procesando..." fullScreen={false} />
-              ) : (
-                copy.action
-              )}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={!canConfirm}
+            className={modalPrimaryActionClassName}
+          >
+            {deleting ? (
+              <LoadingSpinner size="sm" text="Procesando..." fullScreen={false} />
+            ) : (
+              copy.action
+            )}
+          </button>
         </ModalFooter>
       </ModalPanel>
     </div>

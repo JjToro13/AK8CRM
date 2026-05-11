@@ -57,6 +57,7 @@ export default function PendingDeletionCampaignsPanel({
             availableAt !== null && availableAt.getTime() <= Date.now();
           const isRestoring = restoringCampaignId === campaign.id;
           const isDeleting = deletingCampaignId === campaign.id;
+          const deleteLabel = canDelete ? "Borrar" : "Borrar ahora";
 
           return (
             <div
@@ -100,14 +101,17 @@ export default function PendingDeletionCampaignsPanel({
                   type="button"
                   onClick={() => onDelete(campaign)}
                   disabled={isDeleting}
-                  className={campaignGhostButtonClass}
+                  className={cn(
+                    campaignGhostButtonClass,
+                    "border-red-300/70 text-red-700 hover:border-red-400/80",
+                  )}
                 >
                   {isDeleting ? (
                     <LoadingSpinner size="sm" text="" fullScreen={false} />
                   ) : (
                     <Trash2 className="h-4 w-4" />
                   )}
-                  {canDelete ? "Borrar" : "Ver estado"}
+                  {deleteLabel}
                 </button>
               </div>
             </div>
