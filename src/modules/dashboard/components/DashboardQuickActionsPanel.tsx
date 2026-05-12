@@ -1,6 +1,7 @@
-import { CalendarDays, Clock, UserCog, Users } from "lucide-react";
+import { CalendarDays, Clock, Settings, UserCog, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
+  canAccessAdminPanel,
   canAccessAgentWorkspace,
   canAccessCampaignWorkspace,
   canUseCalendarWorkspace,
@@ -60,6 +61,7 @@ export default function DashboardQuickActionsPanel({
   const showCalendar = canUseCalendarWorkspace(role);
   const showAgents = canAccessAgentWorkspace(role);
   const showCampaigns = canAccessCampaignWorkspace(role);
+  const showAdmin = canAccessAdminPanel(role);
 
   const actions: QuickAction[] = [
     ...(showCalls
@@ -110,6 +112,17 @@ export default function DashboardQuickActionsPanel({
             label: "Campanas",
             note: "Controla distribucion y carga disponible.",
             to: "/campaigns",
+          },
+        ]
+      : []),
+    ...(showAdmin
+      ? [
+          {
+            key: "admin",
+            icon: Settings,
+            label: "Admin",
+            note: "Privacidad, tenants y operaciones visibles.",
+            to: "/admin",
           },
         ]
       : []),

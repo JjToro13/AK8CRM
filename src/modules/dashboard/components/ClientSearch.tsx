@@ -26,6 +26,11 @@ import { useAuth } from "../../../hooks/useAuth";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
 import ClientCommentsDropdown from "../../../shared/components/client/ClientCommentsDropdown";
 import EmailModal from "../../../shared/components/client/EmailModal";
+import {
+  displayClientEmail,
+  displayClientPhone,
+} from "../../../shared/privacy/client-privacy";
+import { useClientPrivacySettings } from "../../../shared/privacy/useClientPrivacySettings";
 
 interface ClientSearchProps {
   client: Client;
@@ -39,6 +44,7 @@ export default function ClientSearch({
   onEditClient,
 }: ClientSearchProps) {
   const { isAdmin, role } = useAuth();
+  const { settings: privacySettings } = useClientPrivacySettings();
   const canUseActions = canUseClientActions(role);
   const enableCalls = appEnv.features.enableCalls;
   const [calling, setCalling] = useState(false);
@@ -170,14 +176,18 @@ export default function ClientSearch({
         {isAdmin && client.phone_number && (
           <div className="flex items-center text-muted">
             <Phone className="h-4 w-4 mr-2 opacity-70" />
-            <span className="font-semibold text-ink">{client.phone_number}</span>
+            <span className="font-semibold text-ink">
+              {displayClientPhone(client.phone_number, privacySettings)}
+            </span>
           </div>
         )}
 
         {isAdmin && client.email && (
           <div className="flex items-center text-muted">
             <Mail className="h-4 w-4 mr-2 opacity-70" />
-            <span className="truncate">{client.email}</span>
+            <span className="truncate">
+              {displayClientEmail(client.email, privacySettings)}
+            </span>
           </div>
         )}
 

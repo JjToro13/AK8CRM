@@ -136,6 +136,12 @@ export function canAccessCampaignWorkspace(
   return role === "dev" || role === "owner";
 }
 
+export function canAccessAdminPanel(
+  role: AgentRole | null | undefined,
+): boolean {
+  return role === "dev" || role === "owner";
+}
+
 export function canUseClientActions(
   role: AgentRole | null | undefined,
 ): boolean {

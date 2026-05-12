@@ -14,6 +14,7 @@ export type {
 
 export {
   canAccessAgentWorkspace,
+  canAccessAdminPanel,
   canAccessCampaignWorkspace,
   canAssignOperationalClients,
   canCreateManagedUsers,

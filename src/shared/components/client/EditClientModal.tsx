@@ -54,6 +54,11 @@ import {
   clientModalPanelClass,
   clientQuickActionButtonClass,
 } from "./clientUi";
+import {
+  displayClientEmail,
+  displayClientPhone,
+} from "../../privacy/client-privacy";
+import { useClientPrivacySettings } from "../../privacy/useClientPrivacySettings";
 
 interface EditClientModalProps {
   client: Client | null;
@@ -113,6 +118,7 @@ export default function EditClientModal({
   onNextClient,
 }: EditClientModalProps) {
   const { user } = useAuth();
+  const { settings: privacySettings } = useClientPrivacySettings();
 
   const [statusCode, setStatusCode] = useState<ClientStatusCode>("NU");
   const [baselineStatusCode, setBaselineStatusCode] =
@@ -595,6 +601,14 @@ export default function EditClientModal({
     canExecuteQuickActions && !(enableCalls && callingClientId === client.id);
   const canEmail = canExecuteQuickActions && Boolean(client.email);
   const canSchedule = canExecuteQuickActions;
+  const phoneInputMasked = privacySettings.maskPhoneNumbers && clientPhoneInput.trim();
+  const emailInputMasked = privacySettings.maskEmails && clientEmailInput.trim();
+  const visiblePhoneInput = phoneInputMasked
+    ? displayClientPhone(clientPhoneInput, privacySettings)
+    : clientPhoneInput;
+  const visibleEmailInput = emailInputMasked
+    ? displayClientEmail(clientEmailInput, privacySettings)
+    : clientEmailInput;
 
   return (
     <div
@@ -751,15 +765,15 @@ export default function EditClientModal({
               </div>
               <Input
                 type="text"
-                value={clientPhoneInput}
+                value={visiblePhoneInput}
                 onChange={(event) => {
                   setSaveSuccessMessage("");
                   setClientPhoneInput(event.target.value);
                 }}
-                disabled={!isAdmin || loading}
+                disabled={!isAdmin || loading || Boolean(phoneInputMasked)}
                 className="border-white/70 bg-white/72 backdrop-blur-xl"
                 rightSlot={
-                  clientPhoneInput.trim() ? (
+                  clientPhoneInput.trim() && !phoneInputMasked ? (
                     <button
                       type="button"
                       onClick={() =>
@@ -783,15 +797,15 @@ export default function EditClientModal({
               </div>
               <Input
                 type="text"
-                value={clientEmailInput}
+                value={visibleEmailInput}
                 onChange={(event) => {
                   setSaveSuccessMessage("");
                   setClientEmailInput(event.target.value);
                 }}
-                disabled={!isAdmin || loading}
+                disabled={!isAdmin || loading || Boolean(emailInputMasked)}
                 className="border-white/70 bg-white/72 backdrop-blur-xl"
                 rightSlot={
-                  clientEmailInput.trim() ? (
+                  clientEmailInput.trim() && !emailInputMasked ? (
                     <button
                       type="button"
                       onClick={() => void copyFieldValue("Email", clientEmailInput)}
@@ -811,6 +825,9 @@ export default function EditClientModal({
               <div className="md:col-span-2 xl:col-span-4 -mt-2 text-xs text-muted">
                 Nombre, telefono y email son editables solo para administrador.
                 El sistema mantiene validacion de duplicados por operacion.
+                {phoneInputMasked || emailInputMasked
+                  ? " La privacidad del tenant esta ofuscando campos de contacto."
+                  : ""}
               </div>
             ) : null}
 

@@ -16,7 +16,7 @@ export default function AppFooter({
   const { branding } = useBranding();
   const year = new Date().getFullYear();
   const footerNote = note ?? branding.defaultFooterNote;
-  const version = "1.0.80";
+  const version = "2.0.22";
 
   return (
     <footer className="crm-app-footer relative overflow-hidden border-t border-white/45 bg-surface/74 backdrop-blur-2xl supports-[backdrop-filter]:bg-surface/68">
@@ -38,7 +38,9 @@ export default function AppFooter({
           <div>
             &copy; {year} {branding.platformLabel}. Todos los derechos reservados.
           </div>
-          <div className="font-medium tracking-[0.08em] text-muted/90">Version {version}</div>
+          <div className="font-medium tracking-[0.08em] text-muted/90">
+            Version (<strong className="font-bold text-ink/80">LIVE-BETA</strong>) {version}
+          </div>
         </div>
       </div>
     </footer>

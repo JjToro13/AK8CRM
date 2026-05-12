@@ -19,6 +19,7 @@ import {
   clientTableShellClass,
 } from "../../../shared/components/client/clientUi";
 import type { Client } from "../../../shared/types/crm";
+import { useClientPrivacySettings } from "../../../shared/privacy/useClientPrivacySettings";
 import ClientsTableRow from "./ClientsTableRow";
 import {
   buildClientsGridTemplate,
@@ -94,6 +95,7 @@ export default function ClientsTable({
   onTableTextFilterChange,
   onSortChange,
 }: ClientsTableProps) {
+  const { settings: privacySettings } = useClientPrivacySettings();
   const visibleColumnConfigs = CLIENT_TABLE_COLUMNS.filter((column) =>
     visibleColumns.includes(column.key),
   );
@@ -298,6 +300,7 @@ export default function ClientsTable({
                   visibleColumns={visibleColumns}
                   gridTemplate={gridTemplate}
                   selected={selectedClientIds.includes(client.id)}
+                  privacySettings={privacySettings}
                   onSelect={(event) => onSelectClient(client.id, event)}
                   onOpenEdit={onEditClient}
                   onCopy={onCopy}

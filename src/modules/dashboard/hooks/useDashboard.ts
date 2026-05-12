@@ -131,12 +131,20 @@ export function useDashboard({
       return;
     }
 
+    if (!selectedTenantId) {
+      setOperations([]);
+      setSelectedOperationId(null);
+      setOpsError("");
+      return;
+    }
+
     setOpsLoading(true);
     setOpsError("");
+    const tenantIdForRequest = selectedTenantId;
 
     try {
       const { data, error } = await dashboard.getOperationsByTenant(
-        selectedTenantId,
+        tenantIdForRequest,
       );
 
       if (error) {
@@ -146,7 +154,11 @@ export function useDashboard({
         return;
       }
 
-      setOperations(data ?? []);
+      setOperations(
+        (data ?? []).filter(
+          (operation) => operation.tenant_id === tenantIdForRequest,
+        ),
+      );
     } finally {
       setOpsLoading(false);
     }

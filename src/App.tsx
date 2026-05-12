@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { MotionConfig } from "framer-motion";
 import { Toaster } from "sileo";
@@ -13,6 +14,7 @@ import LoadingSpinner from "./shared/components/feedback/LoadingSpinner";
 import MaintenanceGate from "./shared/components/guards/MaintenanceGate";
 import {
   canAccessAgentWorkspace,
+  canAccessAdminPanel,
   canAccessCampaignWorkspace,
   canUseCalendarWorkspace,
   canUseCallHistory,
@@ -25,8 +27,11 @@ import { resolveTenantBranding } from "./shared/branding/tenant-branding";
 import { dashboard } from "./modules/dashboard/services/dashboard.service";
 import type { BrandPreset } from "./shared/branding/brand-presets";
 import CalendarGlobalAlerts from "./modules/calendar/components/CalendarGlobalAlerts";
+import Operation2faGate from "./shared/security/Operation2faGate";
+import Operation2faPage from "./shared/security/Operation2faPage";
 
 const AgentManagementPage = lazy(() => import("./modules/agents/pages/AgentManagementPage"));
+const AdminPanelPage = lazy(() => import("./modules/admin/pages/AdminPanelPage"));
 const LoginPage = lazy(() => import("./modules/auth/pages/LoginPage"));
 const CalendarPage = lazy(() => import("./modules/calendar/pages/CalendarPage"));
 const CallHistoryPage = lazy(() => import("./modules/calls/pages/CallHistoryPage"));
@@ -81,6 +86,22 @@ function ProtectedRoute({
   return <>{children}</>;
 }
 
+function AuthenticatedChrome({ user }: { user: unknown }) {
+  const location = useLocation();
+  const hideCalendarAlerts =
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/totp");
+
+  if (!user) return null;
+
+  return (
+    <>
+      <BackendHealthBanner />
+      {hideCalendarAlerts ? null : <CalendarGlobalAlerts />}
+    </>
+  );
+}
+
 export default function App() {
   const { branding, setAutoBranding } = useBranding();
   const { isDegraded, isManualDegraded } = useBackendHealth();
@@ -96,6 +117,7 @@ export default function App() {
     role,
   } = useAuth();
   const canAccessAgents = !!user && canAccessAgentWorkspace(role);
+  const canAccessAdmin = !!user && canAccessAdminPanel(role);
   const canAccessCampaigns = !!user && canAccessCampaignWorkspace(role);
   const canAccessCalls = !!user && canUseCallHistory(role);
   const canAccessCalendar = !!user && canUseCalendarWorkspace(role);
@@ -190,9 +212,9 @@ export default function App() {
       >
         <MaintenanceGate>
           <div className="min-h-screen bg-bg">
-          {user ? <BackendHealthBanner /> : null}
+          <AuthenticatedChrome user={user} />
           <BackendHealthDebugger />
-          {user ? <CalendarGlobalAlerts /> : null}
+          <Operation2faGate />
           <Toaster
             position="top-center"
             theme={branding.id === "atlas-finance" ? "dark" : "light"}
@@ -207,6 +229,8 @@ export default function App() {
               />
 
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+              <Route path="/totp" element={<Operation2faPage />} />
 
               <Route
                 path="/dashboard"
@@ -258,6 +282,18 @@ export default function App() {
                         canSeeAllOperations ? activeOperationId : null
                       }
                     />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute
+                    isAllowed={canAccessAdmin}
+                    redirectTo={user ? "/dashboard" : "/login"}
+                  >
+                    <AdminPanelPage />
                   </ProtectedRoute>
                 }
               />

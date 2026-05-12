@@ -1,4 +1,5 @@
-import { LogOut, PanelTopOpen, ChevronDown } from "lucide-react";
+import { LogOut, PanelTopOpen, ChevronDown, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
 import BrandPresetSelector from "../../../shared/components/layout/BrandPresetSelector";
 import { pageHeaderActionClassName } from "../../../shared/components/layout/PageHeader";
 import type { Operation, VisibleTenant } from "../types/dashboard.types";
@@ -92,6 +93,16 @@ export default function DashboardHeaderMenu({
             selectedOperationId={selectedOperationId}
             onSelect={onSelectOperation}
           />
+
+          {role === "dev" || role === "owner" ? (
+            <Link
+              to="/admin"
+              className={`${pageHeaderActionClassName} w-full justify-center`}
+            >
+              <Settings className="h-4 w-4" />
+              <span>Panel admin</span>
+            </Link>
+          ) : null}
 
           <button
             onClick={onSignOut}

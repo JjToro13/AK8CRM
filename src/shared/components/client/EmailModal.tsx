@@ -29,6 +29,8 @@ import {
   clientModalHeaderClass,
   clientModalPanelClass,
 } from "./clientUi";
+import { displayClientEmail } from "../../privacy/client-privacy";
+import { useClientPrivacySettings } from "../../privacy/useClientPrivacySettings";
 
 interface EmailModalProps {
   client: Client;
@@ -42,17 +44,9 @@ interface EmailAccount {
   from_email: string;
 }
 
-function maskEmail(email?: string | null) {
-  if (!email) return "No disponible";
-  const [u, d] = email.split("@");
-  if (!u || !d) return "***@***.***";
-  const safeU = u.length <= 2 ? "***" : `${u.slice(0, 2)}***`;
-  const safeD = d.includes(".") ? `***.${d.split(".").pop()}` : "***.***";
-  return `${safeU}@${safeD}`;
-}
-
 export default function EmailModal({ client, isOpen, onClose }: EmailModalProps) {
   const { isAdmin, user } = useAuth();
+  const { settings: privacySettings } = useClientPrivacySettings();
 
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -236,7 +230,12 @@ export default function EmailModal({ client, isOpen, onClose }: EmailModalProps)
               </p>
               <p>
                 <span className="font-semibold">Email:</span>{" "}
-                {isAdmin ? (client.email || "No disponible") : maskEmail(client.email)}
+                {client.email
+                  ? displayClientEmail(client.email, {
+                      maskEmails: privacySettings.maskEmails || !isAdmin,
+                      maskPhoneNumbers: privacySettings.maskPhoneNumbers,
+                    })
+                  : "No disponible"}
               </p>
             </div>
           </div>

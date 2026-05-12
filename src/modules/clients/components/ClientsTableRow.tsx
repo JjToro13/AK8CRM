@@ -11,12 +11,18 @@ import {
 import { hasCommentToday } from "../lib/clientFollowUp";
 import type { Client } from "../../../shared/types/crm";
 import type { ClientTableColumnKey } from "./clientTableColumns";
+import {
+  displayClientEmail,
+  displayClientPhone,
+  type ClientPrivacySettings,
+} from "../../../shared/privacy/client-privacy";
 
 type ClientsTableRowProps = {
   client: Client;
   visibleColumns: ClientTableColumnKey[];
   gridTemplate: string;
   selected: boolean;
+  privacySettings: ClientPrivacySettings;
   onSelect: (
     event: MouseEvent<HTMLDivElement> | KeyboardEvent<HTMLDivElement>,
   ) => void;
@@ -45,14 +51,26 @@ function SheetCell({ children, className }: SheetCellProps) {
 function CopyableText({
   label,
   value,
+  displayValue,
+  masked,
   onCopy,
 }: {
   label: string;
   value?: string | null;
+  displayValue?: string;
+  masked?: boolean;
   onCopy: (label: string, value?: string | null) => void;
 }) {
   if (!value) {
     return <span className="text-muted">-</span>;
+  }
+
+  if (masked) {
+    return (
+      <span className="truncate text-sm font-semibold text-ink/75">
+        {displayValue || "••••"}
+      </span>
+    );
   }
 
   return (
@@ -65,7 +83,7 @@ function CopyableText({
       className="truncate text-left text-sm text-ink underline decoration-dotted underline-offset-2 transition hover:text-brand"
       title={`Click para copiar ${label.toLowerCase()}`}
     >
-      {value}
+      {displayValue || value}
     </button>
   );
 }
@@ -87,6 +105,7 @@ export default function ClientsTableRow({
   visibleColumns,
   gridTemplate,
   selected,
+  privacySettings,
   onSelect,
   onOpenEdit,
   onCopy,
@@ -189,13 +208,28 @@ export default function ClientsTableRow({
           case "email":
             return (
               <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
-                <CopyableText label="Email" value={client.email} onCopy={onCopy} />
+                <CopyableText
+                  label="Email"
+                  value={client.email}
+                  displayValue={displayClientEmail(client.email, privacySettings)}
+                  masked={privacySettings.maskEmails}
+                  onCopy={onCopy}
+                />
               </SheetCell>
             );
           case "phone_number":
             return (
               <SheetCell key={column} className={cn(selected && "crm-client-row-cell-selected")}>
-                <CopyableText label="Telefono" value={client.phone_number} onCopy={onCopy} />
+                <CopyableText
+                  label="Telefono"
+                  value={client.phone_number}
+                  displayValue={displayClientPhone(
+                    client.phone_number,
+                    privacySettings,
+                  )}
+                  masked={privacySettings.maskPhoneNumbers}
+                  onCopy={onCopy}
+                />
               </SheetCell>
             );
           case "country":
