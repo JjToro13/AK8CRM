@@ -978,6 +978,14 @@ export default function EditClientModal({
               </p>
             )}
 
+            {isAdmin && (
+              <p className="text-[11px] text-muted">
+                <span className="font-semibold">TR · Transferido</span> se marca
+                automaticamente cuando el cliente cambia de agente y no puede
+                seleccionarse manualmente.
+              </p>
+            )}
+
           </div>
 
           {/* Historial */}
