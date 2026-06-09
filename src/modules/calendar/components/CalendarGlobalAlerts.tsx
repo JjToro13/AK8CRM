@@ -14,7 +14,7 @@ import { calendar, type CalendarGlobalAlertsSummary } from "../services/calendar
 import { formatTimeZoneLabel } from "../../../shared/constants/timezones";
 import { cn } from "../../../lib/utils";
 
-const POLL_INTERVAL_MS = 60_000;
+const POLL_INTERVAL_MS = 120_000;
 const CALENDAR_ALERTS_COLLAPSED_STORAGE_KEY = "ak8crm.calendar-alerts.collapsed";
 const expandedPanelPositionClass = "right-0 top-[34%] -translate-y-1/2";
 const collapsedPanelPositionClass = "right-0 top-[40%] -translate-y-1/2";
@@ -101,6 +101,7 @@ export default function CalendarGlobalAlerts() {
     if (!canSeeCalendar) return;
 
     const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       void loadAlerts();
     }, POLL_INTERVAL_MS);
 

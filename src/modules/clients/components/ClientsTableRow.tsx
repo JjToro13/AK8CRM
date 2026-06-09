@@ -1,4 +1,4 @@
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
+import { memo, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import ClientCommentsCell from "../../../shared/components/client/ClientCommentsCell";
 import {
   cn,
@@ -23,7 +23,8 @@ type ClientsTableRowProps = {
   gridTemplate: string;
   selected: boolean;
   privacySettings: ClientPrivacySettings;
-  onSelect: (
+  onSelectClient: (
+    clientId: string,
     event: MouseEvent<HTMLDivElement> | KeyboardEvent<HTMLDivElement>,
   ) => void;
   onOpenEdit: (client: Client) => void;
@@ -100,13 +101,13 @@ function isInteractiveElementTarget(target: EventTarget | null) {
   );
 }
 
-export default function ClientsTableRow({
+function ClientsTableRow({
   client,
   visibleColumns,
   gridTemplate,
   selected,
   privacySettings,
-  onSelect,
+  onSelectClient,
   onOpenEdit,
   onCopy,
 }: ClientsTableRowProps) {
@@ -140,12 +141,12 @@ export default function ClientsTableRow({
     <div
       role="button"
       tabIndex={0}
-      onClick={onSelect}
+      onClick={(event) => onSelectClient(client.id, event)}
       onDoubleClick={handleRowDoubleClick}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onSelect(event);
+          onSelectClient(client.id, event);
         }
       }}
       className={cn(
@@ -354,3 +355,13 @@ export default function ClientsTableRow({
     </div>
   );
 }
+
+export default memo(
+  ClientsTableRow,
+  (prevProps, nextProps) =>
+    prevProps.client === nextProps.client &&
+    prevProps.selected === nextProps.selected &&
+    prevProps.gridTemplate === nextProps.gridTemplate &&
+    prevProps.visibleColumns === nextProps.visibleColumns &&
+    prevProps.privacySettings === nextProps.privacySettings,
+);

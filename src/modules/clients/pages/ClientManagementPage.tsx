@@ -149,17 +149,29 @@ export default function ClientManagementPage(
   const [updatesNoticeOpen, setUpdatesNoticeOpen] = useState(true);
 
   const headerTotal = hasActiveFilters ? unfilteredTotalClients : totalClients;
+  const clientMap = useMemo(
+    () => new Map(clients.map((client) => [client.id, client])),
+    [clients],
+  );
+  const clientIndexMap = useMemo(
+    () => new Map(clients.map((client, index) => [client.id, index])),
+    [clients],
+  );
+  const selectedClientIdSet = useMemo(
+    () => new Set(selectedActionClientIds),
+    [selectedActionClientIds],
+  );
   const selectedActionClients = useMemo(
     () =>
       selectedActionClientIds
-        .map((id) => clients.find((client) => client.id === id))
+        .map((id) => clientMap.get(id))
         .filter(Boolean) as typeof clients,
-    [clients, selectedActionClientIds],
+    [clientMap, selectedActionClientIds],
   );
   const selectedActionClient = selectedActionClients[0] ?? null;
   const modalClientIndex = useMemo(
-    () => clients.findIndex((client) => client.id === modalClient?.id),
-    [clients, modalClient?.id],
+    () => (modalClient?.id ? (clientIndexMap.get(modalClient.id) ?? -1) : -1),
+    [clientIndexMap, modalClient?.id],
   );
   const previousModalClient =
     modalClientIndex > 0 ? clients[modalClientIndex - 1] : null;
@@ -184,17 +196,16 @@ export default function ClientManagementPage(
 
   useEffect(() => {
     setSelectedActionClientIds((current) => {
-      const visibleIds = new Set(clients.map((client) => client.id));
-      return current.filter((id) => visibleIds.has(id));
+      return current.filter((id) => clientMap.has(id));
     });
 
     if (
       selectionAnchorClientIdRef.current &&
-      !clients.some((client) => client.id === selectionAnchorClientIdRef.current)
+      !clientMap.has(selectionAnchorClientIdRef.current)
     ) {
       selectionAnchorClientIdRef.current = null;
     }
-  }, [clients]);
+  }, [clientMap]);
 
   useEffect(() => {
     if (selectedActionClientIds.length === 0) return;
@@ -222,10 +233,9 @@ export default function ClientManagementPage(
   ) => {
     setSelectedActionClientIds((current) => {
       if (event.shiftKey && selectionAnchorClientIdRef.current) {
-        const anchorIndex = clients.findIndex(
-          (client) => client.id === selectionAnchorClientIdRef.current,
-        );
-        const targetIndex = clients.findIndex((client) => client.id === clientId);
+        const anchorIndex =
+          clientIndexMap.get(selectionAnchorClientIdRef.current) ?? -1;
+        const targetIndex = clientIndexMap.get(clientId) ?? -1;
 
         if (anchorIndex >= 0 && targetIndex >= 0) {
           const [from, to] =
@@ -435,7 +445,7 @@ export default function ClientManagementPage(
               countryFilter={countryFilter}
               sortKey={sortKey}
               sortDirection={sortDirection}
-              selectedClientIds={selectedActionClientIds}
+              selectedClientIdSet={selectedClientIdSet}
               tableScrollRef={tableScrollRef}
               lastTableViewportHeight={lastTableViewportHeightRef.current}
               onTableScroll={handleTableScroll}

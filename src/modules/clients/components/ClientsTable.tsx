@@ -1,4 +1,5 @@
-import type {
+import {
+  useMemo,
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
   MutableRefObject,
@@ -44,7 +45,7 @@ type ClientsTableProps = {
   countryFilter: string;
   sortKey: ClientTableSortKey;
   sortDirection: ClientTableSortDirection;
-  selectedClientIds: string[];
+  selectedClientIdSet: ReadonlySet<string>;
   tableScrollRef: MutableRefObject<HTMLDivElement | null>;
   lastTableViewportHeight: number | null;
   onTableScroll: () => void;
@@ -84,7 +85,7 @@ export default function ClientsTable({
   countryFilter,
   sortKey,
   sortDirection,
-  selectedClientIds,
+  selectedClientIdSet,
   tableScrollRef,
   lastTableViewportHeight,
   onTableScroll,
@@ -98,10 +99,17 @@ export default function ClientsTable({
 }: ClientsTableProps) {
   const { settings: privacySettings } = useClientPrivacySettings();
   const { statusOptions } = useClientStatusCatalog();
-  const visibleColumnConfigs = CLIENT_TABLE_COLUMNS.filter((column) =>
-    visibleColumns.includes(column.key),
+  const visibleColumnConfigs = useMemo(
+    () =>
+      CLIENT_TABLE_COLUMNS.filter((column) =>
+        visibleColumns.includes(column.key),
+      ),
+    [visibleColumns],
   );
-  const gridTemplate = buildClientsGridTemplate(visibleColumns);
+  const gridTemplate = useMemo(
+    () => buildClientsGridTemplate(visibleColumns),
+    [visibleColumns],
+  );
 
   return (
     <div className={clientTableShellClass}>
@@ -301,9 +309,9 @@ export default function ClientsTable({
                   client={client}
                   visibleColumns={visibleColumns}
                   gridTemplate={gridTemplate}
-                  selected={selectedClientIds.includes(client.id)}
+                  selected={selectedClientIdSet.has(client.id)}
                   privacySettings={privacySettings}
-                  onSelect={(event) => onSelectClient(client.id, event)}
+                  onSelectClient={onSelectClient}
                   onOpenEdit={onEditClient}
                   onCopy={onCopy}
                 />

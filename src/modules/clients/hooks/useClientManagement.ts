@@ -17,7 +17,6 @@ import {
   isOperation2faRequiredError,
   notifyOperation2faRequired,
 } from "../../../shared/security/operation-2fa-errors";
-import { agentNameMap } from "../../../shared/services/agent-name-map";
 import { agents } from "../../agents/services/agents.service";
 import { agentAssignments } from "../../assignments/services/agent-assignments.service";
 import { calls as callsService } from "../../calls/services/calls.service";
@@ -80,28 +79,6 @@ export interface ClientManagementProps {
   operationReady?: boolean;
   activeOperationId?: string | null;
   operationId?: string | null;
-}
-
-async function enrichClientsWithAssignedAgentNames(clients: Client[]) {
-  const ids = Array.from(
-    new Set(clients.map((client) => client.assigned_to).filter(Boolean)),
-  ) as string[];
-
-  if (ids.length === 0) {
-    return clients.map((client) => ({
-      ...client,
-      assigned_agent: client.assigned_agent ?? null,
-    }));
-  }
-
-  const map = await agentNameMap(ids);
-
-  return clients.map((client) => ({
-    ...client,
-    assigned_agent: client.assigned_to
-      ? { name: map.get(client.assigned_to) ?? client.assigned_to }
-      : null,
-  }));
 }
 
 export function useClientManagement(
@@ -820,10 +797,7 @@ export function useClientManagement(
           setClients([]);
           setTotalClients(0);
         } else {
-          const enrichedClients = await enrichClientsWithAssignedAgentNames(
-            result.data || [],
-          );
-          setClients(enrichedClients);
+          setClients((result.data ?? []) as Client[]);
           setTotalClients(result.count || 0);
           if (!hasScopedFilters) {
             setUnfilteredTotalClients(result.count || 0);
@@ -880,15 +854,11 @@ export function useClientManagement(
         setClients([]);
         setTotalClients(0);
       } else {
-        const enrichedClients = await enrichClientsWithAssignedAgentNames(
-          (assignedClients || []) as Client[],
-        );
-
         setTotalClients(count || 0);
         if (!hasScopedFilters) {
           setUnfilteredTotalClients(count || 0);
         }
-        setClients(enrichedClients);
+        setClients((assignedClients ?? []) as Client[]);
         setLastUpdatedAt(Date.now());
         lastClientsLoadAtRef.current = Date.now();
         setError("");
@@ -1284,7 +1254,7 @@ export function useClientManagement(
             `Extension: ${callData.extension_number}\n\n` +
             `La llamada sonara en tu softphone (MicroSIP/Zoiper)`,
         );
-        loadClients({ silent: true });
+        // Starting a call does not change the client list payload immediately.
       }
     } catch (error) {
       setError("Error inesperado al iniciar la llamada");
@@ -1568,7 +1538,6 @@ export function useClientManagement(
     if (!result.error) {
       notify.appointmentCreated();
       closeScheduleModal();
-      await loadClients({ silent: true });
     } else {
       setScheduleSaving(false);
     }
@@ -1603,7 +1572,6 @@ export function useClientManagement(
         notify.appointmentUpdated();
       }
       closeScheduleModal();
-      await loadClients({ silent: true });
     } else {
       setScheduleSaving(false);
     }
@@ -1618,7 +1586,6 @@ export function useClientManagement(
     if (!result.error) {
       notify.appointmentDeleted();
       closeScheduleModal();
-      await loadClients({ silent: true });
     } else {
       setScheduleSaving(false);
     }

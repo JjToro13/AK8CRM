@@ -44,6 +44,18 @@ const SCHEDULED_CALL_SELECT = `
   )
 `;
 
+const SCHEDULED_CALL_ALERTS_SELECT = `
+  id,
+  scheduled_for,
+  scheduled_timezone,
+  client:clients!scheduled_calls_client_id_fkey(
+    id,
+    serial,
+    first_name,
+    last_name
+  )
+`;
+
 type WeekQuery = {
   weekStart: Date;
   operationId?: string | null;
@@ -154,7 +166,7 @@ export const calendar = {
 
     let request = supabase
       .from("scheduled_calls")
-      .select(SCHEDULED_CALL_SELECT)
+      .select(SCHEDULED_CALL_ALERTS_SELECT)
       .eq("status", "scheduled")
       .gte("scheduled_for", from)
       .lt("scheduled_for", to)

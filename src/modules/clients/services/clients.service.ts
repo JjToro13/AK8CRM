@@ -61,8 +61,11 @@ export const CLIENT_LIST_SELECT = `
     prefix,
     display_name
   ),
-  agent:agents!clients_last_comment_agent_fkey(name)
+  agent:agents!clients_last_comment_agent_fkey(name),
+  assigned_agent:agents!clients_assigned_to_fkey(name)
 `;
+
+const HOT_PATH_COUNT_ALGORITHM = "planned" as const;
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) {
@@ -79,6 +82,7 @@ function normalizeClient(value: any): Client | null {
     ...value,
     campaign: firstRelation(value.campaign),
     agent: firstRelation(value.agent),
+    assigned_agent: firstRelation(value.assigned_agent),
   } as Client;
 }
 
@@ -256,7 +260,9 @@ export const clients = {
     const to = from + pageSize - 1;
 
     let request = applyClientSearchQuery(
-      supabase.from("clients").select(CLIENT_LIST_SELECT, { count: "exact" }),
+      supabase
+        .from("clients")
+        .select(CLIENT_LIST_SELECT, { count: HOT_PATH_COUNT_ALGORITHM }),
       q,
     );
 
@@ -295,7 +301,7 @@ export const clients = {
 
     let request = supabase
       .from("clients")
-      .select(CLIENT_LIST_SELECT, { count: "exact" });
+      .select(CLIENT_LIST_SELECT, { count: HOT_PATH_COUNT_ALGORITHM });
 
     request = applyAssignedAgentFilter(request, params?.assignedAgentId);
 
@@ -354,7 +360,7 @@ export const clients = {
   },
 
   getById: async (id: string, operationId?: string | null) => {
-    let request = supabase.from("clients").select("*").eq("id", id);
+    let request = supabase.from("clients").select(CLIENT_LIST_SELECT).eq("id", id);
 
     if (operationId) {
       request = request.eq("operation_id", operationId);

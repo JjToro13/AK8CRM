@@ -36,7 +36,6 @@ import {
   modalSecondaryActionClassName,
 } from "../../../shared/components/layout/ModalLayout";
 import { notify } from "../../../shared/lib/notify";
-import { agentNameMap } from "../../../shared/services/agent-name-map";
 import {
   CLIENT_BALANCE_RANGE_OPTIONS,
   type ClientBalanceRangeFilter,
@@ -72,28 +71,6 @@ const ASSIGNED_ONLY_FILTER = "__assigned_only__";
 const KEEP_AGENT_OPTION = "__keep_agent__";
 const UNASSIGNED_AGENT_OPTION = "__unassigned_agent__";
 const CAMPAIGN_MAX_FILTERED_SELECTION = 5000;
-
-async function enrichClientsWithAssignedAgentNames(clients: Client[]) {
-  const ids = Array.from(
-    new Set(clients.map((client) => client.assigned_to).filter(Boolean)),
-  ) as string[];
-
-  if (ids.length === 0) {
-    return clients.map((client) => ({
-      ...client,
-      assigned_agent: client.assigned_agent ?? null,
-    }));
-  }
-
-  const map = await agentNameMap(ids);
-
-  return clients.map((client) => ({
-    ...client,
-    assigned_agent: client.assigned_to
-      ? { name: map.get(client.assigned_to) ?? client.assigned_to }
-      : null,
-  }));
-}
 
 export default function CampaignClientsModal({
   campaign,
@@ -225,13 +202,11 @@ export default function CampaignClientsModal({
           throw result.error;
         }
 
-        const enrichedClients = await enrichClientsWithAssignedAgentNames(
-          result.data ?? [],
-        );
-        setClients(enrichedClients);
+        const nextClients = (result.data ?? []) as Client[];
+        setClients(nextClients);
         setTotalClients(result.count ?? 0);
         setSelectedClientIds((current) =>
-          current.filter((id) => enrichedClients.some((client) => client.id === id)),
+          current.filter((id) => nextClients.some((client) => client.id === id)),
         );
       } catch (loadError: any) {
         console.error("[CampaignClientsModal] loadClients error:", loadError);
