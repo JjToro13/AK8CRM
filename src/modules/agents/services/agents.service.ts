@@ -30,7 +30,11 @@ export const agents = {
     return { error };
   },
 
-  remove: async (id: string) => {
+  remove: async (params: {
+    id: string;
+    scheduledCallsAction?: "block" | "delete" | "migrate";
+    migrateToAgentId?: string | null;
+  }) => {
     const {
       data: { session },
       error: sessionError,
@@ -52,7 +56,11 @@ export const agents = {
         apikey: appEnv.supabase.anonKey,
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({
+        id: params.id,
+        scheduled_calls_action: params.scheduledCallsAction ?? "block",
+        migrate_to_agent_id: params.migrateToAgentId ?? null,
+      }),
     });
 
     const rawText = await response.text();
@@ -86,6 +94,24 @@ export const agents = {
     }
 
     return { error: null };
+  },
+
+  getDeletePreview: async (id: string) => {
+    const { data, error } = await supabase.rpc("get_agent_delete_preview", {
+      p_id: id,
+    });
+
+    const row = Array.isArray(data) ? data[0] : data;
+    return {
+      data: (row ?? null) as {
+        agent_id: string;
+        operation_id: string | null;
+        scheduled_calls_count: number;
+        blocking_comments_count: number;
+        blocking_assignments_count: number;
+      } | null,
+      error,
+    };
   },
 
   create: async (params: {

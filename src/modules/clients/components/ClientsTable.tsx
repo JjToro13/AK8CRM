@@ -4,8 +4,9 @@ import type {
   MutableRefObject,
 } from "react";
 import { AlertCircle, ArrowDown, ArrowUp, ChevronsUpDown, Radar, X } from "lucide-react";
-import { CLIENT_STATUS_OPTIONS, type ClientStatusCode, cn } from "../../../lib/utils";
+import { type ClientStatusCode, cn } from "../../../lib/utils";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
+import { useClientStatusCatalog } from "../../../shared/hooks/useClientStatusCatalog";
 import Input from "../../../shared/components/ui/Input";
 import {
   Select,
@@ -96,6 +97,7 @@ export default function ClientsTable({
   onSortChange,
 }: ClientsTableProps) {
   const { settings: privacySettings } = useClientPrivacySettings();
+  const { statusOptions } = useClientStatusCatalog();
   const visibleColumnConfigs = CLIENT_TABLE_COLUMNS.filter((column) =>
     visibleColumns.includes(column.key),
   );
@@ -203,7 +205,7 @@ export default function ClientsTable({
                             </SelectTrigger>
                             <SelectContent className="clients-filter-select-content">
                               <SelectItem value="all">Todos</SelectItem>
-                              {CLIENT_STATUS_OPTIONS.map((option) => (
+                              {statusOptions.map((option) => (
                                 <SelectItem key={option.code} value={option.code}>
                                   {option.label}
                                 </SelectItem>

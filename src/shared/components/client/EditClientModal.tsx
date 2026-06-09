@@ -21,7 +21,6 @@ import { supabase, ClientComment, clientComments } from "../../../lib/supabase";
 import { Client } from "../../../lib/supabase";
 import LoadingSpinner from "../feedback/LoadingSpinner";
 import {
-  CLIENT_STATUS_OPTIONS,
   ClientStatusCode,
   formatDate,
   getLegacyStatusColor,
@@ -30,6 +29,7 @@ import {
   getStatusText,
 } from "../../../lib/utils";
 import { useAuth } from "../../../hooks/useAuth";
+import { useClientStatusCatalog } from "../../hooks/useClientStatusCatalog";
 import Input from "../ui/Input";
 import Textarea from "../ui/Textarea";
 import {
@@ -119,6 +119,7 @@ export default function EditClientModal({
 }: EditClientModalProps) {
   const { user } = useAuth();
   const { settings: privacySettings } = useClientPrivacySettings();
+  const { statusOptions } = useClientStatusCatalog();
 
   const [statusCode, setStatusCode] = useState<ClientStatusCode>("NU");
   const [baselineStatusCode, setBaselineStatusCode] =
@@ -214,8 +215,8 @@ export default function EditClientModal({
   }, [client, isOpen]);
 
   const selectableStatusOptions = useMemo(
-    () => CLIENT_STATUS_OPTIONS.filter((status) => status.code !== "NU"),
-    [],
+    () => statusOptions.filter((status) => status.code !== "NU"),
+    [statusOptions],
   );
 
   const loadCommentsPage = async (

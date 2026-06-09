@@ -4,6 +4,8 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 type DeleteAgentBody = {
   id?: unknown;
+  scheduled_calls_action?: unknown;
+  migrate_to_agent_id?: unknown;
 };
 
 type MyAgentRow = {
@@ -30,6 +32,18 @@ function jsonResponse(
 
 function asString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function asScheduledCallsAction(value: unknown) {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (
+    normalized === "block" ||
+    normalized === "delete" ||
+    normalized === "migrate"
+  ) {
+    return normalized;
+  }
+  return "block";
 }
 
 function isCreatorRole(value: string | null): value is CreatorRole {
@@ -128,6 +142,10 @@ serve(async (req) => {
 
     const body = (await req.json()) as DeleteAgentBody;
     const targetId = asString(body.id);
+    const scheduledCallsAction = asScheduledCallsAction(
+      body.scheduled_calls_action,
+    );
+    const migrateToAgentId = asString(body.migrate_to_agent_id) || null;
 
     if (!targetId) {
       return jsonResponse(
@@ -139,6 +157,8 @@ serve(async (req) => {
 
     const { error: deleteRowError } = await authedClient.rpc("delete_agent", {
       p_id: targetId,
+      p_scheduled_calls_action: scheduledCallsAction,
+      p_migrate_to_agent_id: migrateToAgentId,
     });
 
     if (deleteRowError) {

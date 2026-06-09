@@ -8,10 +8,10 @@ import {
   X,
 } from "lucide-react";
 import {
-  CLIENT_STATUS_OPTIONS,
   cn,
   type ClientStatusCode,
 } from "../../../lib/utils";
+import { useClientStatusCatalog } from "../../../shared/hooks/useClientStatusCatalog";
 import {
   CLIENT_BALANCE_RANGE_OPTIONS,
   type ClientBalanceRangeFilter,
@@ -98,6 +98,7 @@ export default function ClientsFiltersCard({
   onRowsPerPageChange,
   opLocked,
 }: ClientsFiltersCardProps) {
+  const { statusOptions } = useClientStatusCatalog();
   const [isHoverOpen, setIsHoverOpen] = useState(false);
   const [isPinnedOpen, setIsPinnedOpen] = useState(false);
   const closeTimerRef = useRef<number | null>(null);
@@ -329,7 +330,7 @@ export default function ClientsFiltersCard({
 
                     <SelectContent className="clients-filter-select-content">
                       <SelectItem value="all">Todas las tipificaciones</SelectItem>
-                      {CLIENT_STATUS_OPTIONS.map((status) => (
+                      {statusOptions.map((status) => (
                         <SelectItem key={status.code} value={status.code}>
                           <span className="inline-flex items-center gap-2">
                             <span

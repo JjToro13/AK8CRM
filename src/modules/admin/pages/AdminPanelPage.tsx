@@ -37,6 +37,7 @@ import type {
   OperationDeletePreview,
   Operation2faEnrollment,
   OperationSecuritySettings,
+  TenantClientStatusDefinition,
   TenantAdminSettings,
 } from "../types/admin.types";
 import { notify } from "../../../shared/lib/notify";
@@ -105,6 +106,17 @@ function PrivacyToggle({
 }
 
 export default function AdminPanelPage() {
+  const tenantStatusColorOptions = [
+    { value: "slate", label: "Slate" },
+    { value: "sky", label: "Sky" },
+    { value: "emerald", label: "Emerald" },
+    { value: "blue", label: "Blue" },
+    { value: "rose", label: "Rose" },
+    { value: "amber", label: "Amber" },
+    { value: "yellow", label: "Yellow" },
+    { value: "violet", label: "Violet" },
+    { value: "zinc", label: "Zinc" },
+  ] as const;
   const [tenants, setTenants] = useState<AdminTenantOption[]>([]);
   const [operations, setOperations] = useState<AdminOperationOption[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
@@ -129,6 +141,13 @@ export default function AdminPanelPage() {
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [tenantStatuses, setTenantStatuses] = useState<TenantClientStatusDefinition[]>([]);
+  const [statusesLoading, setStatusesLoading] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [newStatusCode, setNewStatusCode] = useState("");
+  const [newStatusLabel, setNewStatusLabel] = useState("");
+  const [newStatusDescription, setNewStatusDescription] = useState("");
+  const [newStatusColor, setNewStatusColor] = useState("slate");
   const [error, setError] = useState("");
 
   const selectedTenant = useMemo(
@@ -161,6 +180,27 @@ const operationLimitMessage =
     "Cambios en proceso: algunas funciones pueden dar resultados no deseados mientras se termina la estabilizacion.";
   const adminInputClassName =
     "mt-2 h-11 w-full rounded-2xl border border-border bg-surface px-3 text-sm font-medium text-ink outline-none transition placeholder:text-muted/60 focus:border-brand/40 focus:ring-4 focus:ring-brand/15 disabled:cursor-not-allowed disabled:opacity-60";
+
+  const loadTenantStatuses = useCallback(async (tenantId: string | null) => {
+    if (!tenantId) {
+      setTenantStatuses([]);
+      return;
+    }
+
+    setStatusesLoading(true);
+    const { data, error: statusesError } = await admin.listTenantClientStatuses(
+      tenantId,
+    );
+    setStatusesLoading(false);
+
+    if (statusesError) {
+      setError(statusesError.message);
+      setTenantStatuses([]);
+      return;
+    }
+
+    setTenantStatuses(data ?? []);
+  }, []);
 
   const loadPanel = useCallback(async () => {
     setLoading(true);
@@ -265,6 +305,10 @@ const operationLimitMessage =
   useEffect(() => {
     void loadOperationSecuritySettings(selectedOperationId);
   }, [loadOperationSecuritySettings, selectedOperationId]);
+
+  useEffect(() => {
+    void loadTenantStatuses(selectedTenantId);
+  }, [loadTenantStatuses, selectedTenantId]);
 
   useEffect(() => {
     setDeleteOpen(false);
@@ -540,6 +584,39 @@ const operationLimitMessage =
     window.dispatchEvent(new CustomEvent("cm:operation-settings-changed"));
   };
 
+  const handleCreateTenantStatus = async (event: FormEvent) => {
+    event.preventDefault();
+
+    if (!selectedTenantId) return;
+
+    setStatusSaving(true);
+    setError("");
+
+    const { error: createError } = await admin.createTenantClientStatus({
+      tenantId: selectedTenantId,
+      code: newStatusCode.trim().toUpperCase(),
+      label: newStatusLabel.trim(),
+      description: newStatusDescription.trim(),
+      colorToken: newStatusColor,
+    });
+
+    setStatusSaving(false);
+
+    if (createError) {
+      setError(createError.message);
+      notify.error("No se pudo crear la tipificacion");
+      return;
+    }
+
+    setNewStatusCode("");
+    setNewStatusLabel("");
+    setNewStatusDescription("");
+    setNewStatusColor("slate");
+    notify.success("Tipificacion creada");
+    void loadTenantStatuses(selectedTenantId);
+    window.dispatchEvent(new CustomEvent("cm:operation-settings-changed"));
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-bg">
       <PageHeader
@@ -806,6 +883,155 @@ const operationLimitMessage =
                 </div>
 
                 <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-[1.25rem] border border-border bg-surface2 p-4 lg:col-span-2">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-ink">
+                          Tipificaciones del tenant
+                        </div>
+                        <p className="mt-1 text-sm leading-6 text-muted">
+                          Las globales permanecen visibles para todos. Las que crees
+                          aqui solo aplican al tenant{" "}
+                          <span className="font-semibold text-ink">
+                            {selectedTenantName}
+                          </span>
+                          .
+                        </p>
+                      </div>
+
+                      <div className="rounded-full border border-brand/15 bg-brand/[0.08] px-3 py-1 text-xs font-semibold text-brand">
+                        {statusesLoading
+                          ? "Cargando..."
+                          : `${tenantStatuses.length} tipificaciones visibles`}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {tenantStatuses.map((status) => (
+                        <div
+                          key={status.id}
+                          className="rounded-full border border-border bg-surface px-3 py-2 text-xs"
+                        >
+                          <span className="font-semibold text-ink">
+                            {status.code}
+                          </span>
+                          {" · "}
+                          <span className="text-muted">{status.label}</span>
+                          {" · "}
+                          <span
+                            className={cn(
+                              "font-semibold",
+                              status.is_global ? "text-brand" : "text-ink/70",
+                            )}
+                          >
+                            {status.is_global ? "Global" : "Tenant"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <form
+                      onSubmit={handleCreateTenantStatus}
+                      className="mt-5 rounded-[1.1rem] border border-border bg-surface p-4"
+                    >
+                      <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        <Plus className="h-4 w-4 text-brand" />
+                        Crear tipificacion para este tenant
+                      </div>
+
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        <label className="block">
+                          <span className="text-xs font-semibold text-muted">
+                            Codigo
+                          </span>
+                          <input
+                            type="text"
+                            value={newStatusCode}
+                            onChange={(event) =>
+                              setNewStatusCode(
+                                event.target.value
+                                  .toUpperCase()
+                                  .replace(/[^A-Z0-9_]/g, ""),
+                              )
+                            }
+                            className={adminInputClassName}
+                            placeholder="EX: VC"
+                            maxLength={20}
+                            disabled={statusSaving || !selectedTenantId}
+                          />
+                        </label>
+
+                        <label className="block">
+                          <span className="text-xs font-semibold text-muted">
+                            Nombre
+                          </span>
+                          <input
+                            type="text"
+                            value={newStatusLabel}
+                            onChange={(event) =>
+                              setNewStatusLabel(event.target.value)
+                            }
+                            className={adminInputClassName}
+                            placeholder="Ej. Volver a contactar"
+                            disabled={statusSaving || !selectedTenantId}
+                          />
+                        </label>
+
+                        <label className="block">
+                          <span className="text-xs font-semibold text-muted">
+                            Color
+                          </span>
+                          <select
+                            value={newStatusColor}
+                            onChange={(event) => setNewStatusColor(event.target.value)}
+                            className={adminInputClassName}
+                            disabled={statusSaving || !selectedTenantId}
+                          >
+                            {tenantStatusColorOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="block">
+                          <span className="text-xs font-semibold text-muted">
+                            Descripcion
+                          </span>
+                          <input
+                            type="text"
+                            value={newStatusDescription}
+                            onChange={(event) =>
+                              setNewStatusDescription(event.target.value)
+                            }
+                            className={adminInputClassName}
+                            placeholder="Que representa esta tipificacion"
+                            disabled={statusSaving || !selectedTenantId}
+                          />
+                        </label>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={
+                          statusSaving ||
+                          !selectedTenantId ||
+                          !newStatusCode.trim() ||
+                          !newStatusLabel.trim()
+                        }
+                        className="mt-4 inline-flex min-h-[42px] items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {statusSaving ? (
+                          <LoadingSpinner size="sm" text="" fullScreen={false} />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                        Crear tipificacion
+                      </button>
+                    </form>
+                  </div>
+
                   <PrivacyToggle
                     checked={Boolean(settings?.client_phone_masked)}
                     description="Oculta parcialmente los numeros cuando se muestran en vistas operativas."

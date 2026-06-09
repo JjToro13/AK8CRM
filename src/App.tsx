@@ -11,6 +11,7 @@ import { useAuth } from "./hooks/useAuth";
 import { Suspense, lazy, useEffect, useState } from "react";
 
 import LoadingSpinner from "./shared/components/feedback/LoadingSpinner";
+import ClientStatusCatalogLoader from "./shared/components/app/ClientStatusCatalogLoader";
 import MaintenanceGate from "./shared/components/guards/MaintenanceGate";
 import {
   canAccessAgentWorkspace,
@@ -212,6 +213,7 @@ export default function App() {
       >
         <MaintenanceGate>
           <div className="min-h-screen bg-bg">
+          {user ? <ClientStatusCatalogLoader /> : null}
           <AuthenticatedChrome user={user} />
           <BackendHealthDebugger />
           <Operation2faGate />

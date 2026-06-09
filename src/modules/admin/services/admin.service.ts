@@ -4,6 +4,7 @@ import type {
   OperationDeletePreview,
   OperationDeleteResult,
   OperationSecuritySettings,
+  TenantClientStatusDefinition,
   TenantAdminSettings,
 } from "../types/admin.types";
 
@@ -157,6 +158,41 @@ export const admin = {
 
     return {
       data: (row ?? null) as OperationDeleteResult | null,
+      error,
+    };
+  },
+
+  listTenantClientStatuses: async (tenantId: string | null) => {
+    const { data, error } = await supabase.rpc("list_client_status_definitions", {
+      p_tenant_id: tenantId,
+    });
+
+    return {
+      data: (Array.isArray(data) ? data : []) as TenantClientStatusDefinition[],
+      error,
+    };
+  },
+
+  createTenantClientStatus: async (params: {
+    tenantId: string;
+    code: string;
+    label: string;
+    description?: string;
+    colorToken: string;
+  }) => {
+    const { data, error } = await supabase.rpc("create_tenant_client_status", {
+      p_tenant_id: params.tenantId,
+      p_code: params.code,
+      p_label: params.label,
+      p_short_label: params.code,
+      p_description: params.description ?? "",
+      p_color_token: params.colorToken,
+    });
+
+    const row = Array.isArray(data) ? data[0] : data;
+
+    return {
+      data: (row ?? null) as TenantClientStatusDefinition | null,
       error,
     };
   },

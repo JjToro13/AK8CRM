@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { agents, clients as clientsService, supabase } from "../../../lib/supabase";
 import {
-  CLIENT_STATUS_OPTIONS,
   cn,
   formatCurrency,
   getStatusText,
@@ -49,6 +48,7 @@ import {
   campaignModalHeaderClass,
   campaignModalPanelClass,
 } from "./campaignUi";
+import { useClientStatusCatalog } from "../../../shared/hooks/useClientStatusCatalog";
 
 type CampaignClientsModalProps = {
   campaign: CampaignViewRow | null;
@@ -101,6 +101,7 @@ export default function CampaignClientsModal({
   onClose,
   onMoved,
 }: CampaignClientsModalProps) {
+  const { statusOptions } = useClientStatusCatalog();
   const [loading, setLoading] = useState(false);
   const [moving, setMoving] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
@@ -612,7 +613,7 @@ export default function CampaignClientsModal({
                       Todos los estatus
                     </SelectItem>
                     <SelectItem value="all">Todos los estatus</SelectItem>
-                    {CLIENT_STATUS_OPTIONS.map((status) => (
+                    {statusOptions.map((status) => (
                       <SelectItem key={status.code} value={status.code}>
                         {status.shortLabel} - {status.label}
                       </SelectItem>

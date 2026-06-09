@@ -22,7 +22,6 @@ import {
 
 import { supabase, Agent, Client, Call } from "../../../lib/supabase";
 import {
-  CLIENT_STATUS_OPTIONS,
   formatDate,
   formatDuration,
   getStatusColor,
@@ -61,6 +60,7 @@ import {
   getClientBalanceRangeBounds,
   type ClientBalanceRangeFilter,
 } from "../../clients/lib/clientFilters";
+import { useClientStatusCatalog } from "../../../shared/hooks/useClientStatusCatalog";
 
 interface AgentDetailsModalProps {
   agent: Agent;
@@ -113,6 +113,7 @@ export default function AgentDetailsModal({
   isOpen,
   onClose,
 }: AgentDetailsModalProps) {
+  const { statusOptions } = useClientStatusCatalog();
   const { reportBackendIssue, reportBackendSuccess, shouldReduceLoad } =
     useBackendHealth();
   const [assignedClients, setAssignedClients] = useState<AgentDetailsClient[]>([]);
@@ -541,7 +542,7 @@ export default function AgentDetailsModal({
                         Todos los estatus
                       </SelectItem>
                       <SelectItem value="all">Todos los estatus</SelectItem>
-                      {CLIENT_STATUS_OPTIONS.map((status) => (
+                      {statusOptions.map((status) => (
                         <SelectItem key={status.code} value={status.code}>
                           {status.shortLabel} · {status.label}
                         </SelectItem>

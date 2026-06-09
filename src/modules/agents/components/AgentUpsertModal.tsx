@@ -49,6 +49,7 @@ type Props = {
 
 type RoleOption = Agent["role"];
 const ROLE_PLACEHOLDER_VALUE = "__role_placeholder__";
+const DELETE_TARGET_PLACEHOLDER_VALUE = "__delete_target_placeholder__";
 
 function getAssignableRoles(
   viewerRole: Agent["role"] | null | undefined,
@@ -125,6 +126,22 @@ export default function AgentUpsertModal({
   const [tenantSlug, setTenantSlug] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [loadingDeletePreview, setLoadingDeletePreview] = useState(false);
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [deleteStrategy, setDeleteStrategy] = useState<"delete" | "migrate">(
+    "migrate",
+  );
+  const [migrateToAgentId, setMigrateToAgentId] = useState("");
+  const [deleteTargetAgents, setDeleteTargetAgents] = useState<
+    Array<{ id: string; name: string; email?: string | null }>
+  >([]);
+  const [deletePreview, setDeletePreview] = useState<{
+    agent_id: string;
+    operation_id: string | null;
+    scheduled_calls_count: number;
+    blocking_comments_count: number;
+    blocking_assignments_count: number;
+  } | null>(null);
   const [error, setError] = useState("");
 
   const title = isEdit ? "Editar usuario" : "Crear usuario";
@@ -135,6 +152,12 @@ export default function AgentUpsertModal({
     setError("");
     setSaving(false);
     setDeleting(false);
+    setLoadingDeletePreview(false);
+    setDeleteMode(false);
+    setDeleteStrategy("migrate");
+    setMigrateToAgentId("");
+    setDeleteTargetAgents([]);
+    setDeletePreview(null);
 
     const run = async () => {
       if (isEdit || !effectiveOperationId) return;
@@ -176,6 +199,12 @@ export default function AgentUpsertModal({
     setError("");
     setSaving(false);
     setDeleting(false);
+    setLoadingDeletePreview(false);
+    setDeleteMode(false);
+    setDeleteStrategy("migrate");
+    setMigrateToAgentId("");
+    setDeleteTargetAgents([]);
+    setDeletePreview(null);
 
     if (isEdit && agent) {
       setName(agent.name ?? "");
@@ -380,17 +409,41 @@ export default function AgentUpsertModal({
   const remove = async () => {
     if (!isEdit || !agent?.id || !canDelete) return;
 
-    const confirmed = window.confirm(
-      `Eliminar a ${agent.name}? Se liberaran sus clientes asignados. Esta accion no se puede deshacer.`,
-    );
-
-    if (!confirmed) return;
-
     setError("");
     setDeleting(true);
 
     try {
-      const { error: deleteError } = await agents.remove(agent.id);
+      if (!deletePreview) {
+        throw new Error("No se pudo validar el impacto de la eliminacion.");
+      }
+
+      if (deletePreview.blocking_comments_count > 0) {
+        throw new Error(
+          "El usuario tiene comentarios registrados y no puede eliminarse por ahora.",
+        );
+      }
+
+      if (deletePreview.blocking_assignments_count > 0) {
+        throw new Error(
+          "El usuario tiene asignaciones historicas registradas y no puede eliminarse por ahora.",
+        );
+      }
+
+      if (
+        deletePreview.scheduled_calls_count > 0 &&
+        deleteStrategy === "migrate" &&
+        !migrateToAgentId
+      ) {
+        throw new Error("Debes seleccionar el agente destino para migrar las citas.");
+      }
+
+      const { error: deleteError } = await agents.remove({
+        id: agent.id,
+        scheduledCallsAction:
+          deletePreview.scheduled_calls_count > 0 ? deleteStrategy : "block",
+        migrateToAgentId:
+          deleteStrategy === "migrate" ? migrateToAgentId : null,
+      });
       if (deleteError) throw deleteError;
 
       notify.success(
@@ -403,6 +456,59 @@ export default function AgentUpsertModal({
       setError(deleteError?.message || "Error eliminando usuario");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const openDeleteFlow = async () => {
+    if (!isEdit || !agent?.id || !canDelete) return;
+
+    setError("");
+    setLoadingDeletePreview(true);
+
+    try {
+      const [{ data: preview, error: previewError }, { data: allAgents, error: agentsError }] =
+        await Promise.all([agents.getDeletePreview(agent.id), agents.getAll()]);
+
+      if (previewError) {
+        throw previewError;
+      }
+
+      if (agentsError) {
+        throw agentsError;
+      }
+
+      const nextTargets = (allAgents ?? [])
+        .filter(
+          (candidate) =>
+            candidate.id !== agent.id &&
+            candidate.role === "agent" &&
+            candidate.is_active !== false &&
+            candidate.operation_id === agent.operation_id,
+        )
+        .map((candidate) => ({
+          id: candidate.id,
+          name: candidate.name,
+          email: candidate.email ?? null,
+        }));
+
+      const scheduledCallsCount = preview?.scheduled_calls_count ?? 0;
+
+      setDeletePreview(preview);
+      setDeleteTargetAgents(nextTargets);
+      setDeleteMode(true);
+      setDeleteStrategy(
+        scheduledCallsCount > 0 && nextTargets.length > 0
+          ? "migrate"
+          : "delete",
+      );
+      setMigrateToAgentId(nextTargets[0]?.id ?? "");
+    } catch (deleteFlowError: any) {
+      console.error(deleteFlowError);
+      setError(
+        deleteFlowError?.message || "No se pudo preparar la eliminacion del usuario.",
+      );
+    } finally {
+      setLoadingDeletePreview(false);
     }
   };
 
@@ -622,6 +728,132 @@ export default function AgentUpsertModal({
               />
             </label>
           </div>
+
+          {canDelete && deleteMode ? (
+            <div className={cn(agentInsetClass, "space-y-4 p-4")}>
+              <div>
+                <div className="text-sm font-semibold text-red-700">
+                  Confirmacion de eliminacion
+                </div>
+                <p className="mt-1 text-xs leading-5 text-muted">
+                  Se liberaran sus clientes asignados y la eliminacion no se puede
+                  deshacer.
+                </p>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl border border-white/74 bg-white/72 px-3 py-3 text-sm">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+                    Citas
+                  </div>
+                  <div className="mt-1 font-semibold text-ink">
+                    {deletePreview?.scheduled_calls_count ?? 0}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/74 bg-white/72 px-3 py-3 text-sm">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+                    Comentarios bloqueantes
+                  </div>
+                  <div className="mt-1 font-semibold text-ink">
+                    {deletePreview?.blocking_comments_count ?? 0}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/74 bg-white/72 px-3 py-3 text-sm">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+                    Asignaciones bloqueantes
+                  </div>
+                  <div className="mt-1 font-semibold text-ink">
+                    {deletePreview?.blocking_assignments_count ?? 0}
+                  </div>
+                </div>
+              </div>
+
+              {(deletePreview?.blocking_comments_count ?? 0) > 0 ||
+              (deletePreview?.blocking_assignments_count ?? 0) > 0 ? (
+                <div className="rounded-[1.2rem] border border-amber-200/90 bg-[linear-gradient(180deg,rgba(254,252,232,0.95),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-amber-800">
+                  Este usuario aun tiene historial que el sistema no permite borrar
+                  automaticamente. Debes resolver esos registros antes de eliminarlo.
+                </div>
+              ) : null}
+
+              {(deletePreview?.scheduled_calls_count ?? 0) > 0 ? (
+                <div className="space-y-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+                    Resolver citas programadas
+                  </div>
+
+                  <label className="flex items-start gap-3 rounded-2xl border border-white/74 bg-white/72 px-3 py-3 text-sm text-ink">
+                    <input
+                      type="radio"
+                      name="delete-strategy"
+                      checked={deleteStrategy === "migrate"}
+                      onChange={() => setDeleteStrategy("migrate")}
+                      disabled={deleting || deleteTargetAgents.length === 0}
+                    />
+                    <span>
+                      Migrar citas a otro agente
+                      <span className="block text-xs text-muted">
+                        Conserva las citas y cambia su responsable.
+                      </span>
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-3 rounded-2xl border border-white/74 bg-white/72 px-3 py-3 text-sm text-ink">
+                    <input
+                      type="radio"
+                      name="delete-strategy"
+                      checked={deleteStrategy === "delete"}
+                      onChange={() => setDeleteStrategy("delete")}
+                      disabled={deleting}
+                    />
+                    <span>
+                      Eliminar citas
+                      <span className="block text-xs text-muted">
+                        Las citas del agente se borraran antes de eliminarlo.
+                      </span>
+                    </span>
+                  </label>
+
+                  {deleteStrategy === "migrate" ? (
+                    <div>
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+                        Agente destino
+                      </div>
+                      <Select
+                        value={migrateToAgentId || DELETE_TARGET_PLACEHOLDER_VALUE}
+                        onValueChange={(value) => {
+                          if (value === DELETE_TARGET_PLACEHOLDER_VALUE) return;
+                          setMigrateToAgentId(value);
+                        }}
+                        disabled={deleting || deleteTargetAgents.length === 0}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona un agente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={DELETE_TARGET_PLACEHOLDER_VALUE} disabled>
+                            Selecciona un agente
+                          </SelectItem>
+                          {deleteTargetAgents.map((targetAgent) => (
+                            <SelectItem key={targetAgent.id} value={targetAgent.id}>
+                              {targetAgent.name}
+                              {targetAgent.email ? ` · ${targetAgent.email}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {deleteTargetAgents.length === 0 ? (
+                        <p className="mt-2 text-xs text-muted">
+                          No hay agentes operativos activos en la misma operacion
+                          para migrar estas citas.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </ModalBody>
 
         <ModalFooter className={cn("gap-2 max-sm:flex-wrap", agentModalFooterClass)}>
@@ -629,15 +861,26 @@ export default function AgentUpsertModal({
             <button
               type="button"
               className="mr-auto inline-flex items-center rounded-full border border-red-200 bg-red-50/92 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={remove}
-              disabled={saving || deleting}
+              onClick={() => {
+                if (deleteMode) {
+                  void remove();
+                  return;
+                }
+
+                void openDeleteFlow();
+              }}
+              disabled={saving || deleting || loadingDeletePreview}
             >
-              {deleting ? (
-                <LoadingSpinner size="sm" text="Eliminando..." fullScreen={false} />
+              {deleting || loadingDeletePreview ? (
+                <LoadingSpinner
+                  size="sm"
+                  text={deleting ? "Eliminando..." : "Validando..."}
+                  fullScreen={false}
+                />
               ) : (
                 <>
                   <Trash2 className="h-4 w-4" />
-                  Eliminar
+                  {deleteMode ? "Confirmar eliminacion" : "Eliminar"}
                 </>
               )}
             </button>
@@ -646,10 +889,21 @@ export default function AgentUpsertModal({
           <button
             type="button"
             className={modalSecondaryActionClassName}
-            onClick={onClose}
+            onClick={() => {
+              if (deleteMode) {
+                setDeleteMode(false);
+                setDeletePreview(null);
+                setDeleteTargetAgents([]);
+                setMigrateToAgentId("");
+                setDeleteStrategy("migrate");
+                setError("");
+                return;
+              }
+              onClose();
+            }}
             disabled={saving || deleting}
           >
-            Cancelar
+            {deleteMode ? "Volver" : "Cancelar"}
           </button>
 
           <button

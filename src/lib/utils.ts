@@ -7,17 +7,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export type ClientStatusCode =
-  | "NU"
-  | "LD"
-  | "DP"
-  | "SG"
-  | "NC"
-  | "NI"
-  | "NX"
-  | "NE"
-  | "RA"
-  | "FS";
+export type ClientStatusCode = string;
 
 type LegacyStatusColor = "gray" | "red" | "yellow" | "green" | "blue";
 
@@ -35,99 +25,171 @@ export type ClientStatusMeta = {
   description: string;
   dotClass: string;
   indicatorClass: string;
+  colorToken?: string;
+  isGlobal?: boolean;
+  isSystem?: boolean;
 };
+
+const STATUS_COLOR_STYLES = {
+  slate: {
+    dotClass: "bg-slate-400 ring-1 ring-inset ring-slate-500/30",
+    indicatorClass: "bg-slate-400 ring-1 ring-inset ring-slate-500/30",
+  },
+  sky: {
+    dotClass: "bg-sky-500 ring-1 ring-inset ring-sky-600/30",
+    indicatorClass: "bg-sky-500 ring-1 ring-inset ring-sky-600/30",
+  },
+  emerald: {
+    dotClass: "bg-emerald-500 ring-1 ring-inset ring-emerald-600/30",
+    indicatorClass: "bg-emerald-500 ring-1 ring-inset ring-emerald-600/30",
+  },
+  blue: {
+    dotClass: "bg-blue-500 ring-1 ring-inset ring-blue-600/30",
+    indicatorClass: "bg-blue-500 ring-1 ring-inset ring-blue-600/30",
+  },
+  rose: {
+    dotClass: "bg-rose-500 ring-1 ring-inset ring-rose-600/30",
+    indicatorClass: "bg-rose-500 ring-1 ring-inset ring-rose-600/30",
+  },
+  amber: {
+    dotClass: "bg-amber-500 ring-1 ring-inset ring-amber-600/30",
+    indicatorClass: "bg-amber-500 ring-1 ring-inset ring-amber-600/30",
+  },
+  yellow: {
+    dotClass: "bg-yellow-400 ring-1 ring-inset ring-yellow-500/30",
+    indicatorClass: "bg-yellow-400 ring-1 ring-inset ring-yellow-500/30",
+  },
+  violet: {
+    dotClass: "bg-violet-500 ring-1 ring-inset ring-violet-600/30",
+    indicatorClass: "bg-violet-500 ring-1 ring-inset ring-violet-600/30",
+  },
+  zinc: {
+    dotClass: "bg-zinc-600 ring-1 ring-inset ring-zinc-700/30",
+    indicatorClass: "bg-zinc-600 ring-1 ring-inset ring-zinc-700/30",
+  },
+} as const;
+
+type StatusColorToken = keyof typeof STATUS_COLOR_STYLES;
+
+function resolveStatusColorStyles(colorToken?: string | null) {
+  const token = String(colorToken ?? "slate").trim().toLowerCase() as StatusColorToken;
+  return STATUS_COLOR_STYLES[token] ?? STATUS_COLOR_STYLES.slate;
+}
 
 export const CLIENT_STATUS_OPTIONS: ClientStatusMeta[] = [
   {
     code: "NU",
     label: "Nuevo",
     shortLabel: "NU",
-    description: "Estado base automático al cargar una base nueva",
-    dotClass: "bg-gray-100 ring-1 ring-inset ring-gray-300",
-    indicatorClass: "bg-gray-100 ring-1 ring-inset ring-gray-300",
+    description: "Estado base automatico al cargar una base nueva",
+    ...resolveStatusColorStyles("slate"),
+    colorToken: "slate",
+    isGlobal: true,
+    isSystem: true,
   },
   {
     code: "LD",
-    label: "Llamar después",
+    label: "Llamar despues",
     shortLabel: "LD",
-    description: "Cliente pidió retomar el contacto más adelante",
-    dotClass: "bg-sky-500 ring-1 ring-inset ring-sky-600/30",
-    indicatorClass: "bg-sky-500 ring-1 ring-inset ring-sky-600/30",
+    description: "Cliente pidio retomar el contacto mas adelante",
+    ...resolveStatusColorStyles("sky"),
+    colorToken: "sky",
+    isGlobal: true,
+    isSystem: true,
   },
   {
     code: "DP",
-    label: "Depósito",
+    label: "Deposito",
     shortLabel: "DP",
-    description: "El cliente ya realizó el depósito o confirmó ingreso",
-    dotClass: "bg-emerald-500 ring-1 ring-inset ring-emerald-600/30",
-    indicatorClass: "bg-emerald-500 ring-1 ring-inset ring-emerald-600/30",
+    description: "El cliente ya realizo el deposito o confirmo ingreso",
+    ...resolveStatusColorStyles("emerald"),
+    colorToken: "emerald",
+    isGlobal: true,
+    isSystem: true,
   },
   {
     code: "SG",
     label: "Seguimiento",
     shortLabel: "SG",
-    description: "Cliente activo en gestión comercial o de continuidad",
-    dotClass: "bg-blue-500 ring-1 ring-inset ring-blue-600/30",
-    indicatorClass: "bg-blue-500 ring-1 ring-inset ring-blue-600/30",
+    description: "Cliente activo en gestion comercial o de continuidad",
+    ...resolveStatusColorStyles("blue"),
+    colorToken: "blue",
+    isGlobal: true,
+    isSystem: true,
   },
   {
     code: "NC",
     label: "No contesta",
     shortLabel: "NC",
-    description: "No atiende, buzón o no fue posible concretar contacto",
-    dotClass: "bg-slate-400 ring-1 ring-inset ring-slate-500/30",
-    indicatorClass: "bg-slate-400 ring-1 ring-inset ring-slate-500/30",
+    description: "No atiende, buzon o no fue posible concretar contacto",
+    ...resolveStatusColorStyles("slate"),
+    colorToken: "slate",
+    isGlobal: true,
+    isSystem: true,
   },
   {
     code: "NI",
     label: "No interesado",
     shortLabel: "NI",
-    description: "Rechazo explícito o sin intención de continuar",
-    dotClass: "bg-rose-500 ring-1 ring-inset ring-rose-600/30",
-    indicatorClass: "bg-rose-500 ring-1 ring-inset ring-rose-600/30",
+    description: "Rechazo explicito o sin intencion de continuar",
+    ...resolveStatusColorStyles("rose"),
+    colorToken: "rose",
+    isGlobal: true,
+    isSystem: true,
   },
   {
     code: "NX",
-    label: "Número no existe",
+    label: "Numero no existe",
     shortLabel: "NX",
-    description: "La línea no existe, está fuera de servicio o inválida",
-    dotClass: "bg-amber-500 ring-1 ring-inset ring-amber-600/30",
-    indicatorClass: "bg-amber-500 ring-1 ring-inset ring-amber-600/30",
+    description: "La linea no existe, esta fuera de servicio o invalida",
+    ...resolveStatusColorStyles("amber"),
+    colorToken: "amber",
+    isGlobal: true,
+    isSystem: true,
   },
   {
     code: "NE",
-    label: "Número equivocado",
+    label: "Numero equivocado",
     shortLabel: "NE",
     description: "El contacto responde, pero no corresponde al cliente",
-    dotClass: "bg-yellow-400 ring-1 ring-inset ring-yellow-500/30",
-    indicatorClass: "bg-yellow-400 ring-1 ring-inset ring-yellow-500/30",
+    ...resolveStatusColorStyles("yellow"),
+    colorToken: "yellow",
+    isGlobal: true,
+    isSystem: true,
   },
   {
     code: "RA",
     label: "Reasignar",
     shortLabel: "RA",
     description: "El lead debe volver a reparto o cambiar de responsable",
-    dotClass: "bg-violet-500 ring-1 ring-inset ring-violet-600/30",
-    indicatorClass: "bg-violet-500 ring-1 ring-inset ring-violet-600/30",
+    ...resolveStatusColorStyles("violet"),
+    colorToken: "violet",
+    isGlobal: true,
+    isSystem: true,
   },
   {
     code: "FS",
     label: "Fin de seguimiento",
     shortLabel: "FS",
-    description: "La gestión se cierra sin más acciones pendientes",
-    dotClass: "bg-zinc-600 ring-1 ring-inset ring-zinc-700/30",
-    indicatorClass: "bg-zinc-600 ring-1 ring-inset ring-zinc-700/30",
+    description: "La gestion se cierra sin mas acciones pendientes",
+    ...resolveStatusColorStyles("zinc"),
+    colorToken: "zinc",
+    isGlobal: true,
+    isSystem: true,
   },
 ];
 
-const STATUS_META_MAP: Record<ClientStatusCode, ClientStatusMeta> =
-  CLIENT_STATUS_OPTIONS.reduce(
+let runtimeClientStatusOptions = [...CLIENT_STATUS_OPTIONS];
+
+function buildStatusMetaMap(options: ClientStatusMeta[]) {
+  return options.reduce(
     (acc, item) => {
       acc[item.code] = item;
       return acc;
     },
-    {} as Record<ClientStatusCode, ClientStatusMeta>,
+    {} as Record<string, ClientStatusMeta>,
   );
+}
 
 const LEGACY_STATUS_CODE_TO_CODE: Record<string, ClientStatusCode> = {
   SC: "NU",
@@ -150,22 +212,7 @@ const LEGACY_COLOR_TO_CODE: Record<LegacyStatusColor, ClientStatusCode> = {
 export function isClientStatusCode(
   value?: string | null,
 ): value is ClientStatusCode {
-  const code = String(value ?? "")
-    .trim()
-    .toUpperCase();
-
-  return (
-    code === "NU" ||
-    code === "LD" ||
-    code === "DP" ||
-    code === "SG" ||
-    code === "NC" ||
-    code === "NI" ||
-    code === "NX" ||
-    code === "NE" ||
-    code === "RA" ||
-    code === "FS"
-  );
+  return String(value ?? "").trim().length > 0;
 }
 
 function normalizeStatusCode(value?: string | null): ClientStatusCode | null {
@@ -173,7 +220,7 @@ function normalizeStatusCode(value?: string | null): ClientStatusCode | null {
     .trim()
     .toUpperCase();
 
-  if (isClientStatusCode(code)) {
+  if (code.length > 0) {
     return code;
   }
 
@@ -200,26 +247,41 @@ function normalizeLegacyStatusColor(
   return null;
 }
 
+function buildFallbackStatus(code: string): ClientStatusMeta {
+  return {
+    code,
+    label: code,
+    shortLabel: code,
+    description: "Tipificacion personalizada del tenant.",
+    ...resolveStatusColorStyles("slate"),
+    colorToken: "slate",
+    isGlobal: false,
+    isSystem: false,
+  };
+}
+
 export function resolveClientStatus(status: StatusLike): ClientStatusMeta {
+  const statusMetaMap = buildStatusMetaMap(runtimeClientStatusOptions);
+
   if (typeof status === "string") {
     const asCode = normalizeStatusCode(status);
-    if (asCode) return STATUS_META_MAP[asCode];
+    if (asCode && statusMetaMap[asCode]) return statusMetaMap[asCode];
 
     const asLegacyColor = normalizeLegacyStatusColor(status);
     if (asLegacyColor) {
-      return STATUS_META_MAP[LEGACY_COLOR_TO_CODE[asLegacyColor]];
+      return statusMetaMap[LEGACY_COLOR_TO_CODE[asLegacyColor]];
     }
 
-    return STATUS_META_MAP.NU;
+    return asCode ? buildFallbackStatus(asCode) : statusMetaMap.NU;
   }
 
   const code = normalizeStatusCode(status?.status_code);
-  if (code) return STATUS_META_MAP[code];
+  if (code && statusMetaMap[code]) return statusMetaMap[code];
 
   const legacyColor = normalizeLegacyStatusColor(status?.status_color);
-  if (legacyColor) return STATUS_META_MAP[LEGACY_COLOR_TO_CODE[legacyColor]];
+  if (legacyColor) return statusMetaMap[LEGACY_COLOR_TO_CODE[legacyColor]];
 
-  return STATUS_META_MAP.NU;
+  return code ? buildFallbackStatus(code) : statusMetaMap.NU;
 }
 
 export function getStatusCode(status: StatusLike): ClientStatusCode {
@@ -259,6 +321,42 @@ export function getLegacyStatusColor(status: StatusLike): LegacyStatusColor {
     default:
       return "yellow";
   }
+}
+
+export function getClientStatusOptions() {
+  return runtimeClientStatusOptions;
+}
+
+export function setClientStatusOptions(options: ClientStatusMeta[]) {
+  runtimeClientStatusOptions =
+    Array.isArray(options) && options.length > 0
+      ? [...options]
+      : [...CLIENT_STATUS_OPTIONS];
+}
+
+export function toClientStatusMeta(input: {
+  code: string;
+  label: string;
+  short_label?: string | null;
+  description?: string | null;
+  color_token?: string | null;
+  is_global?: boolean | null;
+  is_system?: boolean | null;
+}) {
+  const code = String(input.code ?? "").trim().toUpperCase();
+  const styles = resolveStatusColorStyles(input.color_token);
+
+  return {
+    code,
+    label: String(input.label ?? code).trim() || code,
+    shortLabel:
+      String(input.short_label ?? code).trim().toUpperCase() || code,
+    description: String(input.description ?? "").trim(),
+    ...styles,
+    colorToken: String(input.color_token ?? "slate").trim().toLowerCase(),
+    isGlobal: Boolean(input.is_global),
+    isSystem: Boolean(input.is_system),
+  } satisfies ClientStatusMeta;
 }
 
 export function formatDate(date: string | Date): string {

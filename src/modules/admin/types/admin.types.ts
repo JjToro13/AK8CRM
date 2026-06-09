@@ -51,3 +51,17 @@ export type OperationDeleteResult = {
   deleted_movements: number;
   cleared_active_agents: number;
 };
+
+export type TenantClientStatusDefinition = {
+  id: string;
+  tenant_id: string | null;
+  code: string;
+  label: string;
+  short_label: string;
+  description: string;
+  color_token: string;
+  sort_order: number;
+  is_system: boolean;
+  is_active: boolean;
+  is_global: boolean;
+};

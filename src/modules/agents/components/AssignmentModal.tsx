@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Tag, Users } from "lucide-react";
 import {
-  CLIENT_STATUS_OPTIONS,
   cn,
   type ClientStatusCode,
 } from "../../../lib/utils";
@@ -40,6 +39,11 @@ import {
   agentModalHeaderClass,
   agentModalPanelClass,
 } from "./agentUi";
+import {
+  isOperation2faRequiredError,
+  notifyOperation2faRequired,
+} from "../../../shared/security/operation-2fa-errors";
+import { useClientStatusCatalog } from "../../../shared/hooks/useClientStatusCatalog";
 
 interface AssignmentModalProps {
   agent: Agent;
@@ -69,6 +73,19 @@ type AssignmentStatusFilter = "all" | ClientStatusCode;
 const ALL_CAMPAIGNS_VALUE = "__ALL__";
 const CAMPAIGN_PLACEHOLDER_VALUE = "__campaign_placeholder__";
 const STATUS_PLACEHOLDER_VALUE = "__status_placeholder__";
+
+function extractAssignedCount(value: unknown) {
+  if (Array.isArray(value)) {
+    const firstRow = value[0] as { assigned_count?: unknown } | undefined;
+    return Number(firstRow?.assigned_count ?? 0);
+  }
+
+  if (value && typeof value === "object" && "assigned_count" in value) {
+    return Number((value as { assigned_count?: unknown }).assigned_count ?? 0);
+  }
+
+  return 0;
+}
 
 const overlayV = {
   initial: { opacity: 0 },
@@ -101,6 +118,7 @@ export default function AssignmentModal({
   onSuccess,
   selectedOperationId,
 }: AssignmentModalProps) {
+  const { statusOptions } = useClientStatusCatalog();
   const {
     canSeeAllOperations,
     operationId: authOperationId,
@@ -350,11 +368,13 @@ export default function AssignmentModal({
         count: safeCount,
         assigned_by: adminId,
         campaign_id: selectedCampaignId ?? null,
-        campaign_prefix: selectedCampaign?.prefix ?? null,
+        // When a campaign id is selected, the RPC can scope by that id directly.
+        // Sending the prefix as well can incorrectly exclude legacy serials.
+        campaign_prefix: selectedCampaignId ? null : selectedCampaign?.prefix ?? null,
       };
 
       const balanceBounds = getClientBalanceRangeBounds(balanceRangeFilter);
-      const { error: rpcErr } = hasActiveExtraFilters
+      const { data: rpcData, error: rpcErr } = hasActiveExtraFilters
         ? await agentAssignments.assignLeadsFiltered({
             ...assignmentRequest,
             status_codes: statusFilter === "all" ? null : [statusFilter],
@@ -366,13 +386,28 @@ export default function AssignmentModal({
 
       if (rpcErr) {
         console.error("[AssignmentModal] assign error:", rpcErr);
+        if (isOperation2faRequiredError(rpcErr)) {
+          notifyOperation2faRequired();
+          setError(
+            "La verificacion 2FA de esta operacion vencio. Verifica la operacion y vuelve a intentar.",
+          );
+          return;
+        }
         setError(rpcErr.message || "Error asignando clientes.");
+        return;
+      }
+
+      const assignedCount = extractAssignedCount(rpcData);
+      if (assignedCount <= 0) {
+        setError(
+          "No se asignaron clientes. Revisa que sigan disponibles en esa campana y operacion.",
+        );
         return;
       }
 
       notify.success(
         "Clientes asignados",
-        `Se asignaron ${safeCount} cliente${safeCount === 1 ? "" : "s"} a ${agent.name}.`,
+        `Se asignaron ${assignedCount} cliente${assignedCount === 1 ? "" : "s"} a ${agent.name}.`,
       );
       onSuccess();
     } catch (assignError: any) {
@@ -597,7 +632,7 @@ export default function AssignmentModal({
                         Todos los estatus
                       </SelectItem>
                       <SelectItem value="all">Todos los estatus</SelectItem>
-                      {CLIENT_STATUS_OPTIONS.map((status) => (
+                      {statusOptions.map((status) => (
                         <SelectItem key={status.code} value={status.code}>
                           {status.shortLabel} · {status.label}
                         </SelectItem>
@@ -680,7 +715,7 @@ export default function AssignmentModal({
                   <span className="text-right font-semibold text-ink">
                     {[
                       statusFilter !== "all"
-                        ? CLIENT_STATUS_OPTIONS.find(
+                        ? statusOptions.find(
                             (option) => option.code === statusFilter,
                           )?.label ?? statusFilter
                         : null,

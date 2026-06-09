@@ -5,11 +5,16 @@ import { supabase } from "../../../integrations/supabase/client";
 import { canUseClientActions } from "../../../lib/supabase";
 import { useBackendHealth } from "../../../shared/resilience/BackendHealthProvider";
 import {
+  getStatusText,
   isClientStatusCode,
   type ClientStatusCode,
 } from "../../../lib/utils";
 import { notify } from "../../../shared/lib/notify";
 import type { ClientAssignmentSavePayload } from "../../../shared/components/client/ClientAssignmentModal";
+import {
+  isOperation2faRequiredError,
+  notifyOperation2faRequired,
+} from "../../../shared/security/operation-2fa-errors";
 import { agentNameMap } from "../../../shared/services/agent-name-map";
 import { agents } from "../../agents/services/agents.service";
 import { agentAssignments } from "../../assignments/services/agent-assignments.service";
@@ -1720,20 +1725,7 @@ export function useClientManagement(
   const isDailyManagementFilterActive = dailyManagementFilter !== "all";
   const activeFilterSummary = [
     isSearchActive ? trimmedSearchQuery : null,
-    statusFilter !== "all"
-      ? ({
-          NU: "Nuevo",
-          LD: "Llamar despues",
-          DP: "Deposito",
-          SG: "Seguimiento",
-          NC: "No contesta",
-          NI: "No interesado",
-          NX: "Numero no existe",
-          NE: "Numero equivocado",
-          RA: "Reasignar",
-          FS: "Fin de seguimiento",
-        } as const)[statusFilter]
-      : null,
+    statusFilter !== "all" ? getStatusText(statusFilter) : null,
     isCampaignFilterActive
       ? campaignFilterOptions.find((campaign) => campaign.id === campaignFilter)
           ?.label ?? "Campaña"
@@ -1843,6 +1835,14 @@ export function useClientManagement(
 
       if (updateError) {
         console.error("Error actualizando asignacion del cliente:", updateError);
+        if (isOperation2faRequiredError(updateError)) {
+          notifyOperation2faRequired();
+          setError(
+            "La verificacion 2FA de la operacion vencio. Verifica la operacion y vuelve a intentar.",
+          );
+          setAssignmentSaving(false);
+          return;
+        }
         setError("No se pudo actualizar la asignacion del cliente");
         setAssignmentSaving(false);
         return;
