@@ -8,6 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export type ClientStatusCode = string;
+export const TRANSFERRED_CLIENT_STATUS_CODE = "TR";
 
 type LegacyStatusColor = "gray" | "red" | "yellow" | "green" | "blue";
 
@@ -168,6 +169,16 @@ export const CLIENT_STATUS_OPTIONS: ClientStatusMeta[] = [
     isSystem: true,
   },
   {
+    code: TRANSFERRED_CLIENT_STATUS_CODE,
+    label: "Transferido",
+    shortLabel: "TR",
+    description: "Marcador automatico al transferir un cliente entre agentes",
+    ...resolveStatusColorStyles("amber"),
+    colorToken: "amber",
+    isGlobal: true,
+    isSystem: true,
+  },
+  {
     code: "FS",
     label: "Fin de seguimiento",
     shortLabel: "FS",
@@ -318,6 +329,7 @@ export function getLegacyStatusColor(status: StatusLike): LegacyStatusColor {
     case "NI":
     case "FS":
     case "RA":
+    case TRANSFERRED_CLIENT_STATUS_CODE:
     default:
       return "yellow";
   }

@@ -5,8 +5,10 @@ import { supabase } from "../../../integrations/supabase/client";
 import { canUseClientActions } from "../../../lib/supabase";
 import { useBackendHealth } from "../../../shared/resilience/BackendHealthProvider";
 import {
+  getLegacyStatusColor,
   getStatusText,
   isClientStatusCode,
+  TRANSFERRED_CLIENT_STATUS_CODE,
   type ClientStatusCode,
 } from "../../../lib/utils";
 import { notify } from "../../../shared/lib/notify";
@@ -1846,6 +1848,43 @@ export function useClientManagement(
         setError("No se pudo actualizar la asignacion del cliente");
         setAssignmentSaving(false);
         return;
+      }
+
+      const transferredClientIds =
+        nextAssignedTo === null
+          ? []
+          : selectedClientsForAssignment
+              .filter((client) => client.assigned_to !== nextAssignedTo)
+              .map((client) => client.id);
+
+      if (transferredClientIds.length > 0) {
+        const { error: transferStatusError } = await clientsService.updateMany(
+          transferredClientIds,
+          {
+            status_code: TRANSFERRED_CLIENT_STATUS_CODE,
+            status_color: getLegacyStatusColor(TRANSFERRED_CLIENT_STATUS_CODE),
+            updated_at: nowIso,
+          },
+          operationId,
+        );
+
+        if (transferStatusError) {
+          console.error(
+            "Error actualizando tipificacion de transferencia:",
+            transferStatusError,
+          );
+          if (isOperation2faRequiredError(transferStatusError)) {
+            notifyOperation2faRequired();
+            setError(
+              "La verificacion 2FA de la operacion vencio. Verifica la operacion y vuelve a intentar.",
+            );
+            setAssignmentSaving(false);
+            return;
+          }
+          setError("No se pudo marcar la transferencia de los clientes");
+          setAssignmentSaving(false);
+          return;
+        }
       }
     }
 

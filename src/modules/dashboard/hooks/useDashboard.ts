@@ -3,6 +3,14 @@ import { useAuth } from "../../../hooks/useAuth";
 import { notify } from "../../../shared/lib/notify";
 import type { Call, Client } from "../../../shared/types/crm";
 import { useBackendHealth } from "../../../shared/resilience/BackendHealthProvider";
+import {
+  getLegacyStatusColor,
+  TRANSFERRED_CLIENT_STATUS_CODE,
+} from "../../../lib/utils";
+import {
+  isOperation2faRequiredError,
+  notifyOperation2faRequired,
+} from "../../../shared/security/operation-2fa-errors";
 import { agentNameMap } from "../../../shared/services/agent-name-map";
 import { agents } from "../../agents/services/agents.service";
 import { calls } from "../../calls/services/calls.service";
@@ -484,11 +492,20 @@ export function useDashboard({
         agentId === null
           ? "Sin asignar"
           : assignmentAgents.find((agent) => agent.id === agentId)?.name ?? agentId;
+      const didAgentChange = selectedClientForAssignment.assigned_to !== agentId;
 
       const { error: updateError } = await clients.update(
         selectedClientForAssignment.id,
         {
           assigned_to: agentId,
+          ...(agentId !== null && didAgentChange
+            ? {
+                status_code: TRANSFERRED_CLIENT_STATUS_CODE,
+                status_color: getLegacyStatusColor(
+                  TRANSFERRED_CLIENT_STATUS_CODE,
+                ),
+              }
+            : {}),
           updated_at: new Date().toISOString(),
         },
         selectedClientForAssignment.operation_id ?? undefined,
@@ -496,6 +513,15 @@ export function useDashboard({
 
       if (updateError) {
         console.error("Error actualizando asignacion del cliente:", updateError);
+        if (isOperation2faRequiredError(updateError)) {
+          notifyOperation2faRequired();
+          notify.error(
+            "Verificacion 2FA vencida",
+            "Verifica nuevamente la operacion para poder asignar clientes.",
+          );
+          setAssignmentSaving(false);
+          return;
+        }
         notify.error(
           "No se pudo actualizar la asignacion",
           "Vuelve a intentarlo en unos segundos.",
@@ -508,13 +534,37 @@ export function useDashboard({
 
       setSelectedClient((current) =>
         current && current.id === selectedClientForAssignment.id
-          ? { ...current, assigned_to: agentId, assigned_agent: assignedAgent }
+          ? {
+              ...current,
+              assigned_to: agentId,
+              assigned_agent: assignedAgent,
+              ...(agentId !== null && didAgentChange
+                ? {
+                    status_code: TRANSFERRED_CLIENT_STATUS_CODE,
+                    status_color: getLegacyStatusColor(
+                      TRANSFERRED_CLIENT_STATUS_CODE,
+                    ),
+                  }
+                : {}),
+            }
           : current,
       );
       setSearchResults((current) =>
         current.map((client) =>
           client.id === selectedClientForAssignment.id
-            ? { ...client, assigned_to: agentId, assigned_agent: assignedAgent }
+            ? {
+                ...client,
+                assigned_to: agentId,
+                assigned_agent: assignedAgent,
+                ...(agentId !== null && didAgentChange
+                  ? {
+                      status_code: TRANSFERRED_CLIENT_STATUS_CODE,
+                      status_color: getLegacyStatusColor(
+                        TRANSFERRED_CLIENT_STATUS_CODE,
+                      ),
+                    }
+                  : {}),
+              }
             : client,
         ),
       );

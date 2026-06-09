@@ -421,6 +421,38 @@ export const clients = {
     return { data: updated, error: null };
   },
 
+  getAssignmentSnapshots: async (
+    ids: string[],
+    operationId?: string | null,
+  ) => {
+    const snapshots: Array<Pick<Client, "id" | "assigned_to">> = [];
+    const batchSize = 500;
+
+    for (let index = 0; index < ids.length; index += batchSize) {
+      const batchIds = ids.slice(index, index + batchSize);
+      let request = supabase
+        .from("clients")
+        .select("id, assigned_to")
+        .in("id", batchIds);
+
+      if (operationId) {
+        request = request.eq("operation_id", operationId);
+      }
+
+      const { data, error } = await request;
+
+      if (error) {
+        return { data: snapshots, error };
+      }
+
+      snapshots.push(
+        ...((data ?? []) as Array<Pick<Client, "id" | "assigned_to">>),
+      );
+    }
+
+    return { data: snapshots, error: null };
+  },
+
   delete: async (id: string, operationId?: string | null) => {
     let request = supabase.from("clients").delete().eq("id", id);
 

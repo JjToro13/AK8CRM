@@ -11,7 +11,9 @@ import { agents, clients as clientsService, supabase } from "../../../lib/supaba
 import {
   cn,
   formatCurrency,
+  getLegacyStatusColor,
   getStatusText,
+  TRANSFERRED_CLIENT_STATUS_CODE,
   type ClientStatusCode,
 } from "../../../lib/utils";
 import type { Client } from "../../../shared/types/crm";
@@ -501,6 +503,22 @@ export default function CampaignClientsModal({
         const nowIso = new Date().toISOString();
         const currentUser =
           nextAssignedTo ? (await supabase.auth.getUser()).data.user : null;
+        let transferredClientIds: string[] = [];
+
+        if (nextAssignedTo) {
+          const snapshotResult = await clientsService.getAssignmentSnapshots(
+            selectedClientIds,
+            selectedOperationId ?? undefined,
+          );
+
+          if (snapshotResult.error) {
+            throw snapshotResult.error;
+          }
+
+          transferredClientIds = snapshotResult.data
+            .filter((client) => client.assigned_to !== nextAssignedTo)
+            .map((client) => client.id);
+        }
 
         const assignmentResult = await clientsService.updateMany(
           selectedClientIds,
@@ -515,6 +533,22 @@ export default function CampaignClientsModal({
 
         if (assignmentResult.error) {
           throw assignmentResult.error;
+        }
+
+        if (transferredClientIds.length > 0) {
+          const transferStatusResult = await clientsService.updateMany(
+            transferredClientIds,
+            {
+              status_code: TRANSFERRED_CLIENT_STATUS_CODE,
+              status_color: getLegacyStatusColor(TRANSFERRED_CLIENT_STATUS_CODE),
+              updated_at: nowIso,
+            },
+            selectedOperationId ?? undefined,
+          );
+
+          if (transferStatusResult.error) {
+            throw transferStatusResult.error;
+          }
         }
       }
 

@@ -27,6 +27,7 @@ import {
   getStatusCode,
   getStatusDotClass,
   getStatusText,
+  TRANSFERRED_CLIENT_STATUS_CODE,
 } from "../../../lib/utils";
 import { useAuth } from "../../../hooks/useAuth";
 import { useClientStatusCatalog } from "../../hooks/useClientStatusCatalog";
@@ -215,7 +216,12 @@ export default function EditClientModal({
   }, [client, isOpen]);
 
   const selectableStatusOptions = useMemo(
-    () => statusOptions.filter((status) => status.code !== "NU"),
+    () =>
+      statusOptions.filter(
+        (status) =>
+          status.code !== "NU" &&
+          status.code !== TRANSFERRED_CLIENT_STATUS_CODE,
+      ),
     [statusOptions],
   );
 
