@@ -279,7 +279,7 @@ export default function AgentUpsertModal({
 
     if (!canSubmit()) {
       if (!isEdit && tempPassword.trim().length > 0 && tempPassword.trim().length < 6) {
-        setError("La contrasena temporal debe tener minimo 6 caracteres.");
+        setError("La contraseña temporal debe tener mínimo 6 caracteres.");
         return;
       }
 
@@ -330,7 +330,7 @@ export default function AgentUpsertModal({
 
       const accessToken = session?.access_token ?? "";
       if (!accessToken) {
-        throw new Error("No hay una sesion activa valida para crear usuarios.");
+        throw new Error("No hay una sesión activa válida para crear usuarios.");
       }
 
       const response = await fetch(buildSupabaseFunctionUrl("create-agent"), {
@@ -589,8 +589,8 @@ export default function AgentUpsertModal({
 
           {!isEdit && requiresOperationContext && !tenantSlug ? (
             <div className="rounded-[1.2rem] border border-yellow-200/90 bg-[linear-gradient(180deg,rgba(254,252,232,0.95),rgba(255,255,255,0.78))] px-4 py-3 text-sm text-yellow-800">
-              No se pudo cargar el tenant de la operacion activa. Verifica que
-              tengas una operacion seleccionada.
+              No se pudo cargar el tenant de la operación activa. Verifica que
+              tengas una operación seleccionada.
             </div>
           ) : null}
 
@@ -700,7 +700,7 @@ export default function AgentUpsertModal({
                 </div>
 
                 <p className="mt-2 text-xs text-muted">
-                  El usuario podra cambiarla despues de iniciar sesion.
+                  El usuario podrá cambiarla después de iniciar sesión.
                 </p>
               </Field>
             </div>
@@ -710,7 +710,7 @@ export default function AgentUpsertModal({
             <div>
               <div className="text-sm font-semibold text-ink/80">Activo</div>
               <div className="mt-1 text-xs text-muted">
-                Si lo desactivas, no podra iniciar sesion.
+                Si lo desactivas, no podrá iniciar sesión.
               </div>
             </div>
 
@@ -844,7 +844,7 @@ export default function AgentUpsertModal({
                       </Select>
                       {deleteTargetAgents.length === 0 ? (
                         <p className="mt-2 text-xs text-muted">
-                          No hay agentes operativos activos en la misma operacion
+                          No hay agentes operativos activos en la misma operación
                           para migrar estas citas.
                         </p>
                       ) : null}

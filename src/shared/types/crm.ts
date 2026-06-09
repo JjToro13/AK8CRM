@@ -52,6 +52,7 @@ export interface ClientComment {
   agent_id: string;
   comment: string;
   created_at: string;
+  agent_name_snapshot?: string | null;
   agent?: {
     id: string;
     name: string;

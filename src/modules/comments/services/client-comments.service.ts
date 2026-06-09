@@ -1,5 +1,4 @@
 import { supabase } from "../../../integrations/supabase/client";
-import { agentNameMap } from "../../../shared/services/agent-name-map";
 
 export const clientComments = {
   getByClient: async (
@@ -22,7 +21,7 @@ export const clientComments = {
       const { data, error, count } = await supabase
         .from("client_comments")
         .select(
-          "id, client_id, comment, created_at, agent_id, agent:agents(name)",
+          "id, client_id, comment, created_at, agent_id, agent_name_snapshot, agent:agents(name)",
           includeCount ? { count: "exact" } : undefined,
         )
         .eq("client_id", clientId)
@@ -35,16 +34,17 @@ export const clientComments = {
 
       const rows = (data ?? []) as any[];
       const limitedRows = rows.slice(0, pageSize);
-      const ids = Array.from(
-        new Set(limitedRows.map((row) => row.agent_id).filter(Boolean)),
-      );
-      const map = await agentNameMap(ids);
 
       const enriched = limitedRows.map((row) => ({
         ...row,
         agent: {
           id: row.agent_id,
-          name: map.get(row.agent_id) ?? row.agent_id,
+          name:
+            row.agent_name_snapshot ||
+            (Array.isArray(row.agent)
+              ? row.agent[0]?.name
+              : row.agent?.name) ||
+            row.agent_id,
         },
       }));
 

@@ -194,7 +194,7 @@ export default function ClientCommentsCell({
                 </div>
 
                 <p className="mt-1 text-xs text-muted">
-                  Historial (mas reciente primero)
+                  Historial (más reciente primero)
                 </p>
               </div>
 
@@ -230,7 +230,7 @@ export default function ClientCommentsCell({
                   </button>
                 </div>
               ) : comments.length === 0 ? (
-                <div className="text-sm text-muted">Sin comentarios todavia.</div>
+                <div className="text-sm text-muted">Sin comentarios todavía.</div>
               ) : (
                 <div className="space-y-3">
                   {comments.map((comment) => (
@@ -262,7 +262,7 @@ export default function ClientCommentsCell({
                         disabled={loadingMore}
                         className="crm-shell-pill inline-flex items-center rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink/80 transition hover:bg-surface2 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {loadingMore ? "Cargando..." : "Cargar mas"}
+                        {loadingMore ? "Cargando..." : "Cargar más"}
                       </button>
                     </div>
                   ) : null}

@@ -187,7 +187,7 @@ export default function AssignmentModal({
     try {
       if (!effectiveOperationId) {
         setCampaigns([]);
-        setError("No hay una operacion seleccionada.");
+        setError("No hay una operación seleccionada.");
         return;
       }
 
@@ -243,7 +243,7 @@ export default function AssignmentModal({
       setCampaigns(merged);
     } catch (loadError: any) {
       console.error("[AssignmentModal] loadCampaigns error:", loadError);
-      setError(loadError?.message || "Error cargando campanas");
+        setError(loadError?.message || "Error cargando campañas");
       setCampaigns([]);
     } finally {
       setLoadingCampaigns(false);
@@ -337,7 +337,7 @@ export default function AssignmentModal({
     setError("");
 
     if (!effectiveOperationId) {
-      setError("No hay una operacion seleccionada.");
+      setError("No hay una operación seleccionada.");
       return;
     }
 
@@ -389,7 +389,7 @@ export default function AssignmentModal({
         if (isOperation2faRequiredError(rpcErr)) {
           notifyOperation2faRequired();
           setError(
-            "La verificacion 2FA de esta operacion vencio. Verifica la operacion y vuelve a intentar.",
+            "La verificación 2FA de esta operación venció. Verifica la operación y vuelve a intentar.",
           );
           return;
         }
@@ -400,7 +400,7 @@ export default function AssignmentModal({
       const assignedCount = extractAssignedCount(rpcData);
       if (assignedCount <= 0) {
         setError(
-          "No se asignaron clientes. Revisa que sigan disponibles en esa campana y operacion.",
+          "No se asignaron clientes. Revisa que sigan disponibles en esa campaña y operación.",
         );
         return;
       }
@@ -525,11 +525,11 @@ export default function AssignmentModal({
                         : maxAllowed.toLocaleString()}
                     </span>{" "}
                     {selectedCampaign
-                      ? `(campana ${
+                      ? `(campaña ${
                           selectedCampaign.display_name ??
                           `Campana ${selectedCampaign.prefix}`
                         })`
-                      : "(toda la operacion actual)"}
+                      : "(toda la operación actual)"}
                   </p>
                 </div>
               </div>
@@ -555,15 +555,15 @@ export default function AssignmentModal({
                     disabled={loading || loadingCampaigns || !effectiveOperationId}
                   >
                     <SelectTrigger leftIcon={<Tag className="h-4 w-4" />}>
-                      <SelectValue placeholder="Todas las campanas" />
+                      <SelectValue placeholder="Todas las campañas" />
                     </SelectTrigger>
 
                     <SelectContent>
                       <SelectItem value={CAMPAIGN_PLACEHOLDER_VALUE} disabled>
-                        Todas las campanas
+                        Todas las campañas
                       </SelectItem>
                       <SelectItem value={ALL_CAMPAIGNS_VALUE}>
-                        Todas las campanas
+                        Todas las campañas
                       </SelectItem>
 
                       {campaigns.map((campaign) => (
@@ -576,8 +576,8 @@ export default function AssignmentModal({
                   </Select>
 
                   <p className="mt-2 text-xs text-muted">
-                    Si eliges una campana, solo se revisara esa base dentro de la
-                    operacion actual.
+                    Si eliges una campaña, solo se revisará esa base dentro de la
+                    operación actual.
                   </p>
                 </div>
               </div>
