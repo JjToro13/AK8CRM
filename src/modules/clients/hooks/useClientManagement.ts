@@ -17,6 +17,7 @@ import {
   isOperation2faRequiredError,
   notifyOperation2faRequired,
 } from "../../../shared/security/operation-2fa-errors";
+import { agentNameMap } from "../../../shared/services/agent-name-map";
 import { agents } from "../../agents/services/agents.service";
 import { agentAssignments } from "../../assignments/services/agent-assignments.service";
 import { calls as callsService } from "../../calls/services/calls.service";
@@ -79,6 +80,28 @@ export interface ClientManagementProps {
   operationReady?: boolean;
   activeOperationId?: string | null;
   operationId?: string | null;
+}
+
+async function enrichClientsWithAssignedAgentNames(clients: Client[]) {
+  const ids = Array.from(
+    new Set(clients.map((client) => client.assigned_to).filter(Boolean)),
+  ) as string[];
+
+  if (ids.length === 0) {
+    return clients.map((client) => ({
+      ...client,
+      assigned_agent: client.assigned_agent ?? null,
+    }));
+  }
+
+  const map = await agentNameMap(ids);
+
+  return clients.map((client) => ({
+    ...client,
+    assigned_agent: client.assigned_to
+      ? { name: map.get(client.assigned_to) ?? client.assigned_to }
+      : null,
+  }));
 }
 
 export function useClientManagement(
@@ -797,7 +820,10 @@ export function useClientManagement(
           setClients([]);
           setTotalClients(0);
         } else {
-          setClients((result.data ?? []) as Client[]);
+          const enrichedClients = await enrichClientsWithAssignedAgentNames(
+            (result.data ?? []) as Client[],
+          );
+          setClients(enrichedClients);
           setTotalClients(result.count || 0);
           if (!hasScopedFilters) {
             setUnfilteredTotalClients(result.count || 0);
@@ -854,11 +880,14 @@ export function useClientManagement(
         setClients([]);
         setTotalClients(0);
       } else {
+        const enrichedClients = await enrichClientsWithAssignedAgentNames(
+          (assignedClients ?? []) as Client[],
+        );
         setTotalClients(count || 0);
         if (!hasScopedFilters) {
           setUnfilteredTotalClients(count || 0);
         }
-        setClients((assignedClients ?? []) as Client[]);
+        setClients(enrichedClients);
         setLastUpdatedAt(Date.now());
         lastClientsLoadAtRef.current = Date.now();
         setError("");

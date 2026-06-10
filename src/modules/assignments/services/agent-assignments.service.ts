@@ -128,7 +128,7 @@ export const agentAssignments = {
 
     let request = supabase
       .from("clients")
-      .select(CLIENT_LIST_SELECT, { count: "planned" })
+      .select(CLIENT_LIST_SELECT, { count: "exact" })
       .eq("assigned_to", agentId);
 
     if (query) {

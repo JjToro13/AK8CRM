@@ -61,11 +61,10 @@ export const CLIENT_LIST_SELECT = `
     prefix,
     display_name
   ),
-  agent:agents!clients_last_comment_agent_fkey(name),
-  assigned_agent:agents!clients_assigned_to_fkey(name)
+  agent:agents!clients_last_comment_agent_fkey(name)
 `;
 
-const HOT_PATH_COUNT_ALGORITHM = "planned" as const;
+const HOT_PATH_COUNT_ALGORITHM = "exact" as const;
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) {
@@ -82,7 +81,6 @@ function normalizeClient(value: any): Client | null {
     ...value,
     campaign: firstRelation(value.campaign),
     agent: firstRelation(value.agent),
-    assigned_agent: firstRelation(value.assigned_agent),
   } as Client;
 }
 
