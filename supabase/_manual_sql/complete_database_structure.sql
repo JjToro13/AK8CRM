@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS agents (
 
 -- Tabla: clients
 -- Almacena información de clientes con estados de contacto
--- ORDEN FINAL: id, first_name, last_name, email, phone_number, country, source, funnel, deposit_amount, net_deposit, user_balance, investment_date, serial, status_color, attempts, comments, created_at, updated_at
+-- ORDEN FINAL: id, first_name, last_name, email, phone_number, country, source, funnel, deposit_amount, net_deposit, user_balance, investment_date, serial, status_color, status_code, attempts, comments, created_at, updated_at
 CREATE TABLE IF NOT EXISTS clients (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   first_name VARCHAR(255), -- nombre o firstName
@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS clients (
   investment_date DATE, -- fecha de inversión
   serial VARCHAR(50) NOT NULL UNIQUE, -- serie única por campaña (A0001, B0001, etc)
   status_color VARCHAR(20) DEFAULT 'gray' CHECK (status_color IN ('gray', 'red', 'yellow', 'green', 'blue')),
+  status_code VARCHAR(20) DEFAULT 'SC' CHECK (status_code IN ('SC', 'NA', 'NI', 'CB', 'WN', 'HU', 'CP')),
   attempts INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -330,6 +331,7 @@ RETURNS TABLE(
   client_first_name VARCHAR,
   client_serial VARCHAR,
   client_status_color VARCHAR,
+  client_status_code VARCHAR,
   agent_name VARCHAR
 )
 LANGUAGE plpgsql
@@ -350,6 +352,7 @@ BEGIN
     cl.first_name as client_first_name,
     cl.serial as client_serial,
     cl.status_color as client_status_color,
+    cl.status_code as client_status_code,
     a.name as agent_name
   FROM calls c
   JOIN clients cl ON c.client_id = cl.id

@@ -1,12 +1,14 @@
 // encryption.ts - Funciones para encriptar y desencriptar tokens de forma segura usando Web Crypto API. Incluye generación de claves, manejo de IV y validación de tokens encriptados.
 
+import { appEnv } from "../config/env";
+
 /**
  * Utilidades de encriptación para credenciales sensibles
  * Usa Web Crypto API para encriptación AES-GCM
  */
 
 // Clave de encriptación (en producción, usar variable de entorno)
-const ENCRYPTION_KEY = import.meta.env.VITE_ENCRYPTION_KEY || 'default-encryption-key-change-in-production';
+const ENCRYPTION_KEY = appEnv.security.encryptionKey;
 
 /**
  * Genera una clave de encriptación desde una contraseña

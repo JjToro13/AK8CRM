@@ -2,63 +2,791 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-bg: 232 238 248;
+  --color-surface: 249 252 255;
+  --color-surface2: 241 246 252;
+  --color-surface-elevated: 241 246 253;
+  --color-border: 204 216 233;
+  --color-ink: 15 23 42;
+  --color-muted: 97 110 131;
+  --color-shell-top: 241 246 253;
+  --color-shell-bottom: 224 233 246;
+  --color-shell-glow: 133 171 236;
+  --color-shell-accent: 194 214 247;
+  --color-brand: 75 123 236;
+  --color-brand-50: 238 244 255;
+  --color-brand-100: 220 231 255;
+  --color-brand-200: 190 212 255;
+  --color-brand-300: 147 181 255;
+  --color-brand-400: 111 149 255;
+  --color-brand-500: 84 128 248;
+  --color-brand-600: 75 123 236;
+  --color-brand-700: 57 96 191;
+  --color-brand-800: 46 74 146;
+  --color-brand-900: 37 59 109;
+}
+
 /* Estilos base personalizados */
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
+    background: rgb(var(--color-bg));
   }
-  
+
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply text-ink;
+    min-height: 100vh;
+    position: relative;
+    isolation: isolate;
+    background-color: rgb(var(--color-bg));
+    background-image:
+      radial-gradient(
+        circle at 16% 16%,
+        rgb(var(--color-shell-glow) / 0.36),
+        transparent 24%
+      ),
+      radial-gradient(
+        circle at 84% 14%,
+        rgb(var(--color-shell-accent) / 0.34),
+        transparent 20%
+      ),
+      radial-gradient(
+        circle at 50% 102%,
+        rgb(var(--color-brand) / 0.16),
+        transparent 28%
+      ),
+      linear-gradient(
+        180deg,
+        rgb(var(--color-shell-top)) 0%,
+        rgb(var(--color-bg)) 42%,
+        rgb(var(--color-shell-bottom)) 100%
+      );
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -2;
+    opacity: 0.46;
+    background-image:
+      linear-gradient(rgba(18, 27, 43, 0.038) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(18, 27, 43, 0.038) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(circle at center, black 44%, transparent 100%);
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    left: 22%;
+    right: 22%;
+    bottom: -9rem;
+    height: 22rem;
+    pointer-events: none;
+    z-index: -1;
+    background: radial-gradient(
+      circle,
+      rgb(var(--color-brand-300) / 0.22) 0%,
+      transparent 70%
+    );
+    filter: blur(44px);
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: rgb(var(--color-brand) / 0.18);
+    color: rgb(var(--color-ink));
   }
 }
 
 /* Componentes personalizados */
 @layer components {
+  /* Input premium */
+  .auth-input {
+    @apply w-full rounded-[1.25rem] border border-white/70 bg-surface px-4 py-3 text-sm
+           text-ink outline-none transition backdrop-blur-xl
+           shadow-[0_18px_40px_rgba(30,41,59,0.08),inset_0_1px_0_rgba(255,255,255,0.78)];
+    background-color: rgb(var(--color-surface) / 0.86);
+  }
+
+  .auth-input:hover {
+    @apply -translate-y-[1px] border-brand/24 bg-surface;
+  }
+
+  .auth-input:focus-visible {
+    @apply ring-4 ring-brand/15 border-brand/40;
+  }
+
+  /* Botón pill */
+  .auth-pill {
+    @apply w-full rounded-full px-5 py-3 text-sm font-semibold transition
+           text-white shadow-[0_22px_44px_rgba(75,123,236,0.26)]
+           bg-gradient-to-r from-brand via-brand-600 to-brand-700
+           hover:-translate-y-[1px] hover:brightness-105 active:brightness-95
+           disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden;
+  }
+
+  .auth-pill:focus-visible {
+    @apply outline-none ring-4 ring-brand/20;
+  }
+  
+  .auth-pill:focus-visible::before {
+    opacity: 1;
+    animation: authShimmer 0.85s ease-out forwards;
+  }
+
+  .auth-pill::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(
+      110deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.18) 18%,
+      rgba(255, 255, 255, 0.35) 28%,
+      rgba(255, 255, 255, 0.18) 38%,
+      transparent 55%
+    );
+    transform: translateX(-120%) skewX(-18deg);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .auth-pill:hover::before {
+    opacity: 1;
+    animation: authShimmer 0.85s ease-out forwards;
+  }
+
+  .auth-pill:active::before {
+    opacity: 0.55;
+    animation-duration: 0.55s;
+  }
+
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply rounded-full bg-gradient-to-r from-brand via-brand-600 to-brand-700 px-4 py-2 font-medium text-white transition duration-200 hover:-translate-y-[1px] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50;
   }
-  
+
   .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply rounded-full border border-white/65 bg-surface px-4 py-2 font-medium text-ink shadow-soft backdrop-blur-xl transition hover:-translate-y-[1px] hover:border-brand/24 hover:bg-surface;
+    background-color: rgb(var(--color-surface-elevated) / 0.88);
   }
-  
+
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply rounded-full bg-red-600 px-4 py-2 font-medium text-white transition duration-200 hover:-translate-y-[1px] hover:bg-red-700;
   }
-  
+
   .btn-success {
-    @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply rounded-full bg-emerald-600 px-4 py-2 font-medium text-white transition duration-200 hover:-translate-y-[1px] hover:bg-emerald-700;
   }
-  
+
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply w-full rounded-[1.25rem] border border-white/70 bg-surface px-4 py-3 text-ink shadow-soft backdrop-blur-xl focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/15;
+    background-color: rgb(var(--color-surface-elevated) / 0.88);
   }
-  
+
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+    @apply rounded-[1.5rem] border border-white/65 bg-surface p-6 shadow-soft backdrop-blur-xl;
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.96) 0%, rgb(var(--color-surface-elevated) / 0.88) 100%);
   }
-  
+
+  .crm-shell-card {
+    position: relative;
+    overflow: hidden;
+    border-color: rgb(var(--color-border) / 0.84);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.97) 0%, rgb(var(--color-surface-elevated) / 0.9) 100%);
+    box-shadow:
+      0 24px 54px rgb(var(--color-brand-900) / 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.74);
+    backdrop-filter: blur(20px);
+  }
+
+  .crm-shell-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at top right, rgb(var(--color-shell-accent) / 0.18), transparent 28%),
+      linear-gradient(180deg, rgba(255,255,255,0.16), transparent 30%);
+  }
+
+  .crm-shell-pill {
+    border-color: rgb(var(--color-border) / 0.78);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.92) 0%, rgb(var(--color-surface-elevated) / 0.84) 100%);
+    box-shadow:
+      0 14px 30px rgb(var(--color-brand-900) / 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  }
+
+  .crm-shell-soft-row {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.94) 0%, rgb(var(--color-surface-elevated) / 0.88) 100%);
+    border-color: rgb(var(--color-border) / 0.9);
+  }
+
+  .crm-client-row {
+    background: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .crm-client-row:hover {
+    background:
+      linear-gradient(90deg, rgb(var(--color-brand-50) / 0.26) 0%, rgb(var(--color-surface) / 0.16) 100%);
+  }
+
+  .crm-client-row-selected {
+    background:
+      linear-gradient(90deg, rgb(var(--color-brand-100) / 0.58) 0%, rgb(var(--color-brand-50) / 0.2) 56%, transparent 100%);
+    box-shadow:
+      inset 0 0 0 1px rgb(var(--color-brand-300) / 0.28),
+      inset 3px 0 0 rgb(var(--color-brand-500) / 0.9);
+  }
+
+  .crm-client-row-cell-selected {
+    background: rgb(var(--color-brand-50) / 0.14);
+  }
+
+  .crm-comment-surface {
+    border-color: rgb(var(--color-border) / 0.78);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.94) 0%, rgb(var(--color-surface-elevated) / 0.86) 100%);
+    box-shadow:
+      0 14px 30px rgb(var(--color-brand-900) / 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  }
+
+  .crm-comment-surface:hover {
+    border-color: rgb(var(--color-brand-300) / 0.34);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.98) 0%, rgb(var(--color-surface-elevated) / 0.9) 100%);
+  }
+
+  .crm-client-pagination-shell {
+    border-color: rgb(var(--color-border) / 0.82);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.9) 0%, rgb(var(--color-surface-elevated) / 0.84) 100%);
+  }
+
+  .crm-client-pagination-input {
+    border-color: rgb(var(--color-border) / 0.82);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.96) 0%, rgb(var(--color-surface-elevated) / 0.88) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+    color: rgb(var(--color-ink) / 0.9);
+  }
+
+  .crm-scrollbar {
+    scrollbar-width: thin;
+  }
+
+  .crm-scrollbar-shell {
+    scrollbar-color: rgb(var(--color-brand-200) / 0.9) rgb(var(--color-surface-elevated) / 0.16);
+  }
+
+  .crm-scrollbar-shell::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .crm-scrollbar-shell::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.72) 0%, rgb(var(--color-surface-elevated) / 0.54) 100%);
+    box-shadow: inset 0 0 0 1px rgb(var(--color-border) / 0.16);
+  }
+
+  .crm-scrollbar-shell::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgb(var(--color-brand-100) / 0.98) 0%, rgb(var(--color-brand-200) / 0.96) 100%);
+    background-clip: padding-box;
+    box-shadow:
+      0 6px 12px rgb(var(--color-brand-900) / 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.52);
+  }
+
+  .crm-scrollbar-shell::-webkit-scrollbar-thumb:hover {
+    background:
+      linear-gradient(180deg, rgb(var(--color-brand-200) / 1) 0%, rgb(var(--color-brand-300) / 0.98) 100%);
+    background-clip: padding-box;
+  }
+
+  .crm-scrollbar-shell::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  .crm-select-content::before,
+  .crm-select-content::after {
+    content: "";
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    z-index: 1;
+    height: 1.2rem;
+    pointer-events: none;
+    opacity: 0.78;
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  .crm-select-content::before {
+    top: 0;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--color-surface) / 0.96),
+      rgb(var(--color-surface) / 0)
+    );
+  }
+
+  .crm-select-content::after {
+    bottom: 0;
+    background: linear-gradient(
+      0deg,
+      rgb(var(--color-surface-elevated) / 0.96),
+      rgb(var(--color-surface-elevated) / 0)
+    );
+  }
+
+  .crm-select-viewport {
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+  }
+
+  .crm-select-viewport::-webkit-scrollbar {
+    display: none;
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-page-header,
+  :root[data-brand-preset="atlas-finance"] .crm-app-footer {
+    border-color: rgb(var(--color-border) / 0.32);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.78) 0%, rgb(var(--color-surface-elevated) / 0.72) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-page-header-icon {
+    border-color: rgb(var(--color-border) / 0.46);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface-elevated) / 0.9) 0%, rgb(var(--color-surface) / 0.84) 100%);
+    box-shadow:
+      0 16px 34px rgba(2, 8, 18, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-shell-card {
+    border-color: rgb(var(--color-border) / 0.52);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.94) 0%, rgb(var(--color-surface-elevated) / 0.88) 100%);
+    box-shadow:
+      0 28px 60px rgba(2, 8, 18, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-shell-card::before {
+    background:
+      radial-gradient(circle at top right, rgb(var(--color-brand-300) / 0.12), transparent 26%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 24%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-shell-pill,
+  :root[data-brand-preset="atlas-finance"] .crm-select-trigger,
+  :root[data-brand-preset="atlas-finance"] .crm-select-content,
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-menu,
+  :root[data-brand-preset="atlas-finance"] .crm-security-menu-card,
+  :root[data-brand-preset="atlas-finance"] .crm-security-menu-stat,
+  :root[data-brand-preset="atlas-finance"] .crm-security-chip,
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-search-well,
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-search-input {
+    border-color: rgb(var(--color-border) / 0.48);
+    box-shadow:
+      0 16px 36px rgba(2, 8, 18, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-shell-pill,
+  :root[data-brand-preset="atlas-finance"] .crm-select-trigger {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.9) 0%, rgb(var(--color-surface-elevated) / 0.82) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-select-content,
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-menu,
+  :root[data-brand-preset="atlas-finance"] .crm-security-menu-card {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.95) 0%, rgb(var(--color-surface-elevated) / 0.9) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-security-menu-stat,
+  :root[data-brand-preset="atlas-finance"] .crm-security-chip,
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-search-well {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.84) 0%, rgb(var(--color-surface-elevated) / 0.78) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-search-input {
+    background: rgb(var(--color-surface-elevated) / 0.94);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-shell-soft-row {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.86) 0%, rgb(var(--color-surface-elevated) / 0.8) 100%);
+    border-color: rgb(var(--color-border) / 0.48);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-row:hover {
+    background:
+      linear-gradient(90deg, rgb(var(--color-brand-500) / 0.07) 0%, transparent 72%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-row-selected {
+    background:
+      linear-gradient(90deg, rgb(var(--color-brand-500) / 0.1) 0%, rgba(14, 24, 42, 0.22) 58%, transparent 100%);
+    box-shadow:
+      inset 0 0 0 1px rgb(var(--color-brand-300) / 0.18),
+      inset 2px 0 0 rgb(var(--color-brand-400) / 0.72);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-row-cell-selected {
+    background: rgba(30, 41, 59, 0.16);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-table-shell,
+  :root[data-brand-preset="atlas-finance"] .crm-table-header,
+  :root[data-brand-preset="atlas-finance"] .crm-table-body,
+  :root[data-brand-preset="atlas-finance"] .crm-table-footer,
+  :root[data-brand-preset="atlas-finance"] .crm-modal-panel,
+  :root[data-brand-preset="atlas-finance"] .crm-modal-header,
+  :root[data-brand-preset="atlas-finance"] .crm-modal-footer,
+  :root[data-brand-preset="atlas-finance"] .crm-input,
+  :root[data-brand-preset="atlas-finance"] .crm-empty-state {
+    border-color: rgb(var(--color-border) / 0.48);
+    box-shadow:
+      0 18px 40px rgba(2, 8, 18, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-table-shell,
+  :root[data-brand-preset="atlas-finance"] .crm-table-body {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.9) 0%, rgb(var(--color-surface-elevated) / 0.82) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-table-header,
+  :root[data-brand-preset="atlas-finance"] .crm-modal-header,
+  :root[data-brand-preset="atlas-finance"] .crm-modal-footer {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface-elevated) / 0.94) 0%, rgb(var(--color-surface) / 0.82) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-table-footer,
+  :root[data-brand-preset="atlas-finance"] .crm-empty-state,
+  :root[data-brand-preset="atlas-finance"] .crm-input {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.82) 0%, rgb(var(--color-surface-elevated) / 0.76) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-modal-panel {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.98) 0%, rgb(var(--color-surface-elevated) / 0.94) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-page-stage-frame {
+    border-color: rgb(var(--color-border) / 0.32);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.08) 0%, rgb(var(--color-surface-elevated) / 0.03) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-page-stage-grid {
+    opacity: 0.34;
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-page-stage-grid-pattern {
+    background-image:
+      linear-gradient(rgba(132, 157, 208, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(132, 157, 208, 0.08) 1px, transparent 1px);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-card-highlight {
+    background:
+      radial-gradient(circle at top right, rgb(var(--color-brand-300) / 0.12), transparent 24%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 28%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat {
+    box-shadow:
+      0 16px 36px rgba(2, 8, 18, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-success {
+    border-color: rgb(110 231 183 / 0.44);
+    background:
+      linear-gradient(180deg, rgba(26, 52, 45, 0.92) 0%, rgba(16, 36, 33, 0.82) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-success .text-muted {
+    color: rgb(167 243 208 / 0.56);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-success .text-green-600 {
+    color: rgb(74 222 128 / 1);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-warning {
+    border-color: rgb(253 224 71 / 0.36);
+    background:
+      linear-gradient(180deg, rgba(56, 45, 24, 0.9) 0%, rgba(39, 31, 17, 0.82) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-warning .text-muted {
+    color: rgb(253 224 71 / 0.5);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-dashboard-stat-warning .text-yellow-600 {
+    color: rgb(245 158 11 / 1);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-agent-tile {
+    border-color: rgb(var(--color-border) / 0.5);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.95) 0%, rgb(var(--color-surface-elevated) / 0.9) 100%);
+    box-shadow:
+      0 22px 52px rgba(2, 8, 18, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-agent-tile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at top right, rgb(var(--color-brand-300) / 0.12), transparent 24%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 30%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-filter-tray,
+  :root[data-brand-preset="atlas-finance"] .crm-comment-surface {
+    border-color: rgb(var(--color-border) / 0.5);
+    box-shadow:
+      0 18px 40px rgba(2, 8, 18, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-filter-tray {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.96) 0%, rgb(var(--color-surface-elevated) / 0.9) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-comment-surface {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.9) 0%, rgb(var(--color-surface-elevated) / 0.82) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-comment-surface:hover {
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.94) 0%, rgb(var(--color-surface-elevated) / 0.86) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-pagination-shell {
+    border-color: rgb(var(--color-border) / 0.5);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.84) 0%, rgb(var(--color-surface-elevated) / 0.76) 100%);
+    box-shadow:
+      0 16px 36px rgba(2, 8, 18, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-pagination-input {
+    border-color: rgb(var(--color-border) / 0.48);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.96) 0%, rgb(var(--color-surface-elevated) / 0.88) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    color: rgb(var(--color-ink) / 0.92);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-scrollbar-shell {
+    scrollbar-color: rgb(var(--color-brand-400) / 0.72) rgba(14, 24, 42, 0.22);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-scrollbar-shell::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-scrollbar-shell::-webkit-scrollbar-track {
+    background: rgba(10, 19, 34, 0.46);
+    box-shadow: inset 0 0 0 1px rgb(var(--color-border) / 0.18);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-scrollbar-shell::-webkit-scrollbar-thumb {
+    background:
+      linear-gradient(180deg, rgb(var(--color-brand-300) / 0.84) 0%, rgb(var(--color-brand-500) / 0.92) 100%);
+    background-clip: padding-box;
+    box-shadow:
+      0 10px 18px rgba(2, 8, 18, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-scrollbar-shell::-webkit-scrollbar-thumb:hover {
+    background:
+      linear-gradient(180deg, rgb(var(--color-brand-200) / 0.9) 0%, rgb(var(--color-brand-400) / 0.98) 100%);
+    background-clip: padding-box;
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill {
+    box-shadow:
+      0 12px 28px rgba(2, 8, 18, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill.border-sky-200 {
+    border-color: rgb(56 189 248 / 0.32);
+    background: linear-gradient(180deg, rgba(16, 41, 56, 0.92) 0%, rgba(11, 29, 41, 0.84) 100%);
+    color: rgb(186 230 253 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill.border-amber-200 {
+    border-color: rgb(245 158 11 / 0.34);
+    background: linear-gradient(180deg, rgba(56, 41, 19, 0.92) 0%, rgba(39, 29, 14, 0.84) 100%);
+    color: rgb(253 230 138 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill.border-emerald-200 {
+    border-color: rgb(16 185 129 / 0.34);
+    background: linear-gradient(180deg, rgba(18, 54, 43, 0.92) 0%, rgba(13, 38, 31, 0.84) 100%);
+    color: rgb(167 243 208 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill.border-violet-200 {
+    border-color: rgb(139 92 246 / 0.34);
+    background: linear-gradient(180deg, rgba(40, 27, 63, 0.92) 0%, rgba(28, 19, 44, 0.84) 100%);
+    color: rgb(221 214 254 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-legend-pill.border-rose-200 {
+    border-color: rgb(244 63 94 / 0.34);
+    background: linear-gradient(180deg, rgba(64, 27, 40, 0.92) 0%, rgba(45, 19, 29, 0.84) 100%);
+    color: rgb(254 205 211 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card {
+    border-color: rgb(var(--color-border) / 0.46);
+    background:
+      linear-gradient(180deg, rgb(var(--color-surface) / 0.92) 0%, rgb(var(--color-surface-elevated) / 0.84) 100%);
+    box-shadow:
+      0 16px 34px rgba(2, 8, 18, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card.border-l-sky-500 {
+    border-color: rgb(56 189 248 / 0.28);
+    background:
+      linear-gradient(180deg, rgba(16, 41, 56, 0.92) 0%, rgba(11, 29, 41, 0.84) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card.border-l-amber-500 {
+    border-color: rgb(245 158 11 / 0.3);
+    background:
+      linear-gradient(180deg, rgba(56, 41, 19, 0.92) 0%, rgba(39, 29, 14, 0.84) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card.border-l-emerald-500 {
+    border-color: rgb(16 185 129 / 0.3);
+    background:
+      linear-gradient(180deg, rgba(18, 54, 43, 0.92) 0%, rgba(13, 38, 31, 0.84) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card.border-l-violet-500 {
+    border-color: rgb(139 92 246 / 0.3);
+    background:
+      linear-gradient(180deg, rgba(40, 27, 63, 0.92) 0%, rgba(28, 19, 44, 0.84) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-calendar-event-card.border-l-rose-500 {
+    border-color: rgb(244 63 94 / 0.3);
+    background:
+      linear-gradient(180deg, rgba(64, 27, 40, 0.92) 0%, rgba(45, 19, 29, 0.84) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action {
+    box-shadow:
+      0 14px 30px rgba(2, 8, 18, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-emerald-400\/35 {
+    border-color: rgb(52 211 153 / 0.5);
+    background: linear-gradient(180deg, rgba(18, 54, 43, 0.88) 0%, rgba(13, 38, 31, 0.8) 100%);
+    color: rgb(167 243 208 / 0.96);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-emerald-400\/35:hover {
+    background: linear-gradient(180deg, rgba(21, 68, 53, 0.92) 0%, rgba(15, 48, 38, 0.84) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-brand\/35 {
+    border-color: rgb(var(--color-brand-300) / 0.44);
+    background: linear-gradient(180deg, rgba(28, 43, 73, 0.9) 0%, rgba(19, 32, 56, 0.82) 100%);
+    color: rgb(191 219 254 / 0.98);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-brand\/35:hover {
+    background: linear-gradient(180deg, rgba(34, 51, 86, 0.94) 0%, rgba(23, 37, 66, 0.86) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-amber-400\/35 {
+    border-color: rgb(251 191 36 / 0.48);
+    background: linear-gradient(180deg, rgba(59, 44, 18, 0.9) 0%, rgba(40, 31, 14, 0.82) 100%);
+    color: rgb(253 230 138 / 0.98);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-amber-400\/35:hover {
+    background: linear-gradient(180deg, rgba(71, 54, 23, 0.94) 0%, rgba(49, 37, 17, 0.86) 100%);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-white\/28 {
+    border-color: rgb(var(--color-border) / 0.5);
+    background: linear-gradient(180deg, rgb(var(--color-surface) / 0.82) 0%, rgb(var(--color-surface-elevated) / 0.74) 100%);
+    color: rgb(var(--color-ink) / 0.92);
+  }
+
+  :root[data-brand-preset="atlas-finance"] .crm-client-quick-action.border-white\/28:hover {
+    background: linear-gradient(180deg, rgb(var(--color-surface) / 0.88) 0%, rgb(var(--color-surface-elevated) / 0.78) 100%);
+  }
+
   .status-indicator {
     @apply w-4 h-4 rounded-full inline-block mr-2;
   }
-  
+
   .status-gray {
     @apply bg-status-gray;
   }
-  
+
   .status-red {
     @apply bg-status-red;
   }
-  
+
   .status-yellow {
     @apply bg-status-yellow;
   }
-  
+
   .status-green {
     @apply bg-status-green;
   }
-  
+
   .status-blue {
     @apply bg-status-blue;
   }
@@ -66,12 +794,46 @@
 
 /* Animaciones personalizadas */
 @layer utilities {
+  /* ✅ Upgrade premium: gradiente vivo (respira) */
+  .hero-animated-bg {
+    background:
+      radial-gradient(
+        1200px 800px at 20% 10%,
+        rgba(37, 99, 235, 0.22),
+        transparent 55%
+      ),
+      radial-gradient(
+        900px 700px at 80% 90%,
+        rgba(30, 58, 138, 0.28),
+        transparent 60%
+      ),
+      linear-gradient(135deg, #020617 0%, #020617 40%, #1e3a8a 120%);
+    background-size:
+      140% 140%,
+      140% 140%,
+      180% 180%;
+    background-position:
+      0% 0%,
+      100% 100%,
+      0% 50%;
+    animation: heroGradientShift 9s ease-in-out infinite;
+  }
+
+  /* Respira un poco más si quieres: (opcional) */
+  .hero-animated-bg-soft {
+    animation-duration: 12s;
+  }
+
   .animate-fade-in {
     animation: fadeIn 0.3s ease-in-out;
   }
-  
+
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-blink-glow {
+    animation: blinkGlow 1.3s ease-in-out infinite;
   }
 }
 
@@ -95,21 +857,76 @@
   }
 }
 
+@keyframes blinkGlow {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.95);
+    filter: blur(0px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0.2px);
+  }
+}
+
+@keyframes authShimmer {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translateX(120%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+@keyframes heroGradientShift {
+  0% {
+    background-position:
+      0% 0%,
+      100% 100%,
+      0% 50%;
+  }
+  50% {
+    background-position:
+      18% 12%,
+      82% 88%,
+      100% 50%;
+  }
+  100% {
+    background-position:
+      0% 0%,
+      100% 100%,
+      0% 50%;
+  }
+}
+
 /* Scroll horizontal sticky para tablas */
 .table-scroll-container {
   position: relative;
   overflow-x: auto;
   overflow-y: visible;
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e0 #f7fafc;
+  scrollbar-color: rgb(var(--color-border)) rgb(var(--color-surface));
   /* Efectos de sombra para indicar scroll */
-  background: linear-gradient(90deg, white 30%, transparent),
-              linear-gradient(90deg, transparent, white 70%) 0 100%,
-              radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.2), transparent),
-              radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.2), transparent) 0 100%;
+  background:
+    linear-gradient(90deg, rgb(var(--color-surface)) 30%, transparent),
+    linear-gradient(90deg, transparent, rgb(var(--color-surface)) 70%) 0 100%,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.2), transparent),
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.2), transparent)
+      0 100%;
   background-repeat: no-repeat;
-  background-color: white;
-  background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+  background-color: rgb(var(--color-surface));
+  background-size:
+    40px 100%,
+    40px 100%,
+    14px 100%,
+    14px 100%;
   background-attachment: local, local, scroll, scroll;
 }
 
@@ -119,22 +936,22 @@
 }
 
 .table-scroll-container::-webkit-scrollbar-track {
-  background: #f7fafc;
+  background: rgb(var(--color-surface));
   border-radius: 4px;
 }
 
 .table-scroll-container::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
+  background: rgb(var(--color-border));
   border-radius: 4px;
   transition: background-color 0.2s ease;
 }
 
 .table-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
+  background: rgb(var(--color-brand-300));
 }
 
 .table-scroll-container::-webkit-scrollbar-thumb:active {
-  background: #718096;
+  background: rgb(var(--color-brand-400));
 }
 
 /* Scroll horizontal sticky - siempre visible */
@@ -142,7 +959,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: white;
+  background: rgb(var(--color-surface));
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -152,8 +969,12 @@
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
   }
-  
+
   .table-scroll-container::-webkit-scrollbar {
     height: 6px;
   }
+}
+
+[data-sileo-viewport] {
+  z-index: 200 !important;
 }

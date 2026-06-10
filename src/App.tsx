@@ -1,35 +1,338 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from './hooks/useAuth'
-import Login from './components/Login'
-import Dashboard from './components/Dashboard'
-import CallHistory from './components/CallHistory'
-import ClientManagement from './components/ClientManagement'
-import LoadingSpinner from './components/LoadingSpinner'
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+import { MotionConfig } from "framer-motion";
+import { Toaster } from "sileo";
+import { useAuth } from "./hooks/useAuth";
+import { Suspense, lazy, useEffect, useState } from "react";
 
-function App() {
-  const { user, loading, isAdmin } = useAuth()
+import LoadingSpinner from "./shared/components/feedback/LoadingSpinner";
+import ClientStatusCatalogLoader from "./shared/components/app/ClientStatusCatalogLoader";
+import MaintenanceGate from "./shared/components/guards/MaintenanceGate";
+import {
+  canAccessAgentWorkspace,
+  canAccessAdminPanel,
+  canAccessCampaignWorkspace,
+  canUseCalendarWorkspace,
+  canUseCallHistory,
+} from "./lib/supabase";
+import { useBranding } from "./shared/branding/BrandingProvider";
+import BackendHealthBanner from "./shared/resilience/BackendHealthBanner";
+import BackendHealthDebugger from "./shared/resilience/BackendHealthDebugger";
+import { useBackendHealth } from "./shared/resilience/BackendHealthProvider";
+import { resolveTenantBranding } from "./shared/branding/tenant-branding";
+import { dashboard } from "./modules/dashboard/services/dashboard.service";
+import type { BrandPreset } from "./shared/branding/brand-presets";
+import CalendarGlobalAlerts from "./modules/calendar/components/CalendarGlobalAlerts";
+import Operation2faGate from "./shared/security/Operation2faGate";
+import Operation2faPage from "./shared/security/Operation2faPage";
 
-  if (loading) {
-    return <LoadingSpinner />
-  }
+const AgentManagementPage = lazy(() => import("./modules/agents/pages/AgentManagementPage"));
+const AdminPanelPage = lazy(() => import("./modules/admin/pages/AdminPanelPage"));
+const LoginPage = lazy(() => import("./modules/auth/pages/LoginPage"));
+const CalendarPage = lazy(() => import("./modules/calendar/pages/CalendarPage"));
+const CallHistoryPage = lazy(() => import("./modules/calls/pages/CallHistoryPage"));
+const CampaignManagementPage = lazy(
+  () => import("./modules/campaigns/pages/CampaignManagementPage"),
+);
+const ClientManagementPage = lazy(() => import("./modules/clients/pages/ClientManagementPage"));
+const DashboardPage = lazy(() => import("./modules/dashboard/pages/DashboardPage"));
 
-  if (!user) {
-    return <Login />
-  }
+const BRANDING_CACHE_KEY_PREFIX = "crm.branding-cache.";
+const BRANDING_MAX_WAIT_MS = 1500;
 
-  return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard isAdmin={isAdmin} />} />
-          <Route path="/calls" element={<CallHistory isAdmin={isAdmin} />} />
-          <Route path="/clients" element={<ClientManagement isAdmin={isAdmin} />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </div>
-    </Router>
-  )
+function getBrandingCacheKey(operationId: string) {
+  return `${BRANDING_CACHE_KEY_PREFIX}${operationId}`;
 }
 
-export default App
+function readCachedBranding(operationId: string): BrandPreset | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(getBrandingCacheKey(operationId));
+    if (!raw) return null;
+    return JSON.parse(raw) as BrandPreset;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedBranding(operationId: string, branding: BrandPreset) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.sessionStorage.setItem(
+      getBrandingCacheKey(operationId),
+      JSON.stringify(branding),
+    );
+  } catch {
+    // noop
+  }
+}
+
+function ProtectedRoute({
+  isAllowed,
+  redirectTo = "/login",
+  children,
+}: {
+  isAllowed: boolean;
+  redirectTo?: string;
+  children: React.ReactNode;
+}) {
+  if (!isAllowed) return <Navigate to={redirectTo} replace />;
+  return <>{children}</>;
+}
+
+function AuthenticatedChrome({ user }: { user: unknown }) {
+  const location = useLocation();
+  const hideCalendarAlerts =
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/totp");
+
+  if (!user) return null;
+
+  return (
+    <>
+      <BackendHealthBanner />
+      {hideCalendarAlerts ? null : <CalendarGlobalAlerts />}
+    </>
+  );
+}
+
+export default function App() {
+  const { branding, setAutoBranding } = useBranding();
+  const { isDegraded, isManualDegraded } = useBackendHealth();
+  const [brandingReady, setBrandingReady] = useState(true);
+  const {
+    user,
+    loading,
+    isAdmin,
+    canSeeAllOperations,
+    operationReady,
+    activeOperationId,
+    operationId,
+    role,
+  } = useAuth();
+  const canAccessAgents = !!user && canAccessAgentWorkspace(role);
+  const canAccessAdmin = !!user && canAccessAdminPanel(role);
+  const canAccessCampaigns = !!user && canAccessCampaignWorkspace(role);
+  const canAccessCalls = !!user && canUseCallHistory(role);
+  const canAccessCalendar = !!user && canUseCalendarWorkspace(role);
+
+  useEffect(() => {
+    if (!user) {
+      setAutoBranding(null);
+      setBrandingReady(true);
+      return;
+    }
+
+    const targetOperationId = canSeeAllOperations
+      ? activeOperationId
+      : (operationId ?? null);
+
+    if (!targetOperationId) {
+      setAutoBranding(null);
+      setBrandingReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    const cachedBranding = readCachedBranding(targetOperationId);
+
+    if (cachedBranding) {
+      setAutoBranding(cachedBranding);
+      setBrandingReady(true);
+    } else {
+      setBrandingReady(false);
+    }
+
+    const waitTimer = window.setTimeout(() => {
+      if (!cancelled) {
+        setBrandingReady(true);
+      }
+    }, BRANDING_MAX_WAIT_MS);
+
+    const syncBranding = async () => {
+      const { data, error } = await dashboard.getOperationBrandingContextById(
+        targetOperationId,
+      );
+
+      if (cancelled) return;
+
+      if (error) {
+        const message = String((error as any)?.message ?? "");
+        if (message.toLowerCase().includes("aborterror")) {
+          setBrandingReady(true);
+          return;
+        }
+
+        console.error("Error resolviendo branding de operacion:", error);
+        setAutoBranding(null);
+        setBrandingReady(true);
+        return;
+      }
+
+      const resolvedBranding = resolveTenantBranding({
+        operationSlug: data?.operation?.slug ?? null,
+        settings: data?.tenantSettings ?? null,
+      });
+
+      setAutoBranding(resolvedBranding);
+      writeCachedBranding(targetOperationId, resolvedBranding);
+      setBrandingReady(true);
+    };
+
+    void syncBranding();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(waitTimer);
+    };
+  }, [
+    activeOperationId,
+    canSeeAllOperations,
+    operationId,
+    setAutoBranding,
+    setBrandingReady,
+    user,
+  ]);
+
+  if (loading || (user && !brandingReady)) return <LoadingSpinner />;
+
+  return (
+    <MotionConfig reducedMotion="user">
+      <Router
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        <MaintenanceGate>
+          <div className="min-h-screen bg-bg">
+          {user ? <ClientStatusCatalogLoader /> : null}
+          <AuthenticatedChrome user={user} />
+          <BackendHealthDebugger />
+          <Operation2faGate />
+          <Toaster
+            position="top-center"
+            theme={branding.id === "atlas-finance" ? "dark" : "light"}
+            offset={{ top: 20 }}
+            options={{ duration: 2600, roundness: 28 }}
+          />
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+              <Route
+                path="/login"
+                element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />}
+              />
+
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+              <Route path="/totp" element={<Operation2faPage />} />
+
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute isAllowed={!!user}>
+                    <DashboardPage
+                      isAdmin={isAdmin}
+                      canSeeAllOperations={canSeeAllOperations}
+                      operationReady={operationReady}
+                      role={role}
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/calendar"
+                element={
+                  <ProtectedRoute
+                    isAllowed={canAccessCalendar}
+                    redirectTo={user ? "/dashboard" : "/login"}
+                  >
+                    <CalendarPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/calls"
+                element={
+                  <ProtectedRoute
+                    isAllowed={canAccessCalls}
+                    redirectTo={user ? "/dashboard" : "/login"}
+                  >
+                    <CallHistoryPage isAdmin={isAdmin} />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/clients"
+                element={
+                  <ProtectedRoute isAllowed={!!user}>
+                    <ClientManagementPage
+                      isAdmin={isAdmin}
+                      canSeeAllOperations={canSeeAllOperations}
+                      operationReady={operationReady}
+                      activeOperationId={
+                        canSeeAllOperations ? activeOperationId : null
+                      }
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute
+                    isAllowed={canAccessAdmin}
+                    redirectTo={user ? "/dashboard" : "/login"}
+                  >
+                    <AdminPanelPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/agents"
+                element={
+                  <ProtectedRoute
+                    isAllowed={canAccessAgents}
+                    redirectTo={user ? "/dashboard" : "/login"}
+                  >
+                    <AgentManagementPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/campaigns"
+                element={
+                  <ProtectedRoute
+                    isAllowed={canAccessCampaigns}
+                    redirectTo={user ? "/dashboard" : "/login"}
+                  >
+                    <CampaignManagementPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </Suspense>
+          {user && isDegraded && !isManualDegraded ? (
+            <div className="sr-only">Modo de contingencia activo</div>
+          ) : null}
+          </div>
+        </MaintenanceGate>
+      </Router>
+    </MotionConfig>
+  );
+}
