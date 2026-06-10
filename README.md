@@ -1,245 +1,305 @@
-# Call Master CRM
+# AK8CRM
 
-CRM operativo para equipos de llamadas, seguimiento comercial y gestion de clientes sobre Supabase.
+CRM operativo multi-tenant para equipos de llamadas, seguimiento comercial, campañas, agentes, agenda y gestión operativa por tenant/operación.
 
-El proyecto esta en una fase de refactorizacion avanzada:
+Estado actual del repo:
+- desarrollo activo
+- refactorización avanzada
 - frontend modularizado por dominio
-- branding por tenant
-- seleccion de tenant/operacion para `dev` y `super_admin`
-- aislamiento funcional parcial por tenant/operacion en dashboard, campañas, agentes, clientes y llamadas
-- endurecimiento final de base de datos pendiente como siguiente release
+- endurecimiento final de backend/RLS todavía en progreso
 
-## Estado actual
+Versión visible en footer:
+- `2.0.31-FIX`
 
-Lo que ya esta resuelto:
-- arquitectura modular por dominios (`auth`, `dashboard`, `clients`, `calls`, `campaigns`, `agents`, `did`)
-- layout compartido (`PageHeader`, `AppFooter`, `ModalLayout`, primitives de formulario)
-- branding real por tenant desde `tenant_settings`
-- operaciones visibles por tenant via RPCs de Supabase
-- sincronizacion de tenant -> operacion activa -> branding -> dashboard sin recargar
-- gestion de campañas, agentes, clientes y llamadas ajustada al scope de la operacion activa
+## Qué hay en este repo
 
-Lo que todavia no esta cerrado:
-- endurecimiento final en Supabase para que el aislamiento no dependa solo del frontend
-- RLS/funciones seguras para `clients`, `agents` y `campaigns`
-- limpieza de codigo legado residual y docs tecnicas menores
-
-## Stack
-
-### Frontend
+Frontend:
 - React 18
 - TypeScript
 - Vite
 - Tailwind CSS
-- Radix Select
-- Framer Motion
 - React Router
+- Radix UI Select
+- Framer Motion
+- Lucide React
+- XLSX
+- Sileo
 
-### Backend
+Backend / datos:
 - Supabase
 - PostgreSQL
 - Supabase Auth
-- RPCs y funciones SQL
+- RPCs SQL
+- PL/pgSQL
+- Row Level Security
 
-## Scripts
+Package manager:
+- `npm`
+
+## Estado funcional
+
+Ya resuelto:
+- selección de tenant/operación para roles altos
+- branding por tenant desde `tenant_settings`
+- dashboard operativo
+- clientes con filtros, búsqueda, paginación y acciones rápidas
+- campañas con importación, exportación y gestión
+- agentes con asignaciones y vista operativa
+- calendario comercial
+- módulo DID
+- historial de llamadas
+- capa de resiliencia/degradación frontend
+
+Pendiente o en hardening:
+- cierre final de aislamiento backend en `clients`, `agents` y `campaigns`
+- auditoría final de RLS y funciones sensibles
+- validación completa de entorno productivo
+- limpieza adicional de documentación y código legado residual
+
+## Estructura principal
+
+```text
+src/
+  config/
+  hooks/
+  integrations/
+  lib/
+  modules/
+    admin/
+    agents/
+    assignments/
+    auth/
+    calendar/
+    calls/
+    campaigns/
+    clients/
+    comments/
+    dashboard/
+    did/
+    emails/
+  shared/
+supabase/
+  functions/
+  migrations/
+  _manual_sql/
+scripts/
+docs/
+.ai/
+AGENTS.md
+```
+
+Criterio actual:
+- la lógica de dominio debe vivir en `modules/[domain]/services`, `hooks`, `types`
+- el layout y piezas reutilizables viven en `src/shared`
+- la integración de Supabase cliente vive en `src/integrations/supabase`
+
+## Requisitos
+
+- Node.js 20+ recomendado
+- npm 10+ recomendado
+- proyecto Supabase accesible
+
+## Instalación
 
 ```bash
 npm install
-npm run dev
-npm run build
-npm run lint
-```
-
-Para validacion de tipos en Windows/PowerShell, usar:
-
-```bash
-cmd /c npm exec -- tsc --noEmit
 ```
 
 ## Variables de entorno
 
-El frontend usa estas variables desde `src/config/env.ts`:
+Basarse en `env.example`.
+
+Variables principales de frontend:
 
 ```env
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
-
 VITE_ENABLE_CALLS=false
 VITE_MAINT_BYPASS=false
-
 VITE_ENCRYPTION_KEY=
 ```
 
-Notas:
-- `VITE_MAINT_BYPASS` solo aplica en desarrollo.
-- `VITE_ENABLE_CALLS` permite apagar features de llamadas a nivel de UI.
-- No coloques secretos reales en variables `VITE_*`; Vite las expone al navegador.
-- `VITE_ENCRYPTION_KEY`, si se usa, debe considerarse un valor publico del cliente y no una clave secreta de backend.
+Variables usadas fuera del frontend / Edge Functions:
 
-## Arquitectura
-
-Estructura principal:
-
-```text
-src/
-  components/                # wrappers legacy y modales compartidos
-  hooks/                     # hooks globales como useAuth
-  modules/
-    auth/
-    dashboard/
-    clients/
-    calls/
-    campaigns/
-    agents/
-    did/
-  shared/
-    branding/
-    components/layout/
-    types/
+```env
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+DID_GLO_BAL_ACCESS_TOKEN=
+DID_GLO_BAL_WEBHOOK_URL=
+DID_GLO_BAL_API_URL=
+DID_GLO_BAL_CALLS_URL=
+DID_GLO_BAL_COMMON_URL=
 ```
 
-Criterio actual:
-- cada modulo mantiene `services`, `hooks`, `components` y `pages`
-- los archivos legacy en `src/components` existen solo como wrappers de compatibilidad donde todavia hace falta
-- la logica operativa debe vivir en hooks y services, no en componentes grandes
+Notas importantes:
+- no colocar secretos reales en variables `VITE_*`
+- `VITE_ENABLE_CALLS` permite apagar features de llamadas en UI
+- `VITE_MAINT_BYPASS` se usa para bypass de maintenance en desarrollo
+- `VITE_ENCRYPTION_KEY` no debe tratarse como secreto backend
 
-## Multi-tenant y branding
+## Cómo iniciar el proyecto
 
-### Modelo actual
+Desarrollo:
 
-- `tenant`: empresa cliente
-- `operation`: unidad operativa dentro de un tenant
-- branding: configuracion visual del tenant
+```bash
+npm run dev
+```
 
-Tablas nuevas ya aplicadas en Supabase:
-- `public.tenants`
-- `public.tenant_settings`
-- `public.operations.tenant_id`
+Build de producción:
 
-Branding actual:
-- se resuelve desde `tenant_settings`
-- usa `brand_preset_id` + overrides de `product_name`, `platform_label` y `extra.defaultFooterNote`
-- existe fallback local por slug de operacion en `src/shared/branding/tenant-branding.ts`
+```bash
+npm run build
+```
 
-Presets disponibles:
-- `call-master`
-- `atlas-finance`
-- `cobalt-ops`
+Preview local del build:
 
-### Comportamiento actual
+```bash
+npm run preview
+```
 
-- `agent` y `admin` trabajan dentro de su scope operativo
-- `dev` y `super_admin` pueden cambiar tenant y operacion desde el dashboard
-- al cambiar tenant:
-  - se recalcula la operacion visible
-  - se sincroniza `active_operation`
-  - cambia el branding
-  - dashboard, campañas, agentes y clientes se re-scopean sin recargar
+Lint:
 
-### Limite conocido
+```bash
+npm run lint
+```
 
-El aislamiento funcional ya existe en frontend para los modulos principales, pero el endurecimiento definitivo de DB todavia no esta aplicado. Ese trabajo se dejara para un release separado por seguridad operativa.
+Chequeo de tipos:
+
+```bash
+npm exec -- tsc --noEmit
+```
+
+Script operativo disponible:
+
+```bash
+npm run sync:auth-emails
+```
+
+## Flujo recomendado para levantarlo por primera vez
+
+1. Crear `.env` local a partir de `env.example`.
+2. Confirmar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
+3. Ejecutar `npm install`.
+4. Ejecutar `npm run dev`.
+5. Validar login y carga de módulos básicos.
 
 ## Supabase
 
-### Migraciones relevantes ya aplicadas
+Ubicaciones relevantes:
+- `supabase/migrations/`
+- `supabase/functions/`
+- `supabase/_manual_sql/`
 
-Las bases de tenant y branding ya existen en produccion. Entre las migraciones importantes de esta fase estan:
-- tenant foundation
-- read policies de branding
-- funciones de tenant scope:
-  - `get_visible_tenants()`
-  - `get_visible_operations(p_tenant_id uuid default null)`
+Comandos útiles si trabajas con Supabase local:
 
-### Modo mantenimiento
+```bash
+supabase start
+supabase status
+supabase stop
+```
 
-La app soporta maintenance mode via `public.app_settings` y `MaintenanceGate`.
+Cambios recientes relevantes del repo:
+- base multi-tenant/operación ya aterrizada
+- funciones y políticas endurecidas en varias rutas críticas
+- importación y gestión de campañas ampliadas
+- módulos de clientes/agentes/dashboard ya separados por dominio
 
-Scripts manuales:
-- `supabase/_manual_sql/enable_maintenance_mode.sql`
-- `supabase/_manual_sql/disable_maintenance_mode.sql`
+Riesgo conocido:
+- no asumir que todo el aislamiento ya está resuelto únicamente por backend; todavía hay hardening pendiente
 
-### Backups y rollout
+## Módulos principales
 
-Antes de tocar esquema en produccion, revisar:
-- `documentacion/production-backup-and-maintenance-plan.md`
-- `documentacion/supabase-tenant-branch-plan.md`
+`auth`
+- login y bootstrap de sesión
 
-## Modulos principales
+`dashboard`
+- selección de tenant/operación
+- branding activo
+- búsqueda rápida y llamadas recientes
 
-### Dashboard
-- branding por tenant
-- seleccion de tenant/operacion para roles altos
-- busqueda de clientes por operacion activa
-- llamadas recientes
-- acciones rapidas
+`clients`
+- tabla principal de cartera
+- filtros, búsqueda, paginación
+- comentarios, edición, asignación, email y agenda
 
-### Clients
-- pagina modularizada
-- tabla, filtros y paginacion desacoplados
-- mutaciones sensibles ya scopiadas por `operation_id`
+`campaigns`
+- gestión de campañas
+- importación de bases
+- reportes y operaciones masivas
 
-### Calls
-- historial separado como modulo
-- filtros y panel de detalle propios
-- llamadas recientes e historial filtrados por la operacion activa en frontend
+`agents`
+- administración operativa de agentes
+- asignación de clientes
 
-### Campaigns
-- gestion de campañas por operacion activa
-- importacion, exportacion, rename, lock/unlock y borrado ajustados al scope actual
+`calendar`
+- agenda y seguimientos comerciales
 
-### Agents
-- vista y campañas disponibles limitadas al tenant operativo visible
-- asignaciones y detalles modulados en componentes propios
+`calls`
+- historial de llamadas
 
-### DID
-- configuracion separada en modulo propio
+`did`
+- configuración de extensiones / centralita
 
-## Documentacion interna
+`admin`
+- operación visible, privacidad y controles administrativos
 
-Documentos utiles en `documentacion/`:
-- [saas-refactor-roadmap](./documentacion/saas-refactor-roadmap.md)
-- [tenant-isolation-rollout-plan](./documentacion/tenant-isolation-rollout-plan.md)
-- [tenant-branding-validation](./documentacion/tenant-branding-validation.md)
-- [production-backup-and-maintenance-plan](./documentacion/production-backup-and-maintenance-plan.md)
-- [register-cleanup-audit](./documentacion/register-cleanup-audit.md)
-- [clients-module-next-steps](./documentacion/clients-module-next-steps.md)
+## Documentación útil
 
-## Flujo recomendado de trabajo
+Documentos actuales en `docs/`:
+- `docs/estado-proyecto-2026-05-08.md`
+- `docs/backlog-operativo-cambios-crm-2026-04-16.md`
+- `docs/gate-0-diagnostico-2026-04-16.md`
+- `docs/optimization-implementation-summary-2026-04-15.md`
+- `docs/paso-a-paso-cambios-crm-2026-04-16.md`
+- `docs/performance-hardening-2026-04-14.md`
+- `docs/production-optimization-roadmap-2026-04-14.md`
 
-### Frontend
-1. desarrollar en modulo correspondiente
-2. validar `tsc --noEmit`
-3. probar con roles reales (`agent`, `admin`, `super_admin`, `dev`)
-4. no mezclar cambios de UX con endurecimiento de DB en el mismo release
+También revisar antes de tocar código:
+- `AGENTS.md`
+- `.ai/PROJECT_CONTEXT.md`
+- `.ai/TODO.md`
 
-### Base de datos
-1. backup
-2. maintenance mode si el cambio es estructural
-3. aplicar migracion
-4. smoke test con usuarios reales
-5. reabrir operacion
+## Reglas operativas para desarrollo
 
-## Despliegue parcial recomendado
+- no modificar `.env`, `.env.local`, `.env.production` del equipo
+- no tocar `dist/`
+- no debilitar RLS para “resolver” problemas de frontend
+- no asumir acceso cross-tenant ni cross-operation
+- toda query operativa debe respetar `tenant_id` y/o `operation_id`
+- después de cambios frontend correr `npm run build`
+- después de cambios SQL explicar impacto en RLS, RPCs, índices y migraciones
 
-El estado actual permite un release parcial del frontend sin meter aun el endurecimiento final de Supabase.
+## Troubleshooting rápido
 
-Checklist minimo antes de deploy:
-- login por rol
-- branding correcto por tenant
-- cambio tenant/operacion sin recarga
-- dashboard search
-- campañas
-- agentes
-- clientes
-- consola sin errores rojos
+Si la app levanta pero carga raro:
+- verificar variables `VITE_*`
+- verificar sesión y operación activa
+- verificar que Supabase responde
+- abrir consola y red del navegador
 
-## Pendiente inmediato
+Si clientes/agentes/campañas “muestran menos de lo esperado”:
+- confirmar operación activa
+- confirmar rol del usuario
+- confirmar RLS y datos del tenant correcto
 
-Siguiente bloque tecnico recomendado:
-1. endurecer `clients` en Supabase
-2. endurecer `agents`
-3. endurecer `campaigns`
-4. despues aplicar RLS/funciones mas estrictas
+Si el sistema se siente lento en un entorno y en otro no:
+- medir latencia de red y requests a Supabase
+- revisar región del host / oficina / VPN
+- revisar DevTools Network antes de asumir problema del frontend
 
-La razon de ese orden es operativa: `clients` es el flujo mas sensible, y conviene aislarlo con cambios mas controlados antes de endurecer todo el sistema a la vez.
+## Para un dev que entra hoy
+
+Orden recomendado para entender el proyecto:
+1. `AGENTS.md`
+2. `.ai/PROJECT_CONTEXT.md`
+3. `.ai/TODO.md`
+4. `src/App.tsx`
+5. `src/hooks/useAuth.ts`
+6. `src/modules/dashboard/`
+7. `src/modules/clients/`
+8. `src/modules/campaigns/`
+9. `supabase/migrations/`
+
+## Estado de release
+
+El repo está apto para desarrollo activo y corre en local, pero no debe asumirse “backend completamente cerrado” solo por el estado del frontend. Si vas a tocar producción o migraciones sensibles, separa frontend, SQL y documentación en cambios revisables.
