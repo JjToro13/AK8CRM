@@ -491,7 +491,11 @@ export default function CampaignClientsModal({
           }
 
           transferredClientIds = snapshotResult.data
-            .filter((client) => client.assigned_to !== nextAssignedTo)
+            .filter(
+              (client) =>
+                Boolean(client.assigned_to) &&
+                client.assigned_to !== nextAssignedTo,
+            )
             .map((client) => client.id);
         }
 

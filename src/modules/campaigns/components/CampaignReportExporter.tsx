@@ -78,6 +78,7 @@ type BaseClientRow = {
   last_call_at: string;
 
   comments_count: number;
+  comentario_reciente: string;
 
   assigned_to: string;
   created_at: string;
@@ -233,7 +234,7 @@ export default function CampaignReportExporter({
   const [exportCampaignId, setExportCampaignId] = useState<string>(
     defaultCampaignId || campaigns?.[0]?.id || "",
   );
-  const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("xlsx");
   const [exportScope, setExportScope] = useState<ExportScope>("all");
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
@@ -444,6 +445,20 @@ export default function CampaignReportExporter({
 
         const commentsCount = cid ? (commentCountMap.get(cid) ?? 0) : 0;
         const commentsArr = cid ? (allCommentsMap.get(cid) ?? []) : [];
+        const latestComment =
+          commentsArr.length > 0 ? commentsArr[commentsArr.length - 1] : null;
+        const latestCommentAgent = latestComment?.agent_id
+          ? (agentNameMap.get(latestComment.agent_id) ?? String(latestComment.agent_id))
+          : "—";
+        const latestCommentWhen = latestComment
+          ? formatDateTimeShort((latestComment.created_at ?? "").toString())
+          : "";
+        const latestCommentText = latestComment
+          ? (latestComment.comment ?? "")
+              .toString()
+              .replace(/\s+/g, " ")
+              .trim()
+          : "";
 
         const commentCols: Record<string, string> = {};
         for (let i = 0; i < maxComments; i++) {
@@ -486,6 +501,9 @@ export default function CampaignReportExporter({
           last_call_at: lastCallAt,
 
           comments_count: commentsCount,
+          comentario_reciente: latestComment
+            ? `${latestCommentWhen} | ${latestCommentAgent}: ${latestCommentText}`
+            : "",
 
           assigned_to: assignedLabel,
           created_at: formatDateTimeShort(c.created_at ?? ""),
@@ -516,6 +534,7 @@ export default function CampaignReportExporter({
         "call_attempts",
         "last_call_at",
         "comments_count",
+        "comentario_reciente",
         ...commentHeaders,
         "assigned_to",
         "created_at",
@@ -569,6 +588,7 @@ export default function CampaignReportExporter({
         { wch: 12 }, // call_attempts
         { wch: 18 }, // last_call_at
         { wch: 12 }, // comments_count
+        { wch: 60 }, // comentario_reciente
       ];
       for (let i = 0; i < maxComments; i++) cols.push({ wch: 60 });
       cols.push({ wch: 22 }); // assigned_to
@@ -763,11 +783,11 @@ export default function CampaignReportExporter({
                       campaignGhostButtonClass,
                       "justify-center",
                       exportFormat === "csv" &&
-                        "border-brand/24 bg-brand/[0.08] ring-4 ring-brand/10",
+                        "border-brand/40 bg-brand/[0.12] text-brand ring-4 ring-brand/15",
                     )}
                   >
                     <FileText className="w-4 h-4" />
-                    CSV
+                    CSV {exportFormat === "csv" ? "• Seleccionado" : ""}
                   </button>
 
                   <button
@@ -778,18 +798,19 @@ export default function CampaignReportExporter({
                       campaignGhostButtonClass,
                       "justify-center",
                       exportFormat === "xlsx" &&
-                        "border-brand/24 bg-brand/[0.08] ring-4 ring-brand/10",
+                        "border-brand/40 bg-brand/[0.12] text-brand ring-4 ring-brand/15",
                     )}
                   >
                     <FileSpreadsheet className="w-4 h-4" />
-                    XLSX (con resumen)
+                    XLSX (con resumen) {exportFormat === "xlsx" ? "• Seleccionado" : ""}
                   </button>
                 </div>
               </div>
               <div className="rounded-[1.2rem] border border-white/74 bg-white/54 px-4 py-3 text-xs text-muted">
                 Consejo: el XLSX incluye resumen por tipificacion, por codigo de
-                tipificacion y por agente, ademas de columnas dinamicas para
-                comentarios.
+                tipificacion y por agente. Tanto CSV como XLSX exportan
+                `comentario_reciente`, `comments_count` y columnas dinamicas
+                `comentario_1..N`.
               </div>
             </ModalBody>
 

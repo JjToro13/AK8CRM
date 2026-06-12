@@ -498,12 +498,16 @@ export function useDashboard({
           ? "Sin asignar"
           : assignmentAgents.find((agent) => agent.id === agentId)?.name ?? agentId;
       const didAgentChange = selectedClientForAssignment.assigned_to !== agentId;
+      const shouldMarkTransferred =
+        agentId !== null &&
+        Boolean(selectedClientForAssignment.assigned_to) &&
+        didAgentChange;
 
       const { error: updateError } = await clients.update(
         selectedClientForAssignment.id,
         {
           assigned_to: agentId,
-          ...(agentId !== null && didAgentChange
+          ...(shouldMarkTransferred
             ? {
                 status_code: TRANSFERRED_CLIENT_STATUS_CODE,
                 status_color: getLegacyStatusColor(
@@ -543,7 +547,7 @@ export function useDashboard({
               ...current,
               assigned_to: agentId,
               assigned_agent: assignedAgent,
-              ...(agentId !== null && didAgentChange
+              ...(shouldMarkTransferred
                 ? {
                     status_code: TRANSFERRED_CLIENT_STATUS_CODE,
                     status_color: getLegacyStatusColor(
@@ -561,7 +565,7 @@ export function useDashboard({
                 ...client,
                 assigned_to: agentId,
                 assigned_agent: assignedAgent,
-                ...(agentId !== null && didAgentChange
+                ...(shouldMarkTransferred
                   ? {
                       status_code: TRANSFERRED_CLIENT_STATUS_CODE,
                       status_color: getLegacyStatusColor(
