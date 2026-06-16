@@ -10,7 +10,14 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
-import { Agent, agents, getAgentRoleLabel, supabase } from "../../../lib/supabase";
+import {
+  Agent,
+  agents,
+  canEditManagedUserProfile,
+  canResetManagedUserPassword,
+  getAgentRoleLabel,
+  supabase,
+} from "../../../lib/supabase";
 import {
   ModalBody,
   ModalFooter,
@@ -123,6 +130,8 @@ export default function AgentUpsertModal({
   const [isActive, setIsActive] = useState(true);
   const [username, setUsername] = useState("");
   const [tempPassword, setTempPassword] = useState("");
+  const [nextPassword, setNextPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [tenantSlug, setTenantSlug] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -145,6 +154,13 @@ export default function AgentUpsertModal({
   const [error, setError] = useState("");
 
   const title = isEdit ? "Editar usuario" : "Crear usuario";
+  const isSelfEdit = isEdit && !!agent?.id && agent.id === user?.id;
+  const canEditProfile = isEdit
+    ? canEditManagedUserProfile(viewerRole, agent?.role, isSelfEdit)
+    : assignableRoles.length > 0;
+  const canResetPassword = isEdit
+    ? canResetManagedUserPassword(viewerRole, agent?.role, isSelfEdit)
+    : false;
   useEffect(() => {
     if (!isOpen) return;
 
@@ -158,6 +174,8 @@ export default function AgentUpsertModal({
     setMigrateToAgentId("");
     setDeleteTargetAgents([]);
     setDeletePreview(null);
+    setNextPassword("");
+    setConfirmPassword("");
 
     const run = async () => {
       if (isEdit || !effectiveOperationId) return;
@@ -205,6 +223,8 @@ export default function AgentUpsertModal({
     setMigrateToAgentId("");
     setDeleteTargetAgents([]);
     setDeletePreview(null);
+    setNextPassword("");
+    setConfirmPassword("");
 
     if (isEdit && agent) {
       setName(agent.name ?? "");
@@ -223,14 +243,33 @@ export default function AgentUpsertModal({
   }, [agent, assignableRoles, isEdit, isOpen]);
 
   useEffect(() => {
+    if (isEdit && !canEditProfile) return;
     if (!role) return;
     if (!assignableRoles.includes(role as RoleOption)) {
       setRole(isEdit ? assignableRoles[0] ?? "" : "");
     }
-  }, [assignableRoles, isEdit, role]);
+  }, [assignableRoles, canEditProfile, isEdit, role]);
 
   const usernameNorm = useMemo(() => normUsername(username), [username]);
   const requiresOperationContext = !!role && role !== "dev";
+  const passwordDraft = nextPassword.trim();
+  const confirmPasswordDraft = confirmPassword.trim();
+  const wantsPasswordReset = canResetPassword
+    ? passwordDraft.length > 0 || confirmPasswordDraft.length > 0
+    : false;
+  const passwordResetIsValid =
+    !wantsPasswordReset ||
+    (passwordDraft.length >= 6 &&
+      confirmPasswordDraft.length >= 6 &&
+      passwordDraft === confirmPasswordDraft);
+  const hasProfileChanges = Boolean(
+    isEdit &&
+      agent &&
+      canEditProfile &&
+      (name.trim() !== (agent.name ?? "").trim() ||
+        role !== (agent.role ?? "") ||
+        isActive !== (agent.is_active !== false)),
+  );
 
   const emailPreview = useMemo(() => {
     if (isEdit) return agent?.email ?? "";
@@ -241,20 +280,28 @@ export default function AgentUpsertModal({
   }, [agent?.email, isEdit, requiresOperationContext, role, tenantSlug, usernameNorm]);
 
   const canSubmit = () => {
-    if (!name.trim()) return false;
-    if (assignableRoles.length === 0) return false;
-    if (!role) return false;
-
     if (!isEdit) {
+      if (!name.trim()) return false;
+      if (assignableRoles.length === 0) return false;
+      if (!role) return false;
       if (usernameNorm.length < 3) return false;
       if (requiresOperationContext && (!effectiveOperationId || !tenantSlug)) {
         return false;
       }
 
       if (tempPassword.trim().length < 6) return false;
+      return true;
     }
 
-    return true;
+    if (!agent) return false;
+    if (!canEditProfile && !canResetPassword) return false;
+    if (canEditProfile) {
+      if (!name.trim()) return false;
+      if (!role) return false;
+    }
+    if (wantsPasswordReset && !passwordResetIsValid) return false;
+
+    return hasProfileChanges || wantsPasswordReset;
   };
 
   const copyEmail = async () => {
@@ -272,15 +319,22 @@ export default function AgentUpsertModal({
   const save = async () => {
     setError("");
 
-    if (!role) {
-      setError("Selecciona un rol antes de guardar.");
-      return;
-    }
-
     if (!canSubmit()) {
       if (!isEdit && tempPassword.trim().length > 0 && tempPassword.trim().length < 6) {
-        setError("La contraseña temporal debe tener mínimo 6 caracteres.");
+        setError("La contrase?a temporal debe tener m?nimo 6 caracteres.");
         return;
+      }
+
+      if (isEdit && wantsPasswordReset) {
+        if (passwordDraft.length < 6) {
+          setError("La nueva contrasena debe tener minimo 6 caracteres.");
+          return;
+        }
+
+        if (passwordDraft !== confirmPasswordDraft) {
+          setError("La confirmacion de contrasena no coincide.");
+          return;
+        }
       }
 
       setError("Completa los campos requeridos.");
@@ -292,19 +346,41 @@ export default function AgentUpsertModal({
     try {
       if (isEdit) {
         if (!agent?.id) throw new Error("No hay usuario seleccionado.");
+        if (!canEditProfile && !canResetPassword) {
+          throw new Error("No tienes permisos para actualizar este usuario.");
+        }
 
-        const { error: rpcError } = await supabase.rpc("upsert_agent", {
-          p_id: agent.id,
-          p_name: name.trim(),
-          p_role: role,
-          p_is_active: isActive,
-        });
+        if (hasProfileChanges) {
+          const { error: rpcError } = await supabase.rpc("upsert_agent", {
+            p_id: agent.id,
+            p_name: name.trim(),
+            p_role: role,
+            p_is_active: isActive,
+          });
 
-        if (rpcError) throw rpcError;
+          if (rpcError) throw rpcError;
+        }
+
+        if (wantsPasswordReset) {
+          const { error: passwordError } = await agents.resetPassword({
+            id: agent.id,
+            password: passwordDraft,
+          });
+
+          if (passwordError) throw passwordError;
+        }
 
         notify.success(
-          "Usuario actualizado",
-          "Los cambios del usuario se guardaron correctamente.",
+          wantsPasswordReset && hasProfileChanges
+            ? "Usuario y seguridad actualizados"
+            : wantsPasswordReset
+              ? "Contrasena actualizada"
+              : "Usuario actualizado",
+          wantsPasswordReset && hasProfileChanges
+            ? "Se guardaron los cambios del usuario y la nueva contrasena."
+            : wantsPasswordReset
+              ? "La contrasena del usuario se actualizo correctamente."
+              : "Los cambios del usuario se guardaron correctamente.",
         );
         onSaved();
         return;
@@ -330,7 +406,7 @@ export default function AgentUpsertModal({
 
       const accessToken = session?.access_token ?? "";
       if (!accessToken) {
-        throw new Error("No hay una sesión activa válida para crear usuarios.");
+        throw new Error("No hay una sesi?n activa v?lida para crear usuarios.");
       }
 
       const response = await fetch(buildSupabaseFunctionUrl("create-agent"), {
@@ -571,7 +647,9 @@ export default function AgentUpsertModal({
           title={title}
           description={
             isEdit
-              ? "Actualiza nombre, rol y estado del usuario."
+              ? canEditProfile
+                ? "Actualiza nombre, rol, estado y seguridad del usuario."
+                : "Restablece la contrasena del usuario segun tus permisos."
               : "Crea un usuario nuevo y genera su correo por tenant."
           }
           onClose={() => !saving && !deleting && onClose()}
@@ -599,7 +677,7 @@ export default function AgentUpsertModal({
               <Input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                disabled={saving || deleting}
+                disabled={saving || deleting || (isEdit && !canEditProfile)}
                 placeholder="Ej: Juan Perez"
                 autoComplete="off"
               />
@@ -657,7 +735,12 @@ export default function AgentUpsertModal({
                   if (value === ROLE_PLACEHOLDER_VALUE) return;
                   setRole(value as RoleOption);
                 }}
-                disabled={saving || deleting || assignableRoles.length === 0}
+                disabled={
+                  saving ||
+                  deleting ||
+                  assignableRoles.length === 0 ||
+                  (isEdit && !canEditProfile)
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un rol" />
@@ -706,6 +789,49 @@ export default function AgentUpsertModal({
             </div>
           ) : null}
 
+          {isEdit && canResetPassword ? (
+            <div className={cn(agentInsetClass, "space-y-4 p-4")}>
+              <div>
+                <div className="text-sm font-semibold text-ink/80">
+                  Restablecer contrasena
+                </div>
+                <div className="mt-1 text-xs text-muted">
+                  {isSelfEdit
+                    ? "Puedes actualizar tu propia contrasena desde este modal."
+                    : "Define una nueva contrasena para este usuario. No necesita la actual."}
+                </div>
+              </div>
+
+              <Field label="Nueva contrasena">
+                <div className="relative">
+                  <KeyRound className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                  <Input
+                    className="pl-11"
+                    value={nextPassword}
+                    onChange={(event) => setNextPassword(event.target.value)}
+                    disabled={saving || deleting}
+                    placeholder="Minimo 6 caracteres"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={6}
+                  />
+                </div>
+              </Field>
+
+              <Field label="Confirmar contrasena">
+                <Input
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  disabled={saving || deleting}
+                  placeholder="Repite la nueva contrasena"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={6}
+                />
+              </Field>
+            </div>
+          ) : null}
+
           <div className={cn(agentInsetClass, "flex items-center justify-between p-4")}>
             <div>
               <div className="text-sm font-semibold text-ink/80">Activo</div>
@@ -723,7 +849,7 @@ export default function AgentUpsertModal({
                 type="checkbox"
                 checked={isActive}
                 onChange={(event) => setIsActive(event.target.checked)}
-                disabled={saving || deleting}
+                disabled={saving || deleting || (isEdit && !canEditProfile)}
                 aria-label="Cambiar estado activo"
               />
             </label>

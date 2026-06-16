@@ -3,7 +3,10 @@ import AgentDetailsModal from "./AgentDetailsModal";
 import AgentUpsertModal from "./AgentUpsertModal";
 import AssignmentModal from "./AssignmentModal";
 import LoadingSpinner from "../../../shared/components/feedback/LoadingSpinner";
-import type { Agent } from "../../../lib/supabase";
+import {
+  canOpenManagedUserEditor,
+  type Agent,
+} from "../../../lib/supabase";
 import { cn } from "../../../lib/utils";
 import { useAgentManagement } from "../hooks/useAgentManagement";
 import type { AgentManagementProps } from "../types/agent-management.types";
@@ -41,9 +44,9 @@ export default function AgentManagementView(props: AgentManagementProps) {
     availableCampaigns,
     canAssignClients,
     canCreateAgents,
-    canEditAgents,
     canManageAgents,
     compact,
+    currentUserId,
     degradedMode,
     error,
     getAgentRoleLabel,
@@ -65,6 +68,7 @@ export default function AgentManagementView(props: AgentManagementProps) {
     showUpsertModal,
     totalAvailable,
     upsertMode,
+    viewerRole,
   } = useAgentManagement(props);
 
   if (loading) {
@@ -126,7 +130,13 @@ export default function AgentManagementView(props: AgentManagementProps) {
         agentsList={agentsList}
         assignedCounts={assignedCounts}
         canAssignClients={canAssignClients}
-        canEditAgents={canEditAgents}
+        canOpenEditorFor={(agent) =>
+          canOpenManagedUserEditor(
+            viewerRole,
+            agent.role,
+            agent.id === currentUserId,
+          )
+        }
         onAssign={handleCreateAssignment}
         onEdit={openEditAgent}
         onViewDetails={handleViewAgentDetails}

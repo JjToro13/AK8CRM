@@ -4,6 +4,7 @@ import {
   canAssignOperationalClients,
   canCreateManagedUsers,
   canEditManagedUsers,
+  canOpenManagedUserEditor,
   getAgentManagementVisibleRoles,
   getAgentRoleLabel,
   isOperationalAgentRole,
@@ -42,6 +43,7 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     operationId,
     operationReady,
     role,
+    user,
   } = useAuth();
   const { reportBackendIssue, reportBackendSuccess, shouldReduceLoad } =
     useBackendHealth();
@@ -224,7 +226,9 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
   };
 
   const openEditAgent = (agent: Agent) => {
-    if (!canEditAgents) return;
+    if (!canOpenManagedUserEditor(role, agent.role, agent.id === user?.id)) {
+      return;
+    }
     setUpsertMode("edit");
     setSelectedAgent(agent);
     setShowUpsertModal(true);
@@ -259,6 +263,7 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     canCreateAgents,
     canEditAgents,
     canManageAgents,
+    currentUserId: user?.id ?? null,
     compact,
     degradedMode: shouldReduceLoad,
     error,
@@ -281,5 +286,6 @@ export function useAgentManagement({ compact }: AgentManagementProps) {
     showUpsertModal,
     totalAvailable,
     upsertMode,
+    viewerRole: role,
   };
 }

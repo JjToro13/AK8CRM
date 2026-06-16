@@ -30,6 +30,71 @@ export const agents = {
     return { error };
   },
 
+  resetPassword: async (params: { id: string; password: string }) => {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      return { error: sessionError };
+    }
+
+    const accessToken = session?.access_token ?? "";
+    if (!accessToken) {
+      return {
+        error: new Error(
+          "No hay una sesion activa valida para actualizar contrasenas.",
+        ),
+      };
+    }
+
+    const response = await fetch(buildSupabaseFunctionUrl("reset-agent-password"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: appEnv.supabase.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        id: params.id,
+        password: params.password,
+      }),
+    });
+
+    const rawText = await response.text();
+    let payload: { error?: string; details?: string; message?: string } | null = null;
+
+    if (rawText) {
+      try {
+        payload = JSON.parse(rawText) as {
+          error?: string;
+          details?: string;
+          message?: string;
+        };
+      } catch {
+        payload = { error: rawText };
+      }
+    }
+
+    if (!response.ok) {
+      const details = payload?.details ? ` - ${payload.details}` : "";
+      const message =
+        payload?.error ||
+        payload?.message ||
+        `La funcion reset-agent-password devolvio HTTP ${response.status}.`;
+
+      return { error: new Error(`${message}${details}`) };
+    }
+
+    if (payload?.error) {
+      const details = payload.details ? ` - ${payload.details}` : "";
+      return { error: new Error(`${payload.error}${details}`) };
+    }
+
+    return { error: null };
+  },
+
   remove: async (params: {
     id: string;
     scheduledCallsAction?: "block" | "delete" | "migrate";

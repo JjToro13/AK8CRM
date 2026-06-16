@@ -13,7 +13,7 @@ type AgentsGridProps = {
   agentsList: Agent[];
   assignedCounts: Record<string, number>;
   canAssignClients: boolean;
-  canEditAgents: boolean;
+  canOpenEditorFor: (agent: Agent) => boolean;
   onAssign: (agent: Agent) => void;
   onEdit: (agent: Agent) => void;
   onViewDetails: (agent: Agent) => void;
@@ -27,7 +27,7 @@ export default function AgentsGrid({
   agentsList,
   assignedCounts,
   canAssignClients,
-  canEditAgents,
+  canOpenEditorFor,
   onAssign,
   onEdit,
   onViewDetails,
@@ -73,7 +73,7 @@ export default function AgentsGrid({
             agent={agent}
             assignedCount={assignedCounts[agent.id] ?? 0}
             canAssignClients={canAssignClients}
-            canEdit={canEditAgents}
+            canEdit={canOpenEditorFor(agent)}
             onAssign={onAssign}
             onEdit={onEdit}
             onViewDetails={onViewDetails}

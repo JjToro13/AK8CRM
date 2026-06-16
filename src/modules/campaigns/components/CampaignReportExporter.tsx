@@ -86,6 +86,14 @@ type BaseClientRow = {
 
 type ClientRow = BaseClientRow & Record<string, any>;
 
+type ExportCommentRow = {
+  client_id: string | null;
+  agent_id: string | null;
+  agent_name_snapshot?: string | null;
+  comment: string | null;
+  created_at: string | null;
+};
+
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
@@ -95,6 +103,15 @@ function normalizeFilenamePart(s: string) {
     .replace(/[^\w\s-]/g, "")
     .trim()
     .replace(/\s+/g, "_");
+}
+
+function chunkArray<T>(items: T[], size: number) {
+  if (size <= 0) return [items];
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -138,6 +155,17 @@ function formatDateTimeShort(iso: string) {
   const hh = pad(d.getHours());
   const mi = pad(d.getMinutes());
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+}
+
+function getExportScopeLabel(scope: ExportScope) {
+  switch (scope) {
+    case "assigned":
+      return "Asignados";
+    case "available":
+      return "Disponibles";
+    default:
+      return "Todos";
+  }
 }
 
 function buildSummary(rows: ClientRow[]) {
@@ -314,39 +342,45 @@ export default function CampaignReportExporter({
 
     const allCommentsMap = new Map<
       string,
-      { comment: string; created_at: string; agent_id: string | null }[]
+      ExportCommentRow[]
     >();
     const commentCountMap = new Map<string, number>();
 
     if (ids.length === 0) return { allCommentsMap, commentCountMap };
 
-    const { data: commData, error: commErr } = await supabase
-      .from("client_comments")
-      .select("client_id, agent_id, comment, created_at")
-      .in("client_id", ids)
-      .order("created_at", { ascending: true })
-      .limit(10000);
+    const idChunks = chunkArray(ids, 100);
 
-    if (commErr) {
-      console.warn("[export] client_comments lookup failed:", commErr.message);
-      return { allCommentsMap, commentCountMap };
-    }
+    for (const idChunk of idChunks) {
+      const { data: commData, error: commErr } = await supabase
+        .from("client_comments")
+        .select("client_id, agent_id, agent_name_snapshot, comment, created_at")
+        .in("client_id", idChunk)
+        .order("created_at", { ascending: true });
 
-    for (const c of commData ?? []) {
-      const cid = c.client_id as string;
-      if (!cid) continue;
+      if (commErr) {
+        throw new Error(
+          `No se pudieron cargar los comentarios para exportar: ${commErr.message}`,
+        );
+      }
 
-      const entry = {
-        comment: (c.comment ?? "").toString(),
-        created_at: (c.created_at ?? "").toString(),
-        agent_id: (c.agent_id ?? null) as any,
-      };
+      for (const c of (commData ?? []) as ExportCommentRow[]) {
+        const cid = c.client_id;
+        if (!cid) continue;
 
-      const arr = allCommentsMap.get(cid) ?? [];
-      arr.push(entry);
-      allCommentsMap.set(cid, arr);
+        const entry: ExportCommentRow = {
+          client_id: cid,
+          agent_id: c.agent_id ?? null,
+          agent_name_snapshot: c.agent_name_snapshot ?? null,
+          comment: c.comment ?? "",
+          created_at: c.created_at ?? "",
+        };
 
-      commentCountMap.set(cid, (commentCountMap.get(cid) ?? 0) + 1);
+        const arr = allCommentsMap.get(cid) ?? [];
+        arr.push(entry);
+        allCommentsMap.set(cid, arr);
+
+        commentCountMap.set(cid, (commentCountMap.get(cid) ?? 0) + 1);
+      }
     }
 
     return { allCommentsMap, commentCountMap };
@@ -447,7 +481,9 @@ export default function CampaignReportExporter({
         const commentsArr = cid ? (allCommentsMap.get(cid) ?? []) : [];
         const latestComment =
           commentsArr.length > 0 ? commentsArr[commentsArr.length - 1] : null;
-        const latestCommentAgent = latestComment?.agent_id
+        const latestCommentAgent = latestComment?.agent_name_snapshot?.trim()
+          ? latestComment.agent_name_snapshot.trim()
+          : latestComment?.agent_id
           ? (agentNameMap.get(latestComment.agent_id) ?? String(latestComment.agent_id))
           : "—";
         const latestCommentWhen = latestComment
@@ -469,7 +505,9 @@ export default function CampaignReportExporter({
           }
 
           const by = it.agent_id
-            ? (agentNameMap.get(it.agent_id) ?? String(it.agent_id))
+            ? (it.agent_name_snapshot?.trim() ||
+              agentNameMap.get(it.agent_id) ||
+              String(it.agent_id))
             : "—";
           const when = formatDateTimeShort((it.created_at ?? "").toString());
           const text = (it.comment ?? "")
@@ -598,33 +636,63 @@ export default function CampaignReportExporter({
       XLSX.utils.book_append_sheet(wb, ws1, `Campaign_${exportPrefix}`);
 
       const summary = buildSummary(rows);
-      const meta = [
-        ["Métrica", "Valor"],
-        ["Campaña", campLabel],
-        ["Prefijo", exportPrefix],
-        ["Scope", exportScope],
-        ["Total leads", summary.total],
-        ["Asignados", summary.assigned],
-        ["Sin asignar", summary.unassigned],
-        ["Intentos promedio (clients.attempts)", summary.attemptsAvg],
-        ["Generado", formatDateTimeShort(new Date().toISOString())],
-        ["Máx. comentarios (columnas)", maxComments],
+      const generatedAt = formatDateTimeShort(new Date().toISOString());
+      const scopeLabel = getExportScopeLabel(exportScope);
+      const summarySheetAoa = [
+        ["RESUMEN DE CAMPANA"],
+        [campLabel, "", "", "", "Prefijo", exportPrefix, "", "", "Alcance", scopeLabel],
+        [],
+        ["INDICADORES CLAVE"],
+        ["Total leads", summary.total, "", "Asignados", summary.assigned, "", "Sin asignar", summary.unassigned, "", "Promedio intentos", summary.attemptsAvg],
+        ["Comentarios maximos exportados", maxComments, "", "Generado", generatedAt],
+        [],
+        ["TIPIFICACION"],
+        [],
+        ["CODIGO"],
+        [],
+        ["AGENTE"],
       ];
 
-      const ws2 = XLSX.utils.aoa_to_sheet(meta);
-      ws2["!freeze"] = { xSplit: 0, ySplit: 1 };
+      const ws2 = XLSX.utils.aoa_to_sheet(summarySheetAoa);
+      ws2["!freeze"] = { xSplit: 0, ySplit: 7 };
       ws2["!cols"] = [
-        { wch: 26 },
-        { wch: 34 },
+        { wch: 24 },
+        { wch: 14 },
+        { wch: 3 },
         { wch: 18 },
-        { wch: 2 },
+        { wch: 14 },
+        { wch: 3 },
+        { wch: 18 },
+        { wch: 14 },
+        { wch: 3 },
         { wch: 22 },
-        { wch: 12 },
-        { wch: 22 },
+        { wch: 18 },
+      ];
+      ws2["!rows"] = [
+        { hpt: 24 },
+        { hpt: 20 },
+        { hpt: 10 },
+        { hpt: 18 },
+        { hpt: 20 },
+        { hpt: 20 },
+        { hpt: 10 },
+      ];
+      ws2["!merges"] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } },
+        { s: { r: 4, c: 3 }, e: { r: 4, c: 4 } },
+        { s: { r: 4, c: 6 }, e: { r: 4, c: 7 } },
+        { s: { r: 4, c: 9 }, e: { r: 4, c: 10 } },
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } },
+        { s: { r: 5, c: 3 }, e: { r: 5, c: 4 } },
+        { s: { r: 7, c: 0 }, e: { r: 7, c: 2 } },
+        { s: { r: 7, c: 4 }, e: { r: 7, c: 6 } },
+        { s: { r: 7, c: 8 }, e: { r: 7, c: 10 } },
       ];
 
-      XLSX.utils.sheet_add_json(ws2, summary.tipTable, { origin: "A13" });
-      XLSX.utils.sheet_add_json(ws2, summary.tipCodeTable, { origin: "E13" });
+      XLSX.utils.sheet_add_json(ws2, summary.tipTable, { origin: "A9" });
+      XLSX.utils.sheet_add_json(ws2, summary.tipCodeTable, { origin: "E11" });
       XLSX.utils.sheet_add_json(ws2, summary.agentTable, { origin: "I13" });
 
       XLSX.utils.book_append_sheet(wb, ws2, "Resumen");

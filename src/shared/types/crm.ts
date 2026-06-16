@@ -125,6 +125,58 @@ export function canEditManagedUsers(
   return role === "dev" || role === "owner";
 }
 
+export function canEditManagedUserProfile(
+  viewerRole: AgentRole | null | undefined,
+  targetRole: AgentRole | null | undefined,
+  isSelf = false,
+): boolean {
+  if (!targetRole) return false;
+
+  switch (viewerRole) {
+    case "dev":
+      return isSelf ? targetRole === "dev" : targetRole !== "dev";
+    case "owner":
+      if (isSelf) return false;
+      return targetRole === "manager" || targetRole === "loader" || targetRole === "agent";
+    default:
+      return false;
+  }
+}
+
+export function canResetManagedUserPassword(
+  viewerRole: AgentRole | null | undefined,
+  targetRole: AgentRole | null | undefined,
+  isSelf = false,
+): boolean {
+  if (!targetRole) return false;
+
+  switch (viewerRole) {
+    case "dev":
+      return true;
+    case "owner":
+      return targetRole === "owner" ||
+        targetRole === "manager" ||
+        targetRole === "loader" ||
+        targetRole === "agent";
+    case "manager":
+      if (isSelf) return false;
+      return targetRole === "loader" || targetRole === "agent";
+    default:
+      return false;
+  }
+}
+
+export function canOpenManagedUserEditor(
+  viewerRole: AgentRole | null | undefined,
+  targetRole: AgentRole | null | undefined,
+  isSelf = false,
+): boolean {
+  return (
+    canEditManagedUserProfile(viewerRole, targetRole, isSelf) ||
+    canResetManagedUserPassword(viewerRole, targetRole, isSelf)
+  );
+}
+
 export function canAssignOperationalClients(
   role: AgentRole | null | undefined,
 ): boolean {
