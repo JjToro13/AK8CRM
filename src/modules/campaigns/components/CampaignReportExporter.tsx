@@ -10,6 +10,7 @@ import { supabase } from "../../../lib/supabase";
 import { createPortal } from "react-dom";
 import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import {
+  TRANSFERRED_CLIENT_STATUS_CODE,
   getStatusCode,
   getStatusText,
   resolveClientStatus,
@@ -94,6 +95,9 @@ type ExportCommentRow = {
   created_at: string | null;
 };
 
+const QUERY_CHUNK_SIZE = 100;
+const QUERY_PAGE_SIZE = 1000;
+
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
@@ -103,6 +107,30 @@ function normalizeFilenamePart(s: string) {
     .replace(/[^\w\s-]/g, "")
     .trim()
     .replace(/\s+/g, "_");
+}
+
+function normalizeWorksheetName(s: string) {
+  const cleaned = (s || "Hoja")
+    .replace(/[\\/?*[\]:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return (cleaned || "Hoja").slice(0, 31);
+}
+
+function makeUniqueWorksheetName(name: string, usedNames: Set<string>) {
+  const base = normalizeWorksheetName(name);
+  let next = base;
+  let suffix = 2;
+
+  while (usedNames.has(next)) {
+    const suffixText = ` ${suffix}`;
+    next = `${base.slice(0, 31 - suffixText.length)}${suffixText}`;
+    suffix += 1;
+  }
+
+  usedNames.add(next);
+  return next;
 }
 
 function chunkArray<T>(items: T[], size: number) {
@@ -168,6 +196,115 @@ function getExportScopeLabel(scope: ExportScope) {
   }
 }
 
+function round2(value: number) {
+  return Number.isFinite(value) ? +value.toFixed(2) : 0;
+}
+
+function pct(part: number, total: number) {
+  return total ? round2((part / total) * 100) : 0;
+}
+
+function safeNumber(value: any) {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeForMatch(value: any) {
+  return (value ?? "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getStatusSearchText(row: ClientRow) {
+  return `${normalizeForMatch(row.tipificacion_codigo)} ${normalizeForMatch(
+    row.tipificacion,
+  )}`;
+}
+
+function statusMatches(row: ClientRow, patterns: string[]) {
+  const text = getStatusSearchText(row);
+  return patterns.some((pattern) => text.includes(pattern));
+}
+
+function hasUsefulTipificacion(row: ClientRow) {
+  const tip = normalizeForMatch(row.tipificacion);
+  const code = normalizeForMatch(row.tipificacion_codigo);
+  const emptyValues = new Set(["", "—", "-", "sin tipificacion", "sin estado"]);
+
+  return !emptyValues.has(tip) || !emptyValues.has(code);
+}
+
+function isTransferredStatus(row: ClientRow) {
+  const code = normalizeForMatch(row.tipificacion_codigo);
+  if (code === normalizeForMatch(TRANSFERRED_CLIENT_STATUS_CODE)) return true;
+
+  const text = getStatusSearchText(row);
+  if (text.includes("no transfer")) return false;
+
+  return text.includes("transfer") || text.includes("ftd");
+}
+
+function isNoAnswerStatus(row: ClientRow) {
+  const code = normalizeForMatch(row.tipificacion_codigo);
+  if (code === "nc") return true;
+
+  return statusMatches(row, [
+    "no contesta",
+    "no responde",
+    "no answer",
+    "buzon",
+    "voicemail",
+    "apagado",
+    "ocupado",
+  ]);
+}
+
+function isInvalidContactStatus(row: ClientRow) {
+  const code = normalizeForMatch(row.tipificacion_codigo);
+  if (code === "nx" || code === "ne") return true;
+
+  return statusMatches(row, [
+    "equivoc",
+    "incorrect",
+    "invalid",
+    "wrong",
+    "no existe",
+    "fuera de servicio",
+    "numero malo",
+    "telefono malo",
+  ]);
+}
+
+function isPendingOrNewStatus(row: ClientRow) {
+  const code = normalizeForMatch(row.tipificacion_codigo);
+  if (code === "nu") return true;
+
+  return statusMatches(row, [
+    "nuevo",
+    "sin contacto",
+    "sin contactar",
+    "pendiente",
+    "pending",
+  ]);
+}
+
+function buildCountTable(
+  counts: Record<string, number>,
+  labelKey: string,
+  total: number,
+) {
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, count]) => ({
+      [labelKey]: label,
+      Cantidad: count,
+      "%": pct(count, total),
+    }));
+}
+
 function buildSummary(rows: ClientRow[]) {
   const total = rows.length;
   const assigned = rows.filter((r) => r.assigned_to !== "Sin asignar").length;
@@ -176,56 +313,323 @@ function buildSummary(rows: ClientRow[]) {
   const byTip: Record<string, number> = {};
   const byTipCode: Record<string, number> = {};
   const byAgent: Record<string, number> = {};
+  const byFunnel: Record<string, number> = {
+    Transferidos: 0,
+    "Contactados no transferidos": 0,
+    "No contesta / no responde": 0,
+    "Datos inválidos": 0,
+    "Sin trabajar": 0,
+    "En proceso / otros": 0,
+  };
+
+  const agentStats: Record<
+    string,
+    {
+      leads: number;
+      worked: number;
+      contacted: number;
+      transferred: number;
+      calls: number;
+      comments: number;
+      attempts: number;
+    }
+  > = {};
+
   let attemptsSum = 0;
   let attemptsCount = 0;
+  let callsSum = 0;
+  let commentsSum = 0;
+  let worked = 0;
+  let contacted = 0;
+  let transferred = 0;
+  let noAnswer = 0;
+  let invalidContacts = 0;
+  let withComments = 0;
 
-  for (const r of rows) {
-    const tip = (r.tipificacion || "").toString().trim() || "Sin tipificación";
-    const tipCode = (r.tipificacion_codigo || "").toString().trim() || "—";
+  for (const row of rows) {
+    const tip = (row.tipificacion || "").toString().trim() || "Sin tipificación";
+    const tipCode = (row.tipificacion_codigo || "").toString().trim() || "—";
+    const agent =
+      (row.assigned_to || "Sin asignar").toString().trim() || "Sin asignar";
 
     byTip[tip] = (byTip[tip] ?? 0) + 1;
     byTipCode[tipCode] = (byTipCode[tipCode] ?? 0) + 1;
+    byAgent[agent] = (byAgent[agent] ?? 0) + 1;
 
-    const ag =
-      (r.assigned_to || "Sin asignar").toString().trim() || "Sin asignar";
-    byAgent[ag] = (byAgent[ag] ?? 0) + 1;
+    const attempts = safeNumber(row.attempts);
+    const calls = safeNumber(row.call_attempts);
+    const comments = safeNumber(row.comments_count);
+    const hasLastCall = Boolean((row.last_call_at || "").toString().trim());
+    const rowNoAnswer = isNoAnswerStatus(row);
+    const rowInvalidContact = isInvalidContactStatus(row);
+    const rowPendingOrNew = isPendingOrNewStatus(row);
+    const rowTransferred = isTransferredStatus(row);
+    const hasMeaningfulTip = hasUsefulTipificacion(row) && !rowPendingOrNew;
+    const rowWorked =
+      attempts > 0 || calls > 0 || comments > 0 || hasLastCall || hasMeaningfulTip;
+    const rowContacted =
+      rowTransferred || (hasMeaningfulTip && !rowNoAnswer && !rowInvalidContact);
 
-    const a = Number(r.attempts ?? 0);
-    if (Number.isFinite(a)) {
-      attemptsSum += a;
-      attemptsCount += 1;
+    attemptsSum += attempts;
+    attemptsCount += 1;
+    callsSum += calls;
+    commentsSum += comments;
+
+    if (rowWorked) worked += 1;
+    if (rowContacted) contacted += 1;
+    if (rowTransferred) transferred += 1;
+    if (rowNoAnswer) noAnswer += 1;
+    if (rowInvalidContact) invalidContacts += 1;
+    if (comments > 0) withComments += 1;
+
+    if (!agentStats[agent]) {
+      agentStats[agent] = {
+        leads: 0,
+        worked: 0,
+        contacted: 0,
+        transferred: 0,
+        calls: 0,
+        comments: 0,
+        attempts: 0,
+      };
+    }
+
+    agentStats[agent].leads += 1;
+    agentStats[agent].worked += rowWorked ? 1 : 0;
+    agentStats[agent].contacted += rowContacted ? 1 : 0;
+    agentStats[agent].transferred += rowTransferred ? 1 : 0;
+    agentStats[agent].calls += calls;
+    agentStats[agent].comments += comments;
+    agentStats[agent].attempts += attempts;
+
+    const funnelStage = rowTransferred
+      ? "Transferidos"
+      : !rowWorked
+      ? "Sin trabajar"
+      : rowInvalidContact
+      ? "Datos inválidos"
+      : rowNoAnswer
+      ? "No contesta / no responde"
+      : rowContacted
+      ? "Contactados no transferidos"
+      : "En proceso / otros";
+
+    byFunnel[funnelStage] = (byFunnel[funnelStage] ?? 0) + 1;
+  }
+
+  const unworked = total - worked;
+  const attemptsAvg = attemptsCount ? round2(attemptsSum / attemptsCount) : 0;
+  const callsAvg = total ? round2(callsSum / total) : 0;
+  const commentsAvg = total ? round2(commentsSum / total) : 0;
+
+  const tipTable = buildCountTable(byTip, "Tipificación", total);
+  const tipCodeTable = buildCountTable(byTipCode, "Código", total);
+  const agentTable = buildCountTable(byAgent, "Agente", total);
+
+  const funnelLabels = [
+    "Transferidos",
+    "Contactados no transferidos",
+    "No contesta / no responde",
+    "Datos inválidos",
+    "Sin trabajar",
+    "En proceso / otros",
+  ];
+
+  const funnelTable = funnelLabels.map((stage) => ({
+    Etapa: stage,
+    Cantidad: byFunnel[stage] ?? 0,
+    "%": pct(byFunnel[stage] ?? 0, total),
+  }));
+
+  const agentPerformanceTable = Object.entries(agentStats)
+    .filter(([agent]) => agent !== "Sin asignar")
+    .sort((a, b) => {
+      const aRate = pct(a[1].transferred, a[1].leads);
+      const bRate = pct(b[1].transferred, b[1].leads);
+      return (
+        b[1].transferred - a[1].transferred ||
+        bRate - aRate ||
+        b[1].contacted - a[1].contacted ||
+        b[1].leads - a[1].leads
+      );
+    })
+    .map(([agent, stats]) => ({
+      Agente: agent,
+      Leads: stats.leads,
+      Trabajados: stats.worked,
+      Contactados: stats.contacted,
+      Transferidos: stats.transferred,
+      "% Transfer": pct(stats.transferred, stats.leads),
+      Llamadas: stats.calls,
+      Comentarios: stats.comments,
+    }));
+
+  const kpiTable = [
+    {
+      "Métrica": "Total leads",
+      Valor: total,
+      "% total": total ? 100 : 0,
+      Lectura: "Base exportada en este alcance",
+    },
+    {
+      "Métrica": "Asignados",
+      Valor: assigned,
+      "% total": pct(assigned, total),
+      Lectura: "Leads con agente responsable",
+    },
+    {
+      "Métrica": "Sin asignar",
+      Valor: unassigned,
+      "% total": pct(unassigned, total),
+      Lectura: "Bolsa disponible o pendiente de reparto",
+    },
+    {
+      "Métrica": "Trabajados",
+      Valor: worked,
+      "% total": pct(worked, total),
+      Lectura: "Tienen intento, llamada, comentario o tipificación útil",
+    },
+    {
+      "Métrica": "Sin trabajar",
+      Valor: unworked,
+      "% total": pct(unworked, total),
+      Lectura: "Sin señales de gestión todavía",
+    },
+    {
+      "Métrica": "Contactados",
+      Valor: contacted,
+      "% total": pct(contacted, total),
+      Lectura: "Tipificación útil distinta a no contacto/dato inválido",
+    },
+    {
+      "Métrica": "Transferidos",
+      Valor: transferred,
+      "% total": pct(transferred, total),
+      Lectura: "Conversión principal de la campaña",
+    },
+    {
+      "Métrica": "No contesta / no responde",
+      Valor: noAnswer,
+      "% total": pct(noAnswer, total),
+      Lectura: "Reintentos o cambio de horario",
+    },
+    {
+      "Métrica": "Datos inválidos",
+      Valor: invalidContacts,
+      "% total": pct(invalidContacts, total),
+      Lectura: "Números equivocados, inválidos o fuera de servicio",
+    },
+    {
+      "Métrica": "Con comentarios",
+      Valor: withComments,
+      "% total": pct(withComments, total),
+      Lectura: "Leads con contexto escrito",
+    },
+    {
+      "Métrica": "Llamadas totales",
+      Valor: callsSum,
+      "% total": "—",
+      Lectura: "Total registrado en calls",
+    },
+    {
+      "Métrica": "Comentarios totales",
+      Valor: commentsSum,
+      "% total": "—",
+      Lectura: "Total registrado en client_comments",
+    },
+    {
+      "Métrica": "Prom. llamadas / lead",
+      Valor: callsAvg,
+      "% total": "—",
+      Lectura: "Carga promedio de llamadas",
+    },
+    {
+      "Métrica": "Prom. intentos / lead",
+      Valor: attemptsAvg,
+      "% total": "—",
+      Lectura: "Promedio del campo attempts",
+    },
+    {
+      "Métrica": "Prom. comentarios / lead",
+      Valor: commentsAvg,
+      "% total": "—",
+      Lectura: "Densidad de seguimiento escrito",
+    },
+  ];
+
+  const insights: string[] = [];
+  const topTip = tipTable[0] as any | undefined;
+  const topAgent = agentPerformanceTable[0] as any | undefined;
+
+  if (total === 0) {
+    insights.push("No hay leads en el alcance exportado.");
+  } else {
+    if (topTip) {
+      insights.push(
+        `La tipificación dominante es "${topTip["Tipificación"]}" (${topTip.Cantidad} leads, ${topTip["%"]}%).`,
+      );
+    }
+
+    insights.push(
+      `${transferred} leads están transferidos (${pct(transferred, total)}% del total).`,
+    );
+
+    if (unassigned > 0) {
+      insights.push(
+        `${unassigned} leads siguen sin agente asignado (${pct(unassigned, total)}%).`,
+      );
+    }
+
+    if (unworked > 0) {
+      insights.push(
+        `${unworked} leads no muestran gestión todavía (${pct(unworked, total)}%).`,
+      );
+    }
+
+    if (noAnswer > 0) {
+      insights.push(
+        `${noAnswer} leads están en no contesta/no responde (${pct(noAnswer, total)}%); conviene reintentar por horario o reciclarlos.`,
+      );
+    }
+
+    if (invalidContacts > 0) {
+      insights.push(
+        `${invalidContacts} leads parecen tener dato inválido (${pct(invalidContacts, total)}%); conviene separarlos del esfuerzo comercial.`,
+      );
+    }
+
+    if (topAgent) {
+      insights.push(
+        `Mejor ranking inicial: ${topAgent.Agente} con ${topAgent.Transferidos} transferidos y ${topAgent["% Transfer"]}% de conversión sobre sus leads.`,
+      );
+    } else if (assigned === 0) {
+      insights.push("No hay agentes asignados en este alcance.");
     }
   }
 
-  const attemptsAvg = attemptsCount
-    ? +(attemptsSum / attemptsCount).toFixed(2)
-    : 0;
-
-  const tipTable = Object.entries(byTip)
-    .sort((a, b) => b[1] - a[1])
-    .map(([k, v]) => ({
-      Tipificación: k,
-      Cantidad: v,
-      Porcentaje: total ? +((v / total) * 100).toFixed(2) : 0,
-    }));
-
-  const tipCodeTable = Object.entries(byTipCode)
-    .sort((a, b) => b[1] - a[1])
-    .map(([k, v]) => ({
-      Código: k,
-      Cantidad: v,
-      Porcentaje: total ? +((v / total) * 100).toFixed(2) : 0,
-    }));
-
-  const agentTable = Object.entries(byAgent)
-    .sort((a, b) => b[1] - a[1])
-    .map(([k, v]) => ({
-      Agente: k,
-      Cantidad: v,
-      Porcentaje: total ? +((v / total) * 100).toFixed(2) : 0,
-    }));
-
-  return { total, assigned, unassigned, attemptsAvg, tipTable, tipCodeTable, agentTable };
+  return {
+    total,
+    assigned,
+    unassigned,
+    worked,
+    unworked,
+    contacted,
+    transferred,
+    noAnswer,
+    invalidContacts,
+    attemptsAvg,
+    callsAvg,
+    commentsAvg,
+    callsSum,
+    commentsSum,
+    kpiTable,
+    funnelTable,
+    tipTable,
+    tipCodeTable,
+    agentTable,
+    agentPerformanceTable,
+    insights,
+  };
 }
 
 const overlayV = {
@@ -312,25 +716,38 @@ export default function CampaignReportExporter({
 
     if (ids.length === 0) return { lastCallMap, callCountMap };
 
-    const { data: callsData, error: callsErr } = await supabase
-      .from("calls")
-      .select("client_id, created_at")
-      .in("client_id", ids)
-      .order("created_at", { ascending: false })
-      .limit(10000);
+    const idChunks = chunkArray(ids, QUERY_CHUNK_SIZE);
 
-    if (callsErr) {
-      console.warn("[export] calls lookup failed:", callsErr.message);
-    } else {
-      for (const c of callsData ?? []) {
-        const cid = c.client_id as string;
-        if (!cid) continue;
+    for (const idChunk of idChunks) {
+      let from = 0;
 
-        if (!lastCallMap.has(cid)) {
-          lastCallMap.set(cid, { created_at: (c.created_at ?? "").toString() });
+      while (true) {
+        const to = from + QUERY_PAGE_SIZE - 1;
+        const { data: callsData, error: callsErr } = await supabase
+          .from("calls")
+          .select("client_id, created_at")
+          .in("client_id", idChunk)
+          .order("created_at", { ascending: false })
+          .range(from, to);
+
+        if (callsErr) {
+          console.warn("[export] calls lookup failed:", callsErr.message);
+          break;
         }
 
-        callCountMap.set(cid, (callCountMap.get(cid) ?? 0) + 1);
+        for (const c of callsData ?? []) {
+          const cid = c.client_id as string;
+          if (!cid) continue;
+
+          if (!lastCallMap.has(cid)) {
+            lastCallMap.set(cid, { created_at: (c.created_at ?? "").toString() });
+          }
+
+          callCountMap.set(cid, (callCountMap.get(cid) ?? 0) + 1);
+        }
+
+        if (!callsData || callsData.length < QUERY_PAGE_SIZE) break;
+        from += QUERY_PAGE_SIZE;
       }
     }
 
@@ -348,38 +765,47 @@ export default function CampaignReportExporter({
 
     if (ids.length === 0) return { allCommentsMap, commentCountMap };
 
-    const idChunks = chunkArray(ids, 100);
+    const idChunks = chunkArray(ids, QUERY_CHUNK_SIZE);
 
     for (const idChunk of idChunks) {
-      const { data: commData, error: commErr } = await supabase
-        .from("client_comments")
-        .select("client_id, agent_id, agent_name_snapshot, comment, created_at")
-        .in("client_id", idChunk)
-        .order("created_at", { ascending: true });
+      let from = 0;
 
-      if (commErr) {
-        throw new Error(
-          `No se pudieron cargar los comentarios para exportar: ${commErr.message}`,
-        );
-      }
+      while (true) {
+        const to = from + QUERY_PAGE_SIZE - 1;
+        const { data: commData, error: commErr } = await supabase
+          .from("client_comments")
+          .select("client_id, agent_id, agent_name_snapshot, comment, created_at")
+          .in("client_id", idChunk)
+          .order("created_at", { ascending: true })
+          .range(from, to);
 
-      for (const c of (commData ?? []) as ExportCommentRow[]) {
-        const cid = c.client_id;
-        if (!cid) continue;
+        if (commErr) {
+          throw new Error(
+            `No se pudieron cargar los comentarios para exportar: ${commErr.message}`,
+          );
+        }
 
-        const entry: ExportCommentRow = {
-          client_id: cid,
-          agent_id: c.agent_id ?? null,
-          agent_name_snapshot: c.agent_name_snapshot ?? null,
-          comment: c.comment ?? "",
-          created_at: c.created_at ?? "",
-        };
+        for (const c of (commData ?? []) as ExportCommentRow[]) {
+          const cid = c.client_id;
+          if (!cid) continue;
 
-        const arr = allCommentsMap.get(cid) ?? [];
-        arr.push(entry);
-        allCommentsMap.set(cid, arr);
+          const entry: ExportCommentRow = {
+            client_id: cid,
+            agent_id: c.agent_id ?? null,
+            agent_name_snapshot: c.agent_name_snapshot ?? null,
+            comment: c.comment ?? "",
+            created_at: c.created_at ?? "",
+          };
 
-        commentCountMap.set(cid, (commentCountMap.get(cid) ?? 0) + 1);
+          const arr = allCommentsMap.get(cid) ?? [];
+          arr.push(entry);
+          allCommentsMap.set(cid, arr);
+
+          commentCountMap.set(cid, (commentCountMap.get(cid) ?? 0) + 1);
+        }
+
+        if (!commData || commData.length < QUERY_PAGE_SIZE) break;
+        from += QUERY_PAGE_SIZE;
       }
     }
 
@@ -597,6 +1023,7 @@ export default function CampaignReportExporter({
 
       const XLSX = await import("xlsx");
       const wb = XLSX.utils.book_new();
+      const usedSheetNames = new Set<string>();
 
       const aoa: any[][] = [headers];
       for (const r of rows) {
@@ -633,69 +1060,247 @@ export default function CampaignReportExporter({
       cols.push({ wch: 18 }); // created_at
 
       ws1["!cols"] = cols;
-      XLSX.utils.book_append_sheet(wb, ws1, `Campaign_${exportPrefix}`);
+      XLSX.utils.book_append_sheet(
+        wb,
+        ws1,
+        makeUniqueWorksheetName(`Campaign_${exportPrefix}`, usedSheetNames),
+      );
 
       const summary = buildSummary(rows);
       const generatedAt = formatDateTimeShort(new Date().toISOString());
       const scopeLabel = getExportScopeLabel(exportScope);
+      const encode = XLSX.utils.encode_cell;
+
+      function tableOrPlaceholder<T extends Record<string, any>>(
+        table: T[],
+        placeholder: T,
+      ) {
+        return table.length > 0 ? table : [placeholder];
+      }
+
+      const insightRows = summary.insights.length
+        ? summary.insights.map((insight) => [`• ${insight}`])
+        : [["• Sin hallazgos automáticos para este alcance."]];
+
+      const agentPerformanceTable = tableOrPlaceholder(
+        summary.agentPerformanceTable,
+        {
+          Agente: "Sin agentes asignados",
+          Leads: 0,
+          Trabajados: 0,
+          Contactados: 0,
+          Transferidos: 0,
+          "% Transfer": 0,
+          Llamadas: 0,
+          Comentarios: 0,
+        },
+      );
+
       const summarySheetAoa = [
-        ["RESUMEN DE CAMPANA"],
-        [campLabel, "", "", "", "Prefijo", exportPrefix, "", "", "Alcance", scopeLabel],
+        ["RESUMEN GENERAL DE CAMPAÑA"],
+        [
+          campLabel,
+          "",
+          "",
+          "Prefijo",
+          exportPrefix || "—",
+          "",
+          "Alcance",
+          scopeLabel,
+          "",
+          "Generado",
+          generatedAt,
+        ],
         [],
-        ["INDICADORES CLAVE"],
-        ["Total leads", summary.total, "", "Asignados", summary.assigned, "", "Sin asignar", summary.unassigned, "", "Promedio intentos", summary.attemptsAvg],
-        ["Comentarios maximos exportados", maxComments, "", "Generado", generatedAt],
-        [],
-        ["TIPIFICACION"],
-        [],
-        ["CODIGO"],
-        [],
-        ["AGENTE"],
+        ["INDICADORES CLAVE", "", "", "", "", "HALLAZGOS AUTOMÁTICOS"],
       ];
 
       const ws2 = XLSX.utils.aoa_to_sheet(summarySheetAoa);
-      ws2["!freeze"] = { xSplit: 0, ySplit: 7 };
+      XLSX.utils.sheet_add_json(ws2, summary.kpiTable, { origin: "A5" });
+      XLSX.utils.sheet_add_aoa(ws2, insightRows, { origin: "F5" });
+
+      const kpiEndRow = 4 + summary.kpiTable.length;
+      const insightEndRow = 4 + insightRows.length - 1;
+      const detailHeaderRow = Math.max(kpiEndRow, insightEndRow) + 2;
+      const detailTableRow = detailHeaderRow + 1;
+      const detailTableEndRow =
+        detailTableRow +
+        Math.max(summary.funnelTable.length, agentPerformanceTable.length);
+      const secondHeaderRow = detailTableEndRow + 2;
+      const secondTableRow = secondHeaderRow + 1;
+
+      XLSX.utils.sheet_add_aoa(
+        ws2,
+        [["EMBUDO GENERAL", "", "", "", "", "RANKING POR AGENTE"]],
+        { origin: encode({ r: detailHeaderRow, c: 0 }) },
+      );
+      XLSX.utils.sheet_add_json(ws2, summary.funnelTable, {
+        origin: encode({ r: detailTableRow, c: 0 }),
+      });
+      XLSX.utils.sheet_add_json(ws2, agentPerformanceTable, {
+        origin: encode({ r: detailTableRow, c: 5 }),
+      });
+
+      XLSX.utils.sheet_add_aoa(
+        ws2,
+        [["TIPIFICACIONES", "", "", "", "", "CÓDIGOS"]],
+        { origin: encode({ r: secondHeaderRow, c: 0 }) },
+      );
+      XLSX.utils.sheet_add_json(
+        ws2,
+        tableOrPlaceholder(summary.tipTable, {
+          Tipificación: "Sin tipificaciones",
+          Cantidad: 0,
+          "%": 0,
+        }),
+        { origin: encode({ r: secondTableRow, c: 0 }) },
+      );
+      XLSX.utils.sheet_add_json(
+        ws2,
+        tableOrPlaceholder(summary.tipCodeTable, {
+          Código: "—",
+          Cantidad: 0,
+          "%": 0,
+        }),
+        { origin: encode({ r: secondTableRow, c: 5 }) },
+      );
+
+      ws2["!freeze"] = { xSplit: 0, ySplit: 4 };
       ws2["!cols"] = [
-        { wch: 24 },
-        { wch: 14 },
+        { wch: 28 }, // A - Métrica / etapa / tipificación
+        { wch: 12 }, // B - Valor
+        { wch: 12 }, // C - Porcentaje
+        { wch: 38 }, // D - Lectura
         { wch: 3 },
-        { wch: 18 },
+        { wch: 28 }, // F - Hallazgos / Agente / Código
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
         { wch: 14 },
-        { wch: 3 },
-        { wch: 18 },
+        { wch: 12 },
+        { wch: 12 },
         { wch: 14 },
-        { wch: 3 },
-        { wch: 22 },
-        { wch: 18 },
       ];
-      ws2["!rows"] = [
-        { hpt: 24 },
-        { hpt: 20 },
-        { hpt: 10 },
-        { hpt: 18 },
-        { hpt: 20 },
-        { hpt: 20 },
-        { hpt: 10 },
-      ];
+
+      const rowCount =
+        secondTableRow +
+        Math.max(summary.tipTable.length, summary.tipCodeTable.length, 1) +
+        2;
+      ws2["!rows"] = Array.from({ length: rowCount }, (_, rowIndex) => ({
+        hpt:
+          rowIndex === 0
+            ? 26
+            : rowIndex === 2
+            ? 8
+            : rowIndex === 3 ||
+              rowIndex === detailHeaderRow ||
+              rowIndex === secondHeaderRow
+            ? 20
+            : 18,
+      }));
+
       ws2["!merges"] = [
         { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
-        { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } },
-        { s: { r: 4, c: 3 }, e: { r: 4, c: 4 } },
-        { s: { r: 4, c: 6 }, e: { r: 4, c: 7 } },
-        { s: { r: 4, c: 9 }, e: { r: 4, c: 10 } },
-        { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } },
-        { s: { r: 5, c: 3 }, e: { r: 5, c: 4 } },
-        { s: { r: 7, c: 0 }, e: { r: 7, c: 2 } },
-        { s: { r: 7, c: 4 }, e: { r: 7, c: 6 } },
-        { s: { r: 7, c: 8 }, e: { r: 7, c: 10 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 3 } },
+        { s: { r: 3, c: 5 }, e: { r: 3, c: 10 } },
+        ...insightRows.map((_, index) => ({
+          s: { r: 4 + index, c: 5 },
+          e: { r: 4 + index, c: 10 },
+        })),
+        { s: { r: detailHeaderRow, c: 0 }, e: { r: detailHeaderRow, c: 3 } },
+        { s: { r: detailHeaderRow, c: 5 }, e: { r: detailHeaderRow, c: 12 } },
+        { s: { r: secondHeaderRow, c: 0 }, e: { r: secondHeaderRow, c: 3 } },
+        { s: { r: secondHeaderRow, c: 5 }, e: { r: secondHeaderRow, c: 8 } },
       ];
 
-      XLSX.utils.sheet_add_json(ws2, summary.tipTable, { origin: "A9" });
-      XLSX.utils.sheet_add_json(ws2, summary.tipCodeTable, { origin: "E11" });
-      XLSX.utils.sheet_add_json(ws2, summary.agentTable, { origin: "I13" });
-
       XLSX.utils.book_append_sheet(wb, ws2, "Resumen");
+      usedSheetNames.add("Resumen");
+
+      const agentGroups = Array.from(
+        rows.reduce((map, row) => {
+          const agent = (row.assigned_to || "Sin asignar").toString().trim();
+          if (!agent || agent === "Sin asignar") return map;
+
+          const group = map.get(agent) ?? [];
+          group.push(row);
+          map.set(agent, group);
+          return map;
+        }, new Map<string, ClientRow[]>()),
+      ).sort((a, b) => a[0].localeCompare(b[0]));
+
+      for (const [agentName, agentRows] of agentGroups) {
+        const agentSummary = buildSummary(agentRows);
+        const agentInsightRows = agentSummary.insights.length
+          ? agentSummary.insights.map((insight) => [`• ${insight}`])
+          : [["• Sin hallazgos automáticos para este agente."]];
+        const agentSheetAoa = [
+          [`AGENTE: ${agentName}`],
+          [
+            campLabel,
+            "",
+            "",
+            "Prefijo",
+            exportPrefix || "—",
+            "",
+            "Alcance",
+            scopeLabel,
+            "",
+            "Generado",
+            generatedAt,
+          ],
+          [],
+          ["INDICADORES DEL AGENTE", "", "", "", "", "HALLAZGOS"],
+        ];
+
+        const wsAgent = XLSX.utils.aoa_to_sheet(agentSheetAoa);
+        XLSX.utils.sheet_add_json(wsAgent, agentSummary.kpiTable, { origin: "A5" });
+        XLSX.utils.sheet_add_aoa(wsAgent, agentInsightRows, { origin: "F5" });
+
+        const agentKpiEndRow = 4 + agentSummary.kpiTable.length;
+        const agentInsightEndRow = 4 + agentInsightRows.length - 1;
+        const leadsHeaderRow =
+          Math.max(agentKpiEndRow, agentInsightEndRow) + 2;
+        const leadsTableRow = leadsHeaderRow + 1;
+
+        XLSX.utils.sheet_add_aoa(wsAgent, [["LEADS DEL AGENTE"]], {
+          origin: encode({ r: leadsHeaderRow, c: 0 }),
+        });
+        XLSX.utils.sheet_add_aoa(
+          wsAgent,
+          [
+            headers,
+            ...agentRows.map((row) => headers.map((h) => (row as any)[h] ?? "")),
+          ],
+          { origin: encode({ r: leadsTableRow, c: 0 }) },
+        );
+
+        wsAgent["!freeze"] = { xSplit: 0, ySplit: leadsTableRow + 1 };
+        wsAgent["!autofilter"] = {
+          ref: XLSX.utils.encode_range({
+            s: { r: leadsTableRow, c: 0 },
+            e: { r: leadsTableRow + agentRows.length, c: headers.length - 1 },
+          }),
+        };
+        wsAgent["!cols"] = cols;
+        wsAgent["!merges"] = [
+          { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } },
+          { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } },
+          { s: { r: 3, c: 0 }, e: { r: 3, c: 3 } },
+          { s: { r: 3, c: 5 }, e: { r: 3, c: 10 } },
+          ...agentInsightRows.map((_, index) => ({
+            s: { r: 4 + index, c: 5 },
+            e: { r: 4 + index, c: 10 },
+          })),
+          { s: { r: leadsHeaderRow, c: 0 }, e: { r: leadsHeaderRow, c: 3 } },
+        ];
+
+        XLSX.utils.book_append_sheet(
+          wb,
+          wsAgent,
+          makeUniqueWorksheetName(`Agente ${agentName}`, usedSheetNames),
+        );
+      }
 
       const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
       const blob = new Blob([out], {
@@ -875,8 +1480,9 @@ export default function CampaignReportExporter({
                 </div>
               </div>
               <div className="rounded-[1.2rem] border border-white/74 bg-white/54 px-4 py-3 text-xs text-muted">
-                Consejo: el XLSX incluye resumen por tipificacion, por codigo de
-                tipificacion y por agente. Tanto CSV como XLSX exportan
+                Consejo: el XLSX incluye resumen ejecutivo con KPIs, embudo,
+                hallazgos automaticos, ranking de agentes, tipificacion, codigo
+                de tipificacion y una hoja por agente asignado. Tanto CSV como XLSX exportan
                 `comentario_reciente`, `comments_count` y columnas dinamicas
                 `comentario_1..N`.
               </div>
